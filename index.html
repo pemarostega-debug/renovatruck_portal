@@ -923,8 +923,8 @@ function processRows(rows, empresa){
     const dataEnc    = parseDate(get("data_encerramento","dataencerramento","dataEnc","data_enc"));
     const dataFat    = dataEnc || dataFase;
 
-    const DASH2_KW = ["faturado","pagosnf","pago s","concluido"];
-    const IGNORE_KW= ["cancelado","cortesia"];
+    const DASH2_KW = ["faturado","pagosnf","pago s"];
+    const IGNORE_KW= ["cancelado","cortesia","concluido"];
 
     const isDash2  = DASH2_KW.some(k=>statusNorm.includes(norm(k)));
     const isIgnore = IGNORE_KW.some(k=>statusNorm.includes(norm(k)));
@@ -1182,7 +1182,7 @@ function buildBar(id, data, color, groupId, dashId, rawData){
     },
     options:{
       indexAxis:"y", responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>fmtMoney(c.raw)}}},
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>fmtMoney(c.raw)+" · "+top[c.dataIndex].count+" OS"+(top[c.dataIndex].count!==1?"s":"")}}},
       scales:{x:{display:false},y:{ticks:{font:{size:10,weight:"600"},color:"#475569"},grid:{display:false}}},
       onClick(evt, elements){
         if(!elements.length) return;
@@ -1227,15 +1227,18 @@ function buildHistory(fullData){
   if(charts["c-geral-12m"]) charts["c-geral-12m"].destroy();
   const labels=[],vals=[];
   const hoje=new Date();
+  const counts=[];
   for(let i=11;i>=0;i--){
     const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1);
     labels.push(d.toLocaleDateString("pt-BR",{month:"short",year:"2-digit"}));
-    vals.push(fullData.filter(r=>r.dataFat&&r.dataFat.getMonth()===d.getMonth()&&r.dataFat.getFullYear()===d.getFullYear()).reduce((a,b)=>a+b.valor,0));
+    const month=fullData.filter(r=>r.dataFat&&r.dataFat.getMonth()===d.getMonth()&&r.dataFat.getFullYear()===d.getFullYear());
+    vals.push(month.reduce((a,b)=>a+b.valor,0));
+    counts.push(month.length);
   }
   charts["c-geral-12m"]=new Chart(document.getElementById("c-geral-12m"),{
     type:"bar",
     data:{labels,datasets:[{data:vals,backgroundColor:"#1d4ed8",borderRadius:5}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtMoney(c.raw)}}},scales:{y:{ticks:{callback:v=>fmtMoney(v),font:{size:9}},grid:{color:"#f8fafc"}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtMoney(c.raw)+" · "+counts[c.dataIndex]+" OS"+(counts[c.dataIndex]!==1?"s":"")}}},scales:{y:{ticks:{callback:v=>fmtMoney(v),font:{size:9}},grid:{color:"#f8fafc"}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
   });
 }
 
@@ -1322,7 +1325,7 @@ function renderTableD2(data){
 }
 
 // ── UTILS ──
-function groupBy(list,key){ const m={}; list.forEach(i=>m[i[key]]=(m[i[key]]||0)+i.valor); return Object.entries(m).map(([name,val])=>({name,val})).sort((a,b)=>b.val-a.val); }
+function groupBy(list,key){ const m={},c={}; list.forEach(i=>{m[i[key]]=(m[i[key]]||0)+i.valor;c[i[key]]=(c[i[key]]||0)+1;}); return Object.entries(m).map(([name,val])=>({name,val,count:c[name]})).sort((a,b)=>b.val-a.val); }
 function switchTab(id){
   document.getElementById("dash1").style.display=id==="dash1"?"":"none";
   document.getElementById("dash2").style.display=id==="dash2"?"":"none";
