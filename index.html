@@ -344,9 +344,6 @@ textarea.inp{resize:vertical;min-height:64px;}
       <!-- Controls -->
       <div class="header-right" style="display:flex;align-items:center;gap:6px;">
         <div class="co-filters" style="display:flex;gap:3px;background:rgba(255,255,255,.08);padding:3px;border-radius:24px;">
-          <button onclick="setCompany('TODAS')" id="co-TODAS" class="co-btn active"><i class="fa-solid fa-layer-group" style="margin-right:3px;font-size:10px;"></i>Todas</button>
-          <button onclick="setCompany('RENOVA')" id="co-RENOVA" class="co-btn"><span style="display:inline-block;width:6px;height:6px;background:var(--renova);border-radius:50%;margin-right:3px;"></span>Renova</button>
-          <button onclick="setCompany('VALE')" id="co-VALE" class="co-btn"><span style="display:inline-block;width:6px;height:6px;background:var(--vale);border-radius:50%;margin-right:3px;"></span>Vale</button>
         </div>
         <button onclick="fetchData()" class="refresh-btn"><i class="fa-solid fa-rotate-right"></i></button>
       </div>
@@ -448,11 +445,11 @@ textarea.inp{resize:vertical;min-height:64px;}
         <div class="table-wrap" style="margin-top:.5rem;">
           <table>
             <thead><tr>
-              <th>Empresa</th><th>OS</th><th>Cliente</th>
+              <th>OS</th><th>Cliente</th>
               <th class="hide-mobile">Placa</th><th>Status</th>
               <th class="hide-mobile">Data</th><th style="text-align:right;">Valor</th>
             </tr></thead>
-            <tbody id="table-body-d1"><tr><td colspan="7" class="empty-state">Carregando...</td></tr></tbody>
+            <tbody id="table-body-d1"><tr><td colspan="6" class="empty-state">Carregando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -531,11 +528,11 @@ textarea.inp{resize:vertical;min-height:64px;}
         <div class="table-wrap" style="margin-top:.5rem;">
           <table>
             <thead><tr>
-              <th>Empresa</th><th>OS</th><th>Cliente</th>
+              <th>OS</th><th>Cliente</th>
               <th class="hide-mobile">Placa</th><th class="hide-mobile">Status</th>
               <th>Data Fat.</th><th style="text-align:right;">Valor</th>
             </tr></thead>
-            <tbody id="table-body-d2"><tr><td colspan="7" class="empty-state">Selecione um mês e clique em Filtrar.</td></tr></tbody>
+            <tbody id="table-body-d2"><tr><td colspan="6" class="empty-state">Selecione um mês e clique em Filtrar.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -717,7 +714,7 @@ textarea.inp{resize:vertical;min-height:64px;}
         <input type="text" id="abc-search" class="search-input" placeholder="Filtrar cliente..." style="max-width:200px;" oninput="filterABCTable(this.value)" />
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th>#</th><th>Cliente</th><th>Empresa(s)</th><th style="text-align:right;">Faturamento</th><th>Participação</th><th style="text-align:right;">Acumulado</th><th style="text-align:center;">Classe</th></tr></thead>
+        <table><thead><tr><th>#</th><th>Cliente</th><th style="text-align:right;">Faturamento</th><th>Participação</th><th style="text-align:right;">Acumulado</th><th style="text-align:center;">Classe</th></tr></thead>
         <tbody id="abc-table-body"></tbody></table>
       </div>
     </div>
@@ -839,7 +836,6 @@ const csvURLExt = (id, s) => `https://docs.google.com/spreadsheets/d/${id}/gviz/
 // ── STATE ──
 let db = [];
 let charts = {};
-let selectedCompany = 'TODAS';
 let activeFilter = { d1: null, d2: null }; // { cliente, status }
 let currentD1Data = [];
 let currentD2Data = [];
@@ -858,8 +854,10 @@ const fmtMoney= v => (v||0).toLocaleString("pt-BR",{style:"currency",currency:"B
 async function fetchData(){
   showLoading("Buscando dados...");
   try {
-    const [r, v] = await Promise.all([fetchSheet(CONFIG.SHEET_RENOVA), fetchSheet(CONFIG.SHEET_VALE)]);
-    db = [...processRows(r,"RENOVA"), ...processRows(v,"VALE")];
+    const res = await fetch('/api/ordens-servico');
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const rows = await res.json();
+    db = processRows(rows);
     const now = new Date();
     document.getElementById("last-update").textContent =
       now.toLocaleDateString("pt-BR")+" "+now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
@@ -867,17 +865,8 @@ async function fetchData(){
     hideLoading();
   } catch(e){
     hideLoading();
-    alert("Erro ao carregar dados.\n\nVerifique:\n1. Google Sheets com acesso público\n2. Conexão à internet\n\n"+e.message);
+    alert("Erro ao carregar dados.\n\n"+e.message);
   }
-}
-
-async function fetchSheet(name){
-  try {
-    const res = await fetch(csvURL(name));
-    if(!res.ok) throw new Error("HTTP "+res.status);
-    const text = await res.text();
-    return await new Promise((ok,err) => Papa.parse(text,{header:true,skipEmptyLines:true,complete:r=>ok(r.data),error:e=>err(e)}));
-  } catch(e){ console.warn("Aba",name,"indisponível:",e.message); return []; }
 }
 
 // ── PARSE DATE (robusto) ──
@@ -900,27 +889,18 @@ function parseDate(raw){
 }
 
 // ── PROCESS ROWS ──
-function processRows(rows, empresa){
+function processRows(rows){
   return rows.map(row => {
-    const get = (...keys) => {
-      for(const k of keys){
-        const found = Object.keys(row).find(rk => norm(rk)===norm(k));
-        if(found!==undefined && row[found]!=="" && row[found]!==undefined) return row[found];
-      }
-      return "";
-    };
-    let valor = get("valor_total","valortotal","valor");
-    if(typeof valor==="string") valor=valor.replace(/R\$\s*/,"").replace(/\./g,"").replace(",",".").trim();
-    valor = parseFloat(valor)||0;
+    let valor = parseFloat(row.valor_total)||0;
 
-    const status     = clean(get("DescricaoFase","descricaofase","fase","status")||"OUTROS");
+    const status     = clean(row.descricao_fase||"OUTROS");
     const statusNorm = norm(status);
-    const cliente    = clean(get("razao_cliente","razaocliente","nomecliente","nome_cliente")||"CONSUMIDOR");
-    const os         = get("numero_os","numeroos","os")||"–";
-    const placa      = get("descricao1","placa")||"";
+    const cliente    = clean(row.razao_cliente||"CONSUMIDOR");
+    const os         = row.numero_os||"–";
+    const placa      = row.placa||"";
 
-    const dataFase   = parseDate(get("data","data_status","datafase","dataStatus"));
-    const dataEnc    = parseDate(get("data_encerramento","dataencerramento","dataEnc","data_enc"));
+    const dataFase   = parseDate(row.data||"");
+    const dataEnc    = parseDate(row.data_encerramento||"");
     const dataFat    = dataEnc || dataFase;
 
     const DASH2_KW = ["faturado","pagosnf","pago s"];
@@ -930,22 +910,12 @@ function processRows(rows, empresa){
     const isIgnore = IGNORE_KW.some(k=>statusNorm.includes(norm(k)));
     const isDash1  = !isDash2 && !isIgnore;
 
-    return {os,cliente,placa,status,statusNorm,valor,dataFase,dataFat,isDash1,isDash2,empresa};
+    return {os,cliente,placa,status,statusNorm,valor,dataFase,dataFat,isDash1,isDash2};
   });
 }
 
 // ── COMPANY FILTER ──
-function setCompany(co){
-  selectedCompany=co;
-  document.querySelectorAll(".co-btn").forEach(b=>b.classList.remove("active","active-renova","active-vale"));
-  const btn=document.getElementById("co-"+co);
-  if(co==="RENOVA") btn.classList.add("active-renova");
-  else if(co==="VALE") btn.classList.add("active-vale");
-  else btn.classList.add("active");
-  activeFilter={d1:null,d2:null};
-  renderAll();
-}
-const getDb = () => selectedCompany==="TODAS" ? db : db.filter(d=>d.empresa===selectedCompany);
+const getDb = () => db;
 
 // ── RENDER ALL ──
 function renderAll(){
@@ -1298,9 +1268,8 @@ function updateEvolution(){
 // ── TABLES ──
 function renderTableD1(data){
   const tbody=document.getElementById("table-body-d1");
-  if(!data.length){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Nenhuma OS encontrada.</td></tr>';return;}
+  if(!data.length){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Nenhuma OS encontrada.</td></tr>';return;}
   tbody.innerHTML=data.slice(0,500).map(d=>`<tr>
-    <td><span class="badge-${d.empresa}">${d.empresa==="RENOVA"?"Renova":"Vale"}</span></td>
     <td style="font-weight:700;">${d.os}</td>
     <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.cliente}">${d.cliente}</td>
     <td class="hide-mobile" style="color:var(--muted);font-size:.75rem;">${d.placa}</td>
@@ -1312,9 +1281,8 @@ function renderTableD1(data){
 
 function renderTableD2(data){
   const tbody=document.getElementById("table-body-d2");
-  if(!data.length){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Nenhuma OS encontrada.</td></tr>';return;}
+  if(!data.length){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Nenhuma OS encontrada.</td></tr>';return;}
   tbody.innerHTML=data.slice(0,500).map(d=>`<tr>
-    <td><span class="badge-${d.empresa}">${d.empresa==="RENOVA"?"Renova":"Vale"}</span></td>
     <td style="font-weight:700;">${d.os}</td>
     <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.cliente}">${d.cliente}</td>
     <td class="hide-mobile" style="color:var(--muted);font-size:.75rem;">${d.placa}</td>
@@ -1751,26 +1719,25 @@ function toast(msg){
 function loadABC(){
   document.getElementById('abc-loading').style.display='flex';
   document.getElementById('abc-content').style.display='none';
-  Promise.all([fetchSheet(CONFIG.SHEET_RENOVA),fetchSheet(CONFIG.SHEET_VALE)]).then(([rR,vR])=>{
+  fetch('/api/ordens-servico').then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}).then(rows=>{
     const BILL=['faturado','pago'];
     const all=[];
-    const proc=(rows,emp)=>rows.forEach(r=>{
-      const fase=(r.DescricaoFase||'').toLowerCase();
-      if(['sim','s'].includes((r.Cancelada||'').toLowerCase())) return;
+    rows.forEach(r=>{
+      const fase=(r.descricao_fase||'').toLowerCase();
+      if((r.cancelada||'').toLowerCase()==='sim') return;
       if(!BILL.some(k=>fase.includes(k))) return;
       const d=parseDate(r.data_encerramento||r.data||'');
-      if(!d||d.getFullYear()!==2026) return;
-      let val=parseFloat((r.valor_total||'0').replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.'))||0;
+      if(!d||d.getFullYear()!==new Date().getFullYear()) return;
+      const val=parseFloat(r.valor_total)||0;
       if(val<=0) return;
-      all.push({cli:(r.razao_cliente||'CONSUMIDOR').trim().toUpperCase(),val,emp});
+      all.push({cli:(r.razao_cliente||'CONSUMIDOR').trim().toUpperCase(),val});
     });
-    proc(rR,'RENOVA'); proc(vR,'VALE');
-    const totMap={},empMap={};
-    all.forEach(b=>{totMap[b.cli]=(totMap[b.cli]||0)+b.val;if(!empMap[b.cli])empMap[b.cli]=new Set();empMap[b.cli].add(b.emp);});
+    const totMap={};
+    all.forEach(b=>{totMap[b.cli]=(totMap[b.cli]||0)+b.val;});
     const ranked=Object.entries(totMap).sort((a,b)=>b[1]-a[1]);
     const total=ranked.reduce((s,[,v])=>s+v,0);
     let acc=0;
-    const abc=ranked.map(([cli,val])=>{acc+=val;const p=val/total*100,ap=acc/total*100;return{cli,val,pct:p,acc:ap,cls:ap<=80?'A':ap<=95?'B':'C',emp:[...empMap[cli]].join('+')};});
+    const abc=ranked.map(([cli,val])=>{acc+=val;const p=val/total*100,ap=acc/total*100;return{cli,val,pct:p,acc:ap,cls:ap<=80?'A':ap<=95?'B':'C'};});
     window._abcData={abc,total,osCount:all.length};
     renderABC(abc,total,all.length);
   }).catch(e=>{
@@ -1810,8 +1777,7 @@ function renderABC(abc,total,osCount){
   tbody.innerHTML=rows.map((x,i)=>{
     const badge=x.cls==='A'?'background:#0f172a;color:#fff;':x.cls==='B'?'background:#1d4ed8;color:#fff;':'background:#f1f5f9;color:#475569;';
     const bw=Math.min(x.pct*1.2,80),bc=x.cls==='A'?'#0f172a':x.cls==='B'?'#3b82f6':'#94a3b8';
-    const empCell=x.isOthers?'<span style="color:var(--muted);">\u2013</span>':x.emp.split('+').map(e=>'<span style="background:'+(e==='RENOVA'?'var(--renova-bg)':'var(--vale-bg)')+';color:'+(e==='RENOVA'?'var(--renova)':'var(--vale)')+';font-size:9px;font-weight:800;padding:1px 6px;border-radius:20px;">'+(e==='RENOVA'?'Renova':'Vale')+'</span>').join(' ');
-    return '<tr data-cli="'+x.cli.toLowerCase()+'"><td style="color:var(--muted);text-align:center;font-size:.78rem;">'+(x.isOthers?'&mdash;':i+1)+'</td><td style="font-weight:'+(x.isOthers?700:600)+';font-size:.78rem;color:'+(x.isOthers?'var(--muted)':'var(--text)')+';">'+x.cli+'</td><td>'+empCell+'</td><td style="text-align:right;font-weight:800;color:var(--primary);font-size:.78rem;">'+fmtM(x.val)+'</td><td><div style="display:flex;align-items:center;gap:5px;"><div style="width:'+bw+'px;height:5px;background:'+bc+';border-radius:3px;min-width:2px;"></div><span style="font-size:.68rem;font-weight:700;color:var(--muted);">'+x.pct.toFixed(1)+'%</span></div></td><td style="text-align:right;font-size:.74rem;color:var(--muted);">'+x.acc.toFixed(1)+'%</td><td style="text-align:center;"><span style="display:inline-block;'+badge+'padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:800;">'+x.cls+'</span></td></tr>';
+    return '<tr data-cli="'+x.cli.toLowerCase()+'"><td style="color:var(--muted);text-align:center;font-size:.78rem;">'+(x.isOthers?'&mdash;':i+1)+'</td><td style="font-weight:'+(x.isOthers?700:600)+';font-size:.78rem;color:'+(x.isOthers?'var(--muted)':'var(--text)')+';">'+x.cli+'</td><td style="text-align:right;font-weight:800;color:var(--primary);font-size:.78rem;">'+fmtM(x.val)+'</td><td><div style="display:flex;align-items:center;gap:5px;"><div style="width:'+bw+'px;height:5px;background:'+bc+';border-radius:3px;min-width:2px;"></div><span style="font-size:.68rem;font-weight:700;color:var(--muted);">'+x.pct.toFixed(1)+'%</span></div></td><td style="text-align:right;font-size:.74rem;color:var(--muted);">'+x.acc.toFixed(1)+'%</td><td style="text-align:center;"><span style="display:inline-block;'+badge+'padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:800;">'+x.cls+'</span></td></tr>';
   }).join('');
   document.getElementById('abc-loading').style.display='none';
   document.getElementById('abc-content').style.display='block';
