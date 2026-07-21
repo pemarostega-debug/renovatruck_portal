@@ -1006,9 +1006,14 @@ async function loadDailyOsChart(){
     const text = await res.text();
     const rows = await new Promise((ok,err) => Papa.parse(text,{header:true,skipEmptyLines:true,complete:r=>ok(r.data),error:e=>err(e)}));
 
-    // Usa o VALOR já registrado na própria planilha — não recalcula a partir
-    // do banco, pois o valor da OS pode ter sido ajustado depois da finalização
-    // (isso causava divergência entre o tooltip e a planilha).
+    // Mapa OS → valor ATUAL no sistema (db). Usamos o valor vigente da OS,
+    // não uma anotação manual, para refletir ajustes feitos após a finalização.
+    const osValMap = {};
+    db.forEach(d => {
+      const osKey = d.os ? d.os.toString().trim() : null;
+      if(osKey && osKey !== "–") osValMap[osKey] = (osValMap[osKey] || 0) + d.valor;
+    });
+
     let maxDate = null;
     const validRows = [];
     rows.forEach(row => {
@@ -1025,10 +1030,19 @@ async function loadDailyOsChart(){
       const dt = parseDate(dataRaw);
       if(!dt) return;
       if(!maxDate || dt > maxDate) maxDate = dt;
+
+      // Se a OS não for encontrada no banco (número não bate, ou foi removida),
+      // cai para o valor anotado na planilha em vez de zerar silenciosamente.
+      let valor = osValMap[osNum];
+      if(valor === undefined){
+        console.warn("OS "+osNum+" (finalizados) não encontrada no banco — usando valor da planilha como fallback.");
+        valor = parseMoneyBR(valorKey ? row[valorKey] : "");
+      }
+
       validRows.push({
         dt,
         os: osNum,
-        valor: parseMoneyBR(valorKey ? row[valorKey] : ""),
+        valor,
         placa: placaKey ? (row[placaKey]||"") : "",
         cliente: cliKey ? clean(row[cliKey]||"") : "",
         status: statusKey ? clean(row[statusKey]||"FINALIZADO") : "FINALIZADO"
