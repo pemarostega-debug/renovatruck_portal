@@ -42,7 +42,11 @@ exports.handler = async function (event, context) {
     console.error('Erro ao consultar vw_ordens_servico:', error.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Falha ao consultar o banco de dados.' })
+      body: JSON.stringify({
+        error: 'Falha ao consultar o banco de dados.',
+        code: error.code,
+        message: error.message
+      })
     };
   } finally {
     if (connection) await connection.end();
