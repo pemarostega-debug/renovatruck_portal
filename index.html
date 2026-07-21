@@ -989,39 +989,50 @@ function renderDash2(){
 }
 
 // ── GRÁFICO OSs FINALIZADAS POR DIA ──
+function parseMoneyBR(raw){
+  if(!raw) return 0;
+  const s = raw.toString().replace(/R\$\s*/,"").replace(/\./g,"").replace(",",".").trim();
+  return parseFloat(s)||0;
+}
+
 async function loadDailyOsChart(){
   const loadEl = document.getElementById("daily-loading");
   if(loadEl) loadEl.style.display = "block";
   try {
-    // Busca dados da planilha de finalizações (DATA + OS)
+    // Busca dados da planilha de finalizações (DATA, OS, VALOR, PLACA, CLIENTE, STATUS)
     const finURL = csvURLExt(CONFIG.SHEET_FINALIZADAS_ID, CONFIG.SHEET_FINALIZADAS_ABA);
     const res = await fetch(finURL);
     if(!res.ok) throw new Error("HTTP "+res.status);
     const text = await res.text();
     const rows = await new Promise((ok,err) => Papa.parse(text,{header:true,skipEmptyLines:true,complete:r=>ok(r.data),error:e=>err(e)}));
 
-    // Monta mapa de OS → valor_total da planilha principal (db)
-    const osValMap = {};
-    db.forEach(d => {
-      const osKey = d.os ? d.os.toString().trim() : null;
-      if(osKey && osKey !== "–") osValMap[osKey] = (osValMap[osKey] || 0) + d.valor;
-    });
-
-    // Processa linhas da planilha de finalizações
-    // Pega a data mais recente para definir janela de 30 dias
+    // Usa o VALOR já registrado na própria planilha — não recalcula a partir
+    // do banco, pois o valor da OS pode ter sido ajustado depois da finalização
+    // (isso causava divergência entre o tooltip e a planilha).
     let maxDate = null;
     const validRows = [];
     rows.forEach(row => {
-      const keys = Object.keys(row);
-      const dataKey = keys.find(k => norm(k) === "data") || keys[0];
-      const osKey   = keys.find(k => norm(k) === "os")   || keys[1];
+      const keys     = Object.keys(row);
+      const dataKey  = keys.find(k => norm(k) === "data")    || keys[0];
+      const osKey    = keys.find(k => norm(k) === "os")      || keys[1];
+      const valorKey = keys.find(k => norm(k) === "valor");
+      const placaKey = keys.find(k => norm(k) === "placa");
+      const cliKey   = keys.find(k => norm(k) === "cliente");
+      const statusKey= keys.find(k => norm(k) === "status");
       const dataRaw = row[dataKey] ? row[dataKey].toString().trim() : "";
       const osNum   = row[osKey]   ? row[osKey].toString().trim()   : "";
       if(!dataRaw || !osNum) return;
       const dt = parseDate(dataRaw);
       if(!dt) return;
       if(!maxDate || dt > maxDate) maxDate = dt;
-      validRows.push({dt, osNum, dataRaw});
+      validRows.push({
+        dt,
+        os: osNum,
+        valor: parseMoneyBR(valorKey ? row[valorKey] : ""),
+        placa: placaKey ? (row[placaKey]||"") : "",
+        cliente: cliKey ? clean(row[cliKey]||"") : "",
+        status: statusKey ? clean(row[statusKey]||"FINALIZADO") : "FINALIZADO"
+      });
     });
 
     if(!maxDate || validRows.length === 0){
@@ -1034,16 +1045,15 @@ async function loadDailyOsChart(){
     const cutoff = new Date(maxDate);
     cutoff.setDate(cutoff.getDate() - 29);
 
-    // Agrupa por data: soma valor_total da planilha principal pelo número de OS
+    // Agrupa por data usando o valor da própria planilha
     const byDate = {};
-    const byDateRows = {}; // guarda as OSs de cada dia para o clique
-    validRows.forEach(({dt, osNum, dataRaw}) => {
-      if(dt < cutoff) return;
-      const label = dt.toLocaleDateString("pt-BR"); // DD/MM/AAAA
+    const byDateRows = {}; // guarda as linhas completas de cada dia para o detalhamento
+    validRows.forEach(r => {
+      if(r.dt < cutoff) return;
+      const label = r.dt.toLocaleDateString("pt-BR"); // DD/MM/AAAA
       if(!byDate[label]) { byDate[label] = 0; byDateRows[label] = []; }
-      const val = osValMap[osNum] || 0;
-      byDate[label] += val;
-      byDateRows[label].push(osNum);
+      byDate[label] += r.valor;
+      byDateRows[label].push(r);
     });
 
     if(loadEl) loadEl.style.display = "none";
@@ -1090,8 +1100,8 @@ function buildDailyChart(byDate, byDateRows){
         if(!elements.length) return;
         const idx = elements[0].index;
         const dateStr = labels[idx];
-        const osNums = byDateRows[dateStr] || [];
-        applyDailyFilter(dateStr, osNums, byDate, byDateRows);
+        const dayRows = byDateRows[dateStr] || [];
+        applyDailyFilter(dateStr, dayRows, byDate, byDateRows);
       },
       plugins:{
         legend:{display:false},
@@ -1116,12 +1126,16 @@ function buildDailyChart(byDate, byDateRows){
   });
 }
 
-function applyDailyFilter(dateStr, osNums, byDate, byDateRows){
+function applyDailyFilter(dateStr, dayRows, byDate, byDateRows){
   dailyFilterDate = dateStr;
 
-  // Filtra a tabela D1 com as OSs daquele dia
-  const osSet = new Set(osNums.map(o => o.toString().trim()));
-  const filtered = currentD1Data.filter(d => osSet.has(d.os ? d.os.toString().trim() : ""));
+  // Detalhamento vem direto da planilha de finalizados (mesmas linhas do
+  // gráfico) — não depende do status atual da OS no sistema, então OSs que
+  // já viraram "Faturado" continuam aparecendo no dia em que foram finalizadas.
+  const filtered = dayRows.map(r => ({
+    os: r.os, cliente: r.cliente, placa: r.placa, status: r.status,
+    dataFase: r.dt, dataFat: r.dt, valor: r.valor
+  }));
   renderTableD1(filtered);
 
   // Atualiza tag de filtro
