@@ -851,16 +851,24 @@ const fmtMoney= v => (v||0).toLocaleString("pt-BR",{style:"currency",currency:"B
 // LOGIN handled by doLogin()
 
 // ── FETCH ──
+// Busca o JSON gerado pela exportação periódica (exportar-dados.js).
+// O parâmetro t evita cache do CDN/navegador.
+async function fetchDados(){
+  const res = await fetch('dados.json?t='+Date.now());
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  return res.json();
+}
+
 async function fetchData(){
   showLoading("Buscando dados...");
   try {
-    const res = await fetch('/api/ordens-servico');
-    if(!res.ok) throw new Error("HTTP "+res.status);
-    const rows = await res.json();
-    db = processRows(rows);
-    const now = new Date();
-    document.getElementById("last-update").textContent =
-      now.toLocaleDateString("pt-BR")+" "+now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+    const payload = await fetchDados();
+    db = processRows(payload.ordens||[]);
+    // Mostra quando os dados foram extraídos do banco, não quando a página abriu
+    const g = payload.gerado_em ? new Date(payload.gerado_em) : null;
+    document.getElementById("last-update").textContent = g && !isNaN(g)
+      ? g.toLocaleDateString("pt-BR")+" "+g.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})
+      : "–";
     renderAll();
     hideLoading();
   } catch(e){
@@ -1719,7 +1727,8 @@ function toast(msg){
 function loadABC(){
   document.getElementById('abc-loading').style.display='flex';
   document.getElementById('abc-content').style.display='none';
-  fetch('/api/ordens-servico').then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}).then(rows=>{
+  fetchDados().then(payload=>{
+    const rows=payload.ordens||[];
     const BILL=['faturado','pago'];
     const all=[];
     rows.forEach(r=>{

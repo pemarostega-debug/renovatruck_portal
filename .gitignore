@@ -1,2 +1,4 @@
 node_modules/
 teste-conexao.js
+config.local.json
+exportar.log
