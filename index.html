@@ -7,6 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -367,7 +368,7 @@ textarea.inp{resize:vertical;min-height:64px;}
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title"><i class="fa-solid fa-file-invoice-dollar" style="color:#3b82f6;"></i>A FATURAR</span>
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('afaturar')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-file-invoice-dollar" style="color:#3b82f6;"></i>A FATURAR</span>
             <div><div class="kpi-val" id="kpi-afaturar-val">R$ 0</div><div class="kpi-qty" id="kpi-afaturar-qtd">0 OSs</div></div>
           </div>
           <div class="chart-container"><canvas id="c-afaturar"></canvas></div>
@@ -375,7 +376,7 @@ textarea.inp{resize:vertical;min-height:64px;}
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title"><i class="fa-solid fa-box" style="color:#f59e0b;"></i>AGUARDANDO PEDIDO</span>
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('aguardando')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-box" style="color:#f59e0b;"></i>AGUARDANDO PEDIDO</span>
             <div><div class="kpi-val" id="kpi-aguardando-val">R$ 0</div><div class="kpi-qty" id="kpi-aguardando-qtd">0 OSs</div></div>
           </div>
           <div class="chart-container"><canvas id="c-aguardando"></canvas></div>
@@ -383,7 +384,7 @@ textarea.inp{resize:vertical;min-height:64px;}
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title"><i class="fa-solid fa-circle-check" style="color:#10b981;"></i>FINALIZADO (EVIDÊNCIAS)</span>
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('finalizado')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-circle-check" style="color:#10b981;"></i>FINALIZADO (EVIDÊNCIAS)</span>
             <div><div class="kpi-val" id="kpi-finalizado-val">R$ 0</div><div class="kpi-qty" id="kpi-finalizado-qtd">0 OSs</div></div>
           </div>
           <div class="chart-container"><canvas id="c-finalizado"></canvas></div>
@@ -391,7 +392,7 @@ textarea.inp{resize:vertical;min-height:64px;}
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title"><i class="fa-solid fa-wrench" style="color:#6366f1;"></i>EM EXECUÇÃO</span>
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('execucao')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-wrench" style="color:#6366f1;"></i>EM EXECUÇÃO</span>
             <div><div class="kpi-val" id="kpi-execucao-val">R$ 0</div><div class="kpi-qty" id="kpi-execucao-qtd">0 OSs</div></div>
           </div>
           <div class="chart-container"><canvas id="c-execucao"></canvas></div>
@@ -399,7 +400,7 @@ textarea.inp{resize:vertical;min-height:64px;}
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title"><i class="fa-solid fa-calendar-check" style="color:#8b5cf6;"></i>AG. AGENDAMENTO TICKET</span>
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('agendamento')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-calendar-check" style="color:#8b5cf6;"></i>AG. AGENDAMENTO TICKET</span>
             <div><div class="kpi-val" id="kpi-agendamento-val">R$ 0</div><div class="kpi-qty" id="kpi-agendamento-qtd">0 OSs</div></div>
           </div>
           <div class="chart-container"><canvas id="c-agendamento"></canvas></div>
@@ -407,7 +408,7 @@ textarea.inp{resize:vertical;min-height:64px;}
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title"><i class="fa-solid fa-file-pen" style="color:#64748b;"></i>EM ORÇAMENTO / APROVAÇÃO</span>
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('orcamento')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-file-pen" style="color:#64748b;"></i>EM ORÇAMENTO / APROVAÇÃO</span>
             <div><div class="kpi-val" id="kpi-orcamento-val">R$ 0</div><div class="kpi-qty" id="kpi-orcamento-qtd">0 OSs</div></div>
           </div>
           <div class="chart-container"><canvas id="c-orcamento"></canvas></div>
@@ -435,7 +436,10 @@ textarea.inp{resize:vertical;min-height:64px;}
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;flex-wrap:wrap;gap:8px;">
           <h3 style="font-weight:800;font-size:.82rem;"><i class="fa-solid fa-table" style="margin-right:6px;color:var(--primary);"></i>Detalhamento — Ordens em Aberto</h3>
-          <input type="text" id="searchBox1" class="search-input" placeholder="Filtrar tabela..." />
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="searchBox1" class="search-input" placeholder="Filtrar tabela..." />
+            <button onclick="exportD1XLSX()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;"><i class="fa-solid fa-file-excel"></i>Exportar Excel</button>
+          </div>
         </div>
         <div id="filter-tag-d1" class="filter-tag">
           <i class="fa-solid fa-filter"></i>
@@ -518,7 +522,10 @@ textarea.inp{resize:vertical;min-height:64px;}
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;flex-wrap:wrap;gap:8px;">
           <h3 style="font-weight:800;font-size:.82rem;"><i class="fa-solid fa-file-invoice-dollar" style="margin-right:6px;color:var(--primary);"></i>Detalhamento — Faturamento</h3>
-          <input type="text" id="searchBox2" class="search-input" placeholder="Filtrar tabela..." />
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="searchBox2" class="search-input" placeholder="Filtrar tabela..." />
+            <button onclick="exportD2XLSX()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;"><i class="fa-solid fa-file-excel"></i>Exportar Excel</button>
+          </div>
         </div>
         <div id="filter-tag-d2" class="filter-tag">
           <i class="fa-solid fa-filter"></i>
@@ -839,6 +846,8 @@ let charts = {};
 let activeFilter = { d1: null, d2: null }; // { cliente, status }
 let currentD1Data = [];
 let currentD2Data = [];
+let lastRenderedD1 = []; // conjunto exibido/filtrado mais recente da tabela D1 (para exportação)
+let lastRenderedD2 = []; // idem para D2
 let dailyFilterDate = null; // data selecionada no gráfico diário (string "DD/MM/YYYY")
 
 // ── HELPERS ──
@@ -962,7 +971,22 @@ function renderDash1(){
 }
 
 function applyD1Filter(data, f){
-  return data.filter(d => d.cliente===f.cliente && f.kws.some(k=>d.statusNorm.includes(norm(k))));
+  return data.filter(d => (!f.cliente || d.cliente===f.cliente) && f.kws.some(k=>d.statusNorm.includes(norm(k))));
+}
+
+const GROUP_LABELS = {
+  afaturar:"A FATURAR", aguardando:"AGUARDANDO PEDIDO", finalizado:"FINALIZADO (EVIDÊNCIAS)",
+  execucao:"EM EXECUÇÃO", agendamento:"AG. AGENDAMENTO TICKET", orcamento:"EM ORÇAMENTO / APROVAÇÃO"
+};
+
+// Clique no título do card: mostra todas as OSs da fase, sem restringir a um cliente
+function filterByGroup(groupId){
+  const kws = getKwsForGroup(groupId);
+  const label = GROUP_LABELS[groupId]||groupId.toUpperCase();
+  activeFilter.d1 = {cliente:null, kws, label};
+  document.getElementById("filter-label-d1").textContent = label;
+  document.getElementById("filter-tag-d1").classList.add("visible");
+  renderTableD1(applyD1Filter(currentD1Data, activeFilter.d1));
 }
 
 // ── DASH 2 ──
@@ -1303,6 +1327,7 @@ function updateEvolution(){
 
 // ── TABLES ──
 function renderTableD1(data){
+  lastRenderedD1 = data;
   const tbody=document.getElementById("table-body-d1");
   if(!data.length){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Nenhuma OS encontrada.</td></tr>';return;}
   tbody.innerHTML=data.slice(0,500).map(d=>`<tr>
@@ -1316,6 +1341,7 @@ function renderTableD1(data){
 }
 
 function renderTableD2(data){
+  lastRenderedD2 = data;
   const tbody=document.getElementById("table-body-d2");
   if(!data.length){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Nenhuma OS encontrada.</td></tr>';return;}
   tbody.innerHTML=data.slice(0,500).map(d=>`<tr>
@@ -1327,6 +1353,26 @@ function renderTableD2(data){
     <td style="text-align:right;font-weight:800;color:var(--primary);">${fmtMoney(d.valor)}</td>
   </tr>`).join("");
 }
+
+// ── EXPORTAR EXCEL ──
+function exportXLSX(data, filename, dateField){
+  if(!data || !data.length){ alert("Não há dados para exportar."); return; }
+  const rows = data.map(d => ({
+    "OS": d.os,
+    "Cliente": d.cliente,
+    "Placa": d.placa||"",
+    "Status": d.status,
+    "Data": fmtDate(d[dateField]),
+    "Valor": d.valor
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = [{wch:10},{wch:38},{wch:14},{wch:22},{wch:12},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Dados");
+  XLSX.writeFile(wb, filename+"_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
+function exportD1XLSX(){ exportXLSX(lastRenderedD1, "ordens_em_aberto", "dataFase"); }
+function exportD2XLSX(){ exportXLSX(lastRenderedD2, "faturamento", "dataFat"); }
 
 // ── UTILS ──
 function groupBy(list,key){ const m={},c={}; list.forEach(i=>{m[i[key]]=(m[i[key]]||0)+i.valor;c[i[key]]=(c[i[key]]||0)+1;}); return Object.entries(m).map(([name,val])=>({name,val,count:c[name]})).sort((a,b)=>b.val-a.val); }
