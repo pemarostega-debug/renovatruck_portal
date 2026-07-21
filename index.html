@@ -416,20 +416,37 @@ textarea.inp{resize:vertical;min-height:64px;}
 
       </div>
 
-      <!-- Gráfico OSs Finalizadas por Dia -->
-      <div class="card" style="margin-bottom:1rem;" id="card-daily-os">
-        <div class="card-header">
-          <span class="card-title"><i class="fa-solid fa-calendar-days" style="color:#3b82f6;margin-right:6px;"></i>OSs Finalizadas por Dia</span>
-          <div id="daily-filter-tag" style="display:none;align-items:center;gap:8px;padding:5px 10px;background:#dbeafe;border-radius:8px;font-size:.73rem;font-weight:700;color:var(--primary);">
-            <i class="fa-solid fa-filter"></i>
-            <span id="daily-filter-label"></span>
-            <button onclick="clearDailyFilter()" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:1rem;line-height:1;padding:0 2px;">✕</button>
+      <!-- Gráficos OSs Finalizadas: por Dia e por Mês -->
+      <div class="grid-2" style="margin-bottom:1rem;">
+        <div class="card" id="card-daily-os">
+          <div class="card-header">
+            <span class="card-title"><i class="fa-solid fa-calendar-days" style="color:#3b82f6;margin-right:6px;"></i>OSs Finalizadas por Dia</span>
+            <div id="daily-filter-tag" style="display:none;align-items:center;gap:8px;padding:5px 10px;background:#dbeafe;border-radius:8px;font-size:.73rem;font-weight:700;color:var(--primary);">
+              <i class="fa-solid fa-filter"></i>
+              <span id="daily-filter-label"></span>
+              <button onclick="clearDailyFilter()" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:1rem;line-height:1;padding:0 2px;">✕</button>
+            </div>
           </div>
+          <div id="daily-loading" style="display:none;padding:1rem;text-align:center;color:var(--muted);font-size:.82rem;">
+            <i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Carregando dados de finalizações...
+          </div>
+          <div class="chart-container" style="min-height:220px;"><canvas id="c-daily-os"></canvas></div>
         </div>
-        <div id="daily-loading" style="display:none;padding:1rem;text-align:center;color:var(--muted);font-size:.82rem;">
-          <i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Carregando dados de finalizações...
+
+        <div class="card" id="card-monthly-os">
+          <div class="card-header">
+            <span class="card-title"><i class="fa-solid fa-calendar-week" style="color:#8b5cf6;margin-right:6px;"></i>OSs Finalizadas por Mês</span>
+            <div id="monthly-filter-tag" style="display:none;align-items:center;gap:8px;padding:5px 10px;background:#ede9fe;border-radius:8px;font-size:.73rem;font-weight:700;color:#7c3aed;">
+              <i class="fa-solid fa-filter"></i>
+              <span id="monthly-filter-label"></span>
+              <button onclick="clearMonthlyFilter()" style="background:none;border:none;cursor:pointer;color:#7c3aed;font-size:1rem;line-height:1;padding:0 2px;">✕</button>
+            </div>
+          </div>
+          <div id="monthly-loading" style="display:none;padding:1rem;text-align:center;color:var(--muted);font-size:.82rem;">
+            <i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Carregando dados de finalizações...
+          </div>
+          <div class="chart-container" style="min-height:220px;"><canvas id="c-monthly-os"></canvas></div>
         </div>
-        <div class="chart-container" style="min-height:220px;"><canvas id="c-daily-os"></canvas></div>
       </div>
 
       <!-- Tabela D1 -->
@@ -966,8 +983,8 @@ function renderDash1(){
 
   renderTableD1(activeFilter.d1 ? applyD1Filter(open, activeFilter.d1) : open);
 
-  // Carrega gráfico de OSs finalizadas por dia
-  loadDailyOsChart();
+  // Carrega gráficos de OSs finalizadas (por dia e por mês)
+  loadFinalizadosCharts();
 }
 
 function applyD1Filter(data, f){
@@ -1012,16 +1029,26 @@ function renderDash2(){
   renderTableD2(activeFilter.d2 ? monthData.filter(d=>d.cliente===activeFilter.d2) : monthData);
 }
 
-// ── GRÁFICO OSs FINALIZADAS POR DIA ──
+// ── GRÁFICOS OSs FINALIZADAS (POR DIA e POR MÊS) ──
 function parseMoneyBR(raw){
   if(!raw) return 0;
   const s = raw.toString().replace(/R\$\s*/,"").replace(/\./g,"").replace(",",".").trim();
   return parseFloat(s)||0;
 }
 
-async function loadDailyOsChart(){
-  const loadEl = document.getElementById("daily-loading");
-  if(loadEl) loadEl.style.display = "block";
+let _finData = null; // cache dos dados já processados da planilha (evita refetch ao limpar filtros)
+
+function monthKeyOf(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0"); }
+function monthLabel(key){
+  const [y,m] = key.split("-").map(Number);
+  return new Date(y, m-1, 1).toLocaleDateString("pt-BR",{month:"short",year:"2-digit"});
+}
+
+async function loadFinalizadosCharts(){
+  const loadEl  = document.getElementById("daily-loading");
+  const loadElM = document.getElementById("monthly-loading");
+  if(loadEl)  loadEl.style.display  = "block";
+  if(loadElM) loadElM.style.display = "block";
   try {
     // Busca dados da planilha de finalizações (DATA, OS, VALOR, PLACA, CLIENTE, STATUS)
     const finURL = csvURLExt(CONFIG.SHEET_FINALIZADAS_ID, CONFIG.SHEET_FINALIZADAS_ABA);
@@ -1074,19 +1101,27 @@ async function loadDailyOsChart(){
     });
 
     if(!maxDate || validRows.length === 0){
-      if(loadEl) loadEl.style.display = "none";
-      buildDailyChart({}, []);
+      _finData = {byDate:{}, byDateRows:{}, byMonth:{}, byMonthRows:{}};
+      if(loadEl)  loadEl.style.display  = "none";
+      if(loadElM) loadElM.style.display = "none";
+      buildDailyChart({}, {});
+      buildMonthlyChart({}, {});
       return;
     }
 
-    // Janela: últimos 30 dias a partir da data mais recente
+    // Diário: janela dos últimos 30 dias a partir da data mais recente
     const cutoff = new Date(maxDate);
     cutoff.setDate(cutoff.getDate() - 29);
 
-    // Agrupa por data usando o valor da própria planilha
-    const byDate = {};
-    const byDateRows = {}; // guarda as linhas completas de cada dia para o detalhamento
+    const byDate = {}, byDateRows = {};       // por dia (últimos 30 dias)
+    const byMonth = {}, byMonthRows = {};     // por mês (todo o histórico da planilha)
+
     validRows.forEach(r => {
+      const mKey = monthKeyOf(r.dt);
+      if(!byMonth[mKey]) { byMonth[mKey] = 0; byMonthRows[mKey] = []; }
+      byMonth[mKey] += r.valor;
+      byMonthRows[mKey].push(r);
+
       if(r.dt < cutoff) return;
       const label = r.dt.toLocaleDateString("pt-BR"); // DD/MM/AAAA
       if(!byDate[label]) { byDate[label] = 0; byDateRows[label] = []; }
@@ -1094,12 +1129,16 @@ async function loadDailyOsChart(){
       byDateRows[label].push(r);
     });
 
-    if(loadEl) loadEl.style.display = "none";
+    _finData = {byDate, byDateRows, byMonth, byMonthRows};
+    if(loadEl)  loadEl.style.display  = "none";
+    if(loadElM) loadElM.style.display = "none";
     buildDailyChart(byDate, byDateRows);
+    buildMonthlyChart(byMonth, byMonthRows);
 
   } catch(e) {
-    console.warn("Erro ao carregar OSs finalizadas por dia:", e.message);
-    if(loadEl) loadEl.style.display = "none";
+    console.warn("Erro ao carregar OSs finalizadas:", e.message);
+    if(loadEl)  loadEl.style.display  = "none";
+    if(loadElM) loadElM.style.display = "none";
   }
 }
 
@@ -1193,8 +1232,93 @@ function clearDailyFilter(){
   const tag = document.getElementById("daily-filter-tag");
   if(tag) tag.style.display = "none";
   renderTableD1(activeFilter.d1 ? applyD1Filter(currentD1Data, activeFilter.d1) : currentD1Data);
-  // Recarrega o gráfico sem filtro ativo
-  loadDailyOsChart();
+  // Recolore o gráfico sem filtro ativo, usando o cache (sem refazer o fetch)
+  if(_finData) buildDailyChart(_finData.byDate, _finData.byDateRows);
+}
+
+// ── GRÁFICO OSs FINALIZADAS POR MÊS ──
+let monthlyFilterKey = null; // "YYYY-MM" do mês selecionado no gráfico mensal
+
+function buildMonthlyChart(byMonth, byMonthRows){
+  const sortedKeys = Object.keys(byMonth).sort(); // "YYYY-MM" ordena corretamente como string
+  const labels = sortedKeys.map(monthLabel);
+  const values = sortedKeys.map(k => byMonth[k]);
+
+  if(charts["c-monthly-os"]) charts["c-monthly-os"].destroy();
+  const el = document.getElementById("c-monthly-os");
+  if(!el) return;
+
+  charts["c-monthly-os"] = new Chart(el, {
+    type: "bar",
+    data: {
+      labels,
+      datasets:[{
+        label: "Valor Faturado",
+        data: values,
+        backgroundColor: sortedKeys.map(k => k === monthlyFilterKey ? "#7c3aed" : "rgba(139,92,246,0.72)"),
+        borderColor:     sortedKeys.map(k => k === monthlyFilterKey ? "#6d28d9" : "#8b5cf6"),
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      onClick(evt, elements){
+        if(!elements.length) return;
+        const idx = elements[0].index;
+        const key = sortedKeys[idx];
+        const monthRows = byMonthRows[key] || [];
+        applyMonthlyFilter(key, monthRows, byMonth, byMonthRows);
+      },
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label: ctx => " " + fmtMoney(ctx.parsed.y),
+            title: ctx => ctx[0]?.label || ""
+          }
+        }
+      },
+      scales:{
+        x:{
+          ticks:{ font:{size:10} },
+          grid:{display:false}
+        },
+        y:{
+          ticks:{ callback: v => "R$"+v.toLocaleString("pt-BR",{minimumFractionDigits:0,maximumFractionDigits:0}), font:{size:10} },
+          grid:{color:"#f1f5f9"}
+        }
+      }
+    }
+  });
+}
+
+function applyMonthlyFilter(monthKey, monthRows, byMonth, byMonthRows){
+  monthlyFilterKey = monthKey;
+
+  // Detalhamento vem direto da planilha de finalizados — mesmo princípio do filtro diário
+  const filtered = monthRows.map(r => ({
+    os: r.os, cliente: r.cliente, placa: r.placa, status: r.status,
+    dataFase: r.dt, dataFat: r.dt, valor: r.valor
+  }));
+  renderTableD1(filtered);
+
+  const tag = document.getElementById("monthly-filter-tag");
+  const lbl = document.getElementById("monthly-filter-label");
+  if(tag && lbl){
+    lbl.textContent = "Mês: " + monthLabel(monthKey) + " — " + fmtMoney(byMonth[monthKey] || 0);
+    tag.style.display = "flex";
+  }
+
+  buildMonthlyChart(byMonth, byMonthRows);
+}
+
+function clearMonthlyFilter(){
+  monthlyFilterKey = null;
+  const tag = document.getElementById("monthly-filter-tag");
+  if(tag) tag.style.display = "none";
+  renderTableD1(activeFilter.d1 ? applyD1Filter(currentD1Data, activeFilter.d1) : currentD1Data);
+  if(_finData) buildMonthlyChart(_finData.byMonth, _finData.byMonthRows);
 }
 
 // ── BUILD BAR com click ──
