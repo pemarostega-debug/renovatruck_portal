@@ -36,7 +36,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);}
 .tool-nav{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:.6rem 1.2rem;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:40;box-shadow:0 2px 12px rgba(0,0,0,.2);}
 .back-btn{background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:background .2s;}
 .back-btn:hover{background:rgba(255,255,255,.22);}
-#screen-dashboard,#screen-prec,#screen-abc{display:none;}
+#screen-dashboard,#screen-prec,#screen-abc,#screen-kanban{display:none;}
 #loading-screen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,.96);z-index:60;flex-direction:column;justify-content:center;align-items:center;gap:16px;}
 .spinner{width:44px;height:44px;border:4px solid #dbeafe;border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -316,7 +316,7 @@ textarea.inp{resize:vertical;min-height:64px;}
     </div>
     <div class="section-label"><i class="fa-solid fa-gears" style="color:var(--muted);"></i>Fase 3 — Plataforma Operacional</div>
     <div class="module-grid">
-      <div class="module-card soon"><span class="module-badge badge-breve">Planejado</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-table-columns"></i></div><div><div class="module-name">Kanban Operacional</div><div class="module-desc">Orçamento → Execução → Finalizado.</div></div></div>
+      <div class="module-card" onclick="openModule('kanban')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#ede9fe;color:#7c3aed;"><i class="fa-solid fa-table-columns"></i></div><div><div class="module-name">Kanban Operacional</div><div class="module-desc">Pátio ao vivo. Aguardando → Execução → Finalizado.</div></div></div>
       <div class="module-card soon"><span class="module-badge badge-breve">Planejado</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-clipboard-check"></i></div><div><div class="module-name">Fechamento Diário</div><div class="module-desc">M.O. por OS e indicadores operacionais.</div></div></div>
       <div class="module-card soon"><span class="module-badge badge-breve">Planejado</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-user-tie"></i></div><div><div class="module-name">CRM Comercial</div><div class="module-desc">Pipeline de vendas. Migração do Trello.</div></div></div>
       <div class="module-card soon"><span class="module-badge badge-breve">Planejado</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-door-open"></i></div><div><div class="module-name">Controle de Portaria</div><div class="module-desc">Entrada/saída com leitura de placa.</div></div></div>
@@ -826,6 +826,132 @@ textarea.inp{resize:vertical;min-height:64px;}
   </div>
 </div>
 
+<!-- ══════════════════ KANBAN OPERACIONAL ══════════════════ -->
+<div id="screen-kanban">
+<style>
+  #screen-kanban{min-height:100vh;background:var(--bg);padding-bottom:3rem;font-family:"DM Sans",sans-serif;color:var(--text);}
+  #screen-kanban .kb-topbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 20px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;}
+  #screen-kanban .kb-title{font-size:1.05rem;font-weight:900;color:#7c3aed;display:flex;align-items:center;gap:8px;}
+  #screen-kanban .kb-spacer{flex:1;}
+  #screen-kanban .kb-back,#screen-kanban .kb-refresh{border:1.5px solid var(--border);background:#fff;color:var(--text);border-radius:9px;padding:7px 13px;font-size:.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s;}
+  #screen-kanban .kb-back:hover,#screen-kanban .kb-refresh:hover{border-color:#7c3aed;color:#7c3aed;}
+  #screen-kanban .kb-notice{display:none;margin:12px 20px 0;padding:10px 14px;border-radius:10px;font-size:.8rem;font-weight:600;}
+  #screen-kanban .kb-notice.info{display:block;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;}
+  #screen-kanban .kb-notice.erro{display:block;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;}
+  /* BI */
+  #screen-kanban .kb-bi{display:grid;grid-template-columns:1.4fr 2.6fr;gap:14px;padding:16px 20px 4px;}
+  @media(max-width:820px){#screen-kanban .kb-bi{grid-template-columns:1fr;}}
+  #screen-kanban .kb-bi-box{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+  #screen-kanban .kb-bi-h{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px;}
+  #screen-kanban .kb-val-big{font-size:1.9rem;font-weight:900;color:#16a34a;line-height:1;}
+  #screen-kanban .kb-val-sub{font-size:.72rem;color:var(--muted);margin-top:6px;}
+  #screen-kanban .kb-tipos{display:flex;flex-wrap:wrap;gap:10px;}
+  #screen-kanban .kb-bi-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:74px;padding:9px 10px;border-radius:11px;background:var(--bg);border:1px solid var(--border);}
+  #screen-kanban .kb-bi-num{font-size:1.4rem;font-weight:900;color:var(--primary);line-height:1;}
+  #screen-kanban .kb-bi-lbl{font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-top:4px;text-align:center;}
+  /* Board */
+  #screen-kanban .kb-board{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:14px 20px;}
+  @media(max-width:1100px){#screen-kanban .kb-board{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:620px){#screen-kanban .kb-board{grid-template-columns:1fr;}}
+  #screen-kanban .kb-col{background:#eef2f7;border-radius:14px;padding:10px;min-height:180px;display:flex;flex-direction:column;transition:background .15s,box-shadow .15s;}
+  #screen-kanban .kb-col.over{background:#e9e2fb;box-shadow:inset 0 0 0 2px #a78bfa;}
+  #screen-kanban .kb-col-h{display:flex;align-items:center;justify-content:space-between;font-size:.74rem;font-weight:900;letter-spacing:.03em;padding:4px 6px 10px;}
+  #screen-kanban .kb-col-h .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;}
+  #screen-kanban .kb-col-count{background:#fff;border-radius:20px;padding:1px 9px;font-size:.7rem;color:var(--muted);border:1px solid var(--border);}
+  #screen-kanban .kb-col[data-col="AGUARDANDO"]   .dot{background:#d97706;}
+  #screen-kanban .kb-col[data-col="EM EXECUÇÃO"]  .dot{background:#1d4ed8;}
+  #screen-kanban .kb-col[data-col="FINALIZADOS"]  .dot{background:#16a34a;}
+  #screen-kanban .kb-col[data-col="OUTROS"]       .dot{background:#64748b;}
+  #screen-kanban .kb-cards{display:flex;flex-direction:column;gap:9px;flex:1;}
+  #screen-kanban .kb-empty{font-size:.72rem;color:#94a3b8;text-align:center;padding:16px 4px;border:1.5px dashed #cbd5e1;border-radius:10px;}
+  /* Card */
+  #screen-kanban .kb-card{background:#fff;border:1px solid var(--border);border-left:4px solid #7c3aed;border-radius:11px;padding:10px 11px;cursor:grab;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  #screen-kanban .kb-card:active{cursor:grabbing;}
+  #screen-kanban .kb-card.dragging{opacity:.45;}
+  #screen-kanban .kb-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+  #screen-kanban .kb-tipo{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;background:#ede9fe;color:#7c3aed;border-radius:6px;padding:2px 7px;}
+  #screen-kanban .kb-placa{font-size:.82rem;font-weight:900;color:var(--text);letter-spacing:.02em;}
+  #screen-kanban .kb-motorista,#screen-kanban .kb-cliente{font-size:.72rem;color:var(--muted);margin-top:2px;}
+  #screen-kanban .kb-motorista i,#screen-kanban .kb-cliente i{width:13px;color:#94a3b8;}
+  #screen-kanban .kb-oss{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 4px;}
+  #screen-kanban .kb-os{font-size:.66rem;font-weight:700;background:#dcfce7;color:#15803d;border-radius:6px;padding:2px 7px;}
+  #screen-kanban .kb-noos{font-size:.66rem;color:#cbd5e1;font-style:italic;}
+  #screen-kanban .kb-card-foot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);margin-top:7px;padding-top:7px;}
+  #screen-kanban .kb-btn-os{border:1px solid var(--border);background:#fff;color:var(--primary);border-radius:7px;padding:3px 9px;font-size:.68rem;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
+  #screen-kanban .kb-btn-os:hover{background:var(--primary-light);}
+  #screen-kanban .kb-total{font-size:.82rem;font-weight:900;color:#16a34a;}
+  /* Modal OS */
+  #screen-kanban .kb-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:100;align-items:center;justify-content:center;padding:16px;}
+  #screen-kanban .kb-overlay.open{display:flex;}
+  #screen-kanban .kb-modal{background:#fff;border-radius:16px;width:100%;max-width:440px;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  #screen-kanban .kb-modal-h{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--border);}
+  #screen-kanban .kb-modal-h h3{font-size:.95rem;font-weight:900;color:var(--text);}
+  #screen-kanban .kb-modal-h span{font-size:.72rem;color:var(--muted);font-weight:600;}
+  #screen-kanban .kb-x{background:none;border:none;font-size:1.15rem;cursor:pointer;color:var(--muted);line-height:1;}
+  #screen-kanban .kb-modal-body{padding:16px 18px;}
+  #screen-kanban .kb-add{display:flex;gap:8px;margin-bottom:14px;}
+  #screen-kanban .kb-add input{flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 11px;font-size:.85rem;font-family:inherit;outline:none;}
+  #screen-kanban .kb-add input:focus{border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.1);}
+  #screen-kanban .kb-add button{background:#7c3aed;color:#fff;border:none;border-radius:9px;padding:0 15px;font-weight:800;font-size:.85rem;cursor:pointer;}
+  #screen-kanban .kb-oslist{display:flex;flex-direction:column;gap:8px;}
+  #screen-kanban .kb-osrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--border);border-radius:10px;}
+  #screen-kanban .kb-osrow .n{font-weight:900;color:var(--primary);font-size:.82rem;white-space:nowrap;}
+  #screen-kanban .kb-osrow .c{flex:1;font-size:.72rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #screen-kanban .kb-osrow .v{font-weight:800;font-size:.8rem;color:#16a34a;white-space:nowrap;}
+  #screen-kanban .kb-osrow.miss{border-color:#fecaca;background:#fff7f7;}
+  #screen-kanban .kb-osrow.miss .c{color:#b91c1c;}
+  #screen-kanban .kb-osrow .del{background:none;border:none;color:#ef4444;cursor:pointer;font-size:.9rem;}
+  #screen-kanban .kb-modal-foot{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-top:1px solid var(--border);}
+  #screen-kanban .kb-modal-foot .lbl{font-size:.74rem;color:var(--muted);font-weight:700;}
+  #screen-kanban .kb-modal-foot .tot{font-size:1.15rem;font-weight:900;color:#16a34a;}
+  #screen-kanban .kb-empty-os{font-size:.76rem;color:#94a3b8;text-align:center;padding:14px;}
+</style>
+
+  <div class="kb-topbar">
+    <button class="kb-back" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i> Início</button>
+    <div class="kb-title"><i class="fa-solid fa-table-columns"></i> Kanban Operacional — Pátio</div>
+    <div class="kb-spacer"></div>
+    <button class="kb-refresh" onclick="kbCarregar()"><i class="fa-solid fa-rotate"></i> Atualizar pátio</button>
+  </div>
+
+  <div id="kb-notice" class="kb-notice"></div>
+
+  <div class="kb-bi">
+    <div class="kb-bi-box">
+      <div class="kb-bi-h">Serviços no pátio</div>
+      <div class="kb-val-big" id="kb-valor-total">R$ 0,00</div>
+      <div class="kb-val-sub" id="kb-valor-sub">0 OS(s) atribuída(s)</div>
+    </div>
+    <div class="kb-bi-box">
+      <div class="kb-bi-h">Equipamentos no pátio (<span id="kb-total-eq">0</span>)</div>
+      <div class="kb-tipos" id="kb-tipos"></div>
+    </div>
+  </div>
+
+  <div class="kb-board" id="kb-board"></div>
+
+  <!-- Modal de atribuição de OSs -->
+  <div class="kb-overlay" id="kb-overlay" onclick="kbFecharOS(event)">
+    <div class="kb-modal" onclick="event.stopPropagation()">
+      <div class="kb-modal-h">
+        <div><h3 id="kb-modal-titulo">Atribuir OSs</h3><span id="kb-modal-sub"></span></div>
+        <button class="kb-x" onclick="kbFecharOS()">✕</button>
+      </div>
+      <div class="kb-modal-body">
+        <div class="kb-add">
+          <input id="kb-os-input" type="text" inputmode="numeric" placeholder="Nº da OS (ex: 3923)" onkeydown="if(event.key==='Enter')kbAddOS()">
+          <button onclick="kbAddOS()">Adicionar</button>
+        </div>
+        <div class="kb-oslist" id="kb-oslist"></div>
+      </div>
+      <div class="kb-modal-foot">
+        <span class="lbl">Total do card</span>
+        <span class="tot" id="kb-modal-total">R$ 0,00</span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 
 
@@ -839,8 +965,8 @@ textarea.inp{resize:vertical;min-height:64px;}
 const PASSWORD='renova2026';
 function doLogin(){const v=document.getElementById('pwd').value;if(v===PASSWORD){sessionStorage.setItem('rv_auth','1');document.getElementById('screen-login').style.display='none';document.getElementById('screen-home').style.display='block';document.getElementById('pwd-err').style.display='none';}else{document.getElementById('pwd-err').style.display='block';document.getElementById('pwd').value='';document.getElementById('pwd').focus();}}
 function doLogout(){sessionStorage.removeItem('rv_auth');location.reload();}
-function openModule(m){document.getElementById('screen-home').style.display='none';document.getElementById('screen-'+m).style.display='block';window.scrollTo(0,0);if(m==='dashboard'&&typeof fetchData==='function')fetchData();if(m==='prec'&&typeof calc==='function')calc();if(m==='abc'&&typeof loadABC==='function')loadABC();}
-function goHome(){['dashboard','prec','abc'].forEach(s=>document.getElementById('screen-'+s).style.display='none');document.getElementById('screen-home').style.display='block';window.scrollTo(0,0);}
+function openModule(m){document.getElementById('screen-home').style.display='none';document.getElementById('screen-'+m).style.display='block';window.scrollTo(0,0);if(m==='dashboard'&&typeof fetchData==='function')fetchData();if(m==='prec'&&typeof calc==='function')calc();if(m==='abc'&&typeof loadABC==='function')loadABC();if(m==='kanban'&&typeof initKanban==='function')initKanban();}
+function goHome(){['dashboard','prec','abc','kanban'].forEach(s=>document.getElementById('screen-'+s).style.display='none');document.getElementById('screen-home').style.display='block';window.scrollTo(0,0);}
 window.addEventListener('load',()=>{if(sessionStorage.getItem('rv_auth')==='1'){document.getElementById('screen-login').style.display='none';document.getElementById('screen-home').style.display='block';};});
 
 
@@ -2116,6 +2242,240 @@ function exportABCPDF(){
 
 
 
+</script>
+
+<!-- ══════════════════ KANBAN OPERACIONAL — LÓGICA ══════════════════ -->
+<script>
+const KB = {
+  // Cole aqui a MESMA URL /exec do Apps Script da portaria (após publicar).
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycby4MrxryOIBsbJAZbb_WG4GsiK_YsRgqhWYII1XFvguoEZ1x23JOh7TMVWKgiaAKOwu/exec',
+  COLUNAS: ['AGUARDANDO','EM EXECUÇÃO','FINALIZADOS','OUTROS'],
+  LS_KEY: 'rv_kanban_estado',
+  patio: [],      // registros "No Pátio" vindos da portaria
+  estado: {},     // card_id -> { coluna, os:[], ordem }
+  osMap: {},      // numero_os -> { valor, cliente, fase }
+  osReady: false,
+  demo: false,
+  cardAtivo: null
+};
+
+// Dados de pré-visualização (usados só enquanto o Apps Script não estiver conectado)
+const KB_DEMO_PATIO = [
+  {ID:'RT-001',Tipo_Veiculo:'Conjunto',Placa_Cavalo:'ABC1D23',Placa_Carreta:'XYZ4E56',Motorista:'João Silva',Cliente_Destino:'Fadel Transportes',Status_Cavalo:'No Pátio',Status_Carreta:'No Pátio'},
+  {ID:'RT-002',Tipo_Veiculo:'Cavalo',Placa_Cavalo:'BCD2E34',Placa_Carreta:'',Motorista:'Carlos Mendes',Cliente_Destino:'',Status_Cavalo:'No Pátio',Status_Carreta:'N/A'},
+  {ID:'RT-003',Tipo_Veiculo:'Carreta',Placa_Cavalo:'',Placa_Carreta:'QRS7T89',Motorista:'',Cliente_Destino:'Vale Log',Status_Cavalo:'N/A',Status_Carreta:'No Pátio'},
+  {ID:'RT-004',Tipo_Veiculo:'Utilitário',Placa_Cavalo:'JKL9M01',Placa_Carreta:'',Motorista:'Cliente visitante',Cliente_Destino:'',Status_Cavalo:'No Pátio',Status_Carreta:'N/A'}
+];
+
+function kbBRL(v){ return (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function kbNotice(msg,tipo){ const el=document.getElementById('kb-notice'); if(!msg){el.className='kb-notice';el.textContent='';return;} el.className='kb-notice '+(tipo||'info'); el.innerHTML=msg; }
+
+// ── Carrega o mapa de OSs a partir do dados.json já usado no portal ──
+async function kbCarregarOS(){
+  try{
+    const r = await fetch('dados.json?t='+Date.now());
+    const p = await r.json();
+    (p.ordens||[]).forEach(o=>{
+      KB.osMap[String(o.numero_os)] = {
+        valor: parseFloat(o.valor_total)||0,
+        cliente: o.razao_cliente||'',
+        fase: o.descricao_fase||''
+      };
+    });
+    KB.osReady = true;
+  }catch(e){ console.warn('Kanban: falha ao ler dados.json', e); }
+}
+
+// ── Ponto de entrada (chamado por openModule) ──
+async function initKanban(){
+  if(!KB.osReady) await kbCarregarOS();
+  await kbCarregar();
+}
+
+// ── Busca pátio + estado do quadro ──
+async function kbCarregar(){
+  KB.demo = KB.APPS_SCRIPT_URL.includes('SEU_ID_AQUI');
+  document.getElementById('kb-board').innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:30px;font-size:.85rem;">Carregando pátio…</div>';
+  try{
+    if(KB.demo){
+      KB.patio = KB_DEMO_PATIO.map(x=>Object.assign({},x));
+      KB.estado = kbLocalLoad();
+      kbNotice('<b>Pré-visualização.</b> Conecte o Apps Script da portaria (cole a URL /exec em <code>KB.APPS_SCRIPT_URL</code>) para ver o pátio real. Suas mudanças aqui ficam salvas só neste navegador.','info');
+    } else {
+      const [patioRes, estRes] = await Promise.all([
+        fetch(KB.APPS_SCRIPT_URL+'?action=patio').then(r=>r.json()),
+        fetch(KB.APPS_SCRIPT_URL+'?action=kanban_get').then(r=>r.json())
+      ]);
+      KB.patio = (patioRes && patioRes.data) || [];
+      KB.estado = {};
+      ((estRes && estRes.data) || []).forEach(k=>{
+        KB.estado[String(k.card_id)] = {
+          coluna: KB.COLUNAS.includes(k.coluna) ? k.coluna : 'AGUARDANDO',
+          os: String(k.os_atribuidas||'').split(',').map(s=>s.trim()).filter(Boolean),
+          ordem: Number(k.ordem)||0
+        };
+      });
+      kbNotice('');
+    }
+  }catch(e){
+    KB.patio = []; KB.estado = kbLocalLoad();
+    kbNotice('Não consegui conectar no Apps Script da portaria: '+e.message,'erro');
+  }
+  // Garante um estado inicial para cada equipamento no pátio
+  KB.patio.forEach((r,i)=>{
+    const id=String(r.ID);
+    if(!KB.estado[id]) KB.estado[id]={coluna:'AGUARDANDO',os:[],ordem:i};
+  });
+  kbRender();
+}
+
+// ── Render geral ──
+function kbRender(){ kbRenderBI(); kbRenderBoard(); }
+
+function kbTotalCard(id){
+  const st=KB.estado[id]; if(!st) return 0;
+  return st.os.reduce((s,n)=>s+((KB.osMap[n]&&KB.osMap[n].valor)||0),0);
+}
+
+function kbRenderBI(){
+  const tipos={}; let valorTotal=0, totalOS=0;
+  KB.patio.forEach(r=>{
+    const t=r.Tipo_Veiculo||'Outro';
+    tipos[t]=(tipos[t]||0)+1;
+    const st=KB.estado[String(r.ID)];
+    if(st){ valorTotal += kbTotalCard(String(r.ID)); totalOS += st.os.length; }
+  });
+  document.getElementById('kb-valor-total').textContent = kbBRL(valorTotal);
+  document.getElementById('kb-valor-sub').textContent = totalOS+' OS(s) atribuída(s) a '+KB.patio.length+' equipamento(s)';
+  document.getElementById('kb-total-eq').textContent = KB.patio.length;
+  const ordem=['Conjunto','Cavalo','Carreta','Truck','Utilitário','Visitante'];
+  const chaves=Object.keys(tipos).sort((a,b)=>{const ia=ordem.indexOf(a),ib=ordem.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib);});
+  document.getElementById('kb-tipos').innerHTML = chaves.length
+    ? chaves.map(t=>`<div class="kb-bi-chip"><span class="kb-bi-num">${tipos[t]}</span><span class="kb-bi-lbl">${t}</span></div>`).join('')
+    : '<span style="font-size:.78rem;color:#94a3b8;">Nenhum equipamento no pátio.</span>';
+}
+
+function kbRenderBoard(){
+  const board=document.getElementById('kb-board');
+  board.innerHTML = KB.COLUNAS.map(col=>{
+    const cards=KB.patio
+      .filter(r=>(KB.estado[String(r.ID)]||{}).coluna===col)
+      .sort((a,b)=>((KB.estado[String(a.ID)]||{}).ordem||0)-((KB.estado[String(b.ID)]||{}).ordem||0));
+    const inner = cards.length
+      ? cards.map(kbCardHTML).join('')
+      : '<div class="kb-empty">Arraste cards para cá</div>';
+    return `<div class="kb-col" data-col="${col}" ondragover="kbColOver(event)" ondragleave="kbColLeave(event)" ondrop="kbDrop(event,'${col}')">
+      <div class="kb-col-h"><span><span class="dot"></span>${col}</span><span class="kb-col-count">${cards.length}</span></div>
+      <div class="kb-cards">${inner}</div>
+    </div>`;
+  }).join('');
+}
+
+function kbCardHTML(r){
+  const id=String(r.ID);
+  const st=KB.estado[id]||{os:[]};
+  const placas=[r.Placa_Cavalo,r.Placa_Carreta].filter(Boolean).join(' + ')||'—';
+  const total=kbTotalCard(id);
+  const chips=(st.os||[]).map(n=>`<span class="kb-os">OS ${n}</span>`).join('');
+  return `<div class="kb-card" draggable="true" data-id="${id}" ondragstart="kbDragStart(event)" ondragend="kbDragEnd(event)">
+    <div class="kb-card-top"><span class="kb-tipo">${r.Tipo_Veiculo||'—'}</span><span class="kb-placa">${placas}</span></div>
+    ${r.Motorista?`<div class="kb-motorista"><i class="fa-solid fa-user"></i> ${r.Motorista}</div>`:''}
+    ${r.Cliente_Destino?`<div class="kb-cliente"><i class="fa-solid fa-building"></i> ${r.Cliente_Destino}</div>`:''}
+    <div class="kb-oss">${chips||'<span class="kb-noos">sem OS atribuída</span>'}</div>
+    <div class="kb-card-foot">
+      <button class="kb-btn-os" onclick="kbAbrirOS('${id}')"><i class="fa-solid fa-file-invoice"></i> OSs</button>
+      <span class="kb-total">${kbBRL(total)}</span>
+    </div>
+  </div>`;
+}
+
+// ── Drag & drop ──
+let kbDragId=null;
+function kbDragStart(e){ kbDragId=e.currentTarget.dataset.id; e.currentTarget.classList.add('dragging'); if(e.dataTransfer){e.dataTransfer.effectAllowed='move';} }
+function kbDragEnd(e){ e.currentTarget.classList.remove('dragging'); document.querySelectorAll('#kb-board .kb-col').forEach(c=>c.classList.remove('over')); }
+function kbColOver(e){ e.preventDefault(); e.currentTarget.classList.add('over'); if(e.dataTransfer){e.dataTransfer.dropEffect='move';} }
+function kbColLeave(e){ e.currentTarget.classList.remove('over'); }
+function kbDrop(e,coluna){
+  e.preventDefault();
+  e.currentTarget.classList.remove('over');
+  if(!kbDragId || !KB.estado[kbDragId]) return;
+  const maxOrdem=KB.patio.reduce((m,r)=>{const s=KB.estado[String(r.ID)];return (s&&s.coluna===coluna)?Math.max(m,s.ordem||0):m;},0);
+  KB.estado[kbDragId].coluna=coluna;
+  KB.estado[kbDragId].ordem=maxOrdem+1;
+  kbDragId=null;
+  kbRender();
+  kbSalvar();
+}
+
+// ── Modal de OSs ──
+function kbAbrirOS(id){
+  KB.cardAtivo=id;
+  const r=KB.patio.find(x=>String(x.ID)===id)||{};
+  const placas=[r.Placa_Cavalo,r.Placa_Carreta].filter(Boolean).join(' + ')||r.Tipo_Veiculo||id;
+  document.getElementById('kb-modal-titulo').textContent='OSs — '+placas;
+  document.getElementById('kb-modal-sub').textContent=(r.Tipo_Veiculo||'')+(r.Cliente_Destino?' · '+r.Cliente_Destino:'');
+  document.getElementById('kb-os-input').value='';
+  kbRenderModal();
+  document.getElementById('kb-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('kb-os-input').focus(),50);
+}
+function kbFecharOS(e){
+  if(e && e.target && e.target.id!=='kb-overlay' && e.type==='click') return;
+  document.getElementById('kb-overlay').classList.remove('open');
+  KB.cardAtivo=null;
+}
+function kbRenderModal(){
+  const id=KB.cardAtivo; const st=KB.estado[id]||{os:[]};
+  const list=document.getElementById('kb-oslist');
+  if(!st.os.length){
+    list.innerHTML='<div class="kb-empty-os">Nenhuma OS atribuída ainda.</div>';
+  } else {
+    list.innerHTML=st.os.map(n=>{
+      const info=KB.osMap[n];
+      if(info){
+        return `<div class="kb-osrow"><span class="n">OS ${n}</span><span class="c" title="${info.cliente}">${info.cliente||'—'} · ${info.fase||''}</span><span class="v">${kbBRL(info.valor)}</span><button class="del" onclick="kbRemoveOS('${n}')" title="Remover">✕</button></div>`;
+      }
+      return `<div class="kb-osrow miss"><span class="n">OS ${n}</span><span class="c">não encontrada no dados.json</span><span class="v">R$ 0,00</span><button class="del" onclick="kbRemoveOS('${n}')" title="Remover">✕</button></div>`;
+    }).join('');
+  }
+  document.getElementById('kb-modal-total').textContent=kbBRL(kbTotalCard(id));
+}
+function kbAddOS(){
+  const inp=document.getElementById('kb-os-input');
+  const raw=(inp.value||'').trim();
+  if(!raw) return;
+  const id=KB.cardAtivo; if(!id||!KB.estado[id]) return;
+  // aceita vários números separados por vírgula/espaço
+  raw.split(/[,\s]+/).map(s=>s.trim()).filter(Boolean).forEach(n=>{
+    if(!KB.estado[id].os.includes(n)) KB.estado[id].os.push(n);
+  });
+  inp.value='';
+  kbRenderModal(); kbRender(); kbSalvar();
+  inp.focus();
+}
+function kbRemoveOS(n){
+  const id=KB.cardAtivo; if(!id||!KB.estado[id]) return;
+  KB.estado[id].os=KB.estado[id].os.filter(x=>x!==String(n));
+  kbRenderModal(); kbRender(); kbSalvar();
+}
+
+// ── Persistência ──
+function kbLocalLoad(){ try{ return JSON.parse(localStorage.getItem(KB.LS_KEY)||'{}'); }catch(e){ return {}; } }
+function kbLocalSave(){ try{ localStorage.setItem(KB.LS_KEY, JSON.stringify(KB.estado)); }catch(e){} }
+function kbSalvar(){
+  kbLocalSave();
+  if(KB.demo) return;
+  const cards=Object.keys(KB.estado).map(id=>({
+    card_id:id,
+    coluna:KB.estado[id].coluna,
+    os_atribuidas:(KB.estado[id].os||[]).join(','),
+    ordem:KB.estado[id].ordem||0
+  }));
+  fetch(KB.APPS_SCRIPT_URL,{method:'POST',mode:'cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'kanban_set',cards})})
+    .then(r=>r.json())
+    .then(res=>{ if(!res||!res.success) kbNotice('Falha ao salvar no servidor: '+((res&&res.error)||'desconhecido')+' (guardado localmente)','erro'); })
+    .catch(e=>kbNotice('Sem conexão ao salvar (guardado localmente): '+e.message,'erro'));
+}
 </script>
 </body>
 </html>
