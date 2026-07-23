@@ -1006,7 +1006,7 @@ const fmtMoney= v => (v||0).toLocaleString("pt-BR",{style:"currency",currency:"B
 // Busca o JSON gerado pela exportação periódica (exportar-dados.js).
 // O parâmetro t evita cache do CDN/navegador.
 async function fetchDados(){
-  const res = await fetch('dados.json?t='+Date.now());
+  const res = await fetch('https://raw.githubusercontent.com/pemarostega-debug/renovatruck_portal/main/dados.json?t='+Date.now());
   if(!res.ok) throw new Error("HTTP "+res.status);
   return res.json();
 }
@@ -2273,7 +2273,7 @@ function kbNotice(msg,tipo){ const el=document.getElementById('kb-notice'); if(!
 // ── Carrega o mapa de OSs a partir do dados.json já usado no portal ──
 async function kbCarregarOS(){
   try{
-    const r = await fetch('dados.json?t='+Date.now());
+    const r = await fetch('https://raw.githubusercontent.com/pemarostega-debug/renovatruck_portal/main/dados.json?t='+Date.now());
     const p = await r.json();
     (p.ordens||[]).forEach(o=>{
       KB.osMap[String(o.numero_os)] = {
