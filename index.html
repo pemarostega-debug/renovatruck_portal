@@ -36,7 +36,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);}
 .tool-nav{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:.6rem 1.2rem;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:40;box-shadow:0 2px 12px rgba(0,0,0,.2);}
 .back-btn{background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:background .2s;}
 .back-btn:hover{background:rgba(255,255,255,.22);}
-#screen-dashboard,#screen-prec,#screen-abc,#screen-kanban,#screen-historico{display:none;}
+#screen-dashboard,#screen-prec,#screen-abc,#screen-kanban,#screen-historico,#screen-manual{display:none;}
 #loading-screen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,.96);z-index:60;flex-direction:column;justify-content:center;align-items:center;gap:16px;}
 .spinner{width:44px;height:44px;border:4px solid #dbeafe;border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -321,7 +321,7 @@ textarea.inp{resize:vertical;min-height:64px;}
       <div class="module-card soon"><span class="module-badge badge-breve">Planejado</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-clipboard-check"></i></div><div><div class="module-name">Fechamento Diário</div><div class="module-desc">M.O. por OS e indicadores operacionais.</div></div></div>
       <div class="module-card soon"><span class="module-badge badge-breve">Planejado</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-user-tie"></i></div><div><div class="module-name">CRM Comercial</div><div class="module-desc">Pipeline de vendas. Migração do Trello.</div></div></div>
       <div class="module-card soon"><span class="module-badge badge-breve">Planejado</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-door-open"></i></div><div><div class="module-name">Controle de Portaria</div><div class="module-desc">Entrada/saída com leitura de placa.</div></div></div>
-      <div class="module-card soon"><span class="module-badge badge-breve">Planejado</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-book-open"></i></div><div><div class="module-name">Manual da Empresa</div><div class="module-desc">Organograma, processos e portfólio.</div></div></div>
+      <div class="module-card" onclick="openModule('manual')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#e0e7ff;color:#4f46e5;"><i class="fa-solid fa-book-open"></i></div><div><div class="module-name">Manual da Empresa</div><div class="module-desc">Organograma, cargos, processos e regras de conduta.</div></div></div>
     </div>
     <div style="text-align:center;color:var(--muted);font-size:.72rem;padding:1rem 0 2rem;">Sistema de Gestão Gerencial · Grupo Renova · Pedro Neto Business Consultant</div>
   </div>
@@ -1038,6 +1038,225 @@ textarea.inp{resize:vertical;min-height:64px;}
   </div>
 </div>
 
+<div id="screen-manual">
+<style>
+  #screen-manual{min-height:100vh;background:var(--bg);padding-bottom:3rem;font-family:"DM Sans",sans-serif;color:var(--text);}
+  #screen-manual .mn-topbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 20px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:21;}
+  #screen-manual .mn-title{font-size:1.05rem;font-weight:900;color:#4f46e5;display:flex;align-items:center;gap:8px;}
+  #screen-manual .mn-spacer{flex:1;}
+  #screen-manual .mn-back{border:1.5px solid var(--border);background:#fff;color:var(--text);border-radius:9px;padding:7px 13px;font-size:.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s;}
+  #screen-manual .mn-back:hover{border-color:#4f46e5;color:#4f46e5;}
+  #screen-manual .mn-tabs{display:flex;gap:4px;padding:0 20px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:53px;z-index:20;}
+  #screen-manual .mn-tab{background:none;border:none;border-bottom:3px solid transparent;color:var(--muted);font-family:"DM Sans",sans-serif;font-weight:700;font-size:.78rem;padding:12px 12px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:all .15s;}
+  #screen-manual .mn-tab:hover{color:#4f46e5;}
+  #screen-manual .mn-tab.active{color:#4f46e5;border-bottom-color:#4f46e5;}
+  #screen-manual .mn-body{padding:20px;max-width:1100px;margin:0 auto;}
+  #screen-manual .mn-panel{display:none;}
+  #screen-manual .mn-panel.active{display:block;animation:mnFade .2s ease;}
+  @keyframes mnFade{from{opacity:0;}to{opacity:1;}}
+
+  /* Institucional */
+  #screen-manual .mn-inst-hero{background:linear-gradient(135deg,#0f172a,#312e81);color:#fff;border-radius:16px;padding:2rem;margin-bottom:1.2rem;text-align:center;}
+  #screen-manual .mn-inst-hero img{height:52px;margin-bottom:10px;}
+  #screen-manual .mn-inst-hero h2{font-size:1.25rem;font-weight:900;margin:0 0 6px;}
+  #screen-manual .mn-inst-hero p{opacity:.85;font-size:.82rem;margin:0;}
+  #screen-manual .mn-inst-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+  #screen-manual .mn-inst-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.3rem;}
+  #screen-manual .mn-inst-card h3{font-size:.74rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:#4f46e5;margin:0 0 8px;display:flex;align-items:center;gap:7px;}
+  #screen-manual .mn-inst-card p{font-size:.86rem;line-height:1.55;color:var(--text);margin:0;}
+  #screen-manual .mn-valores{display:flex;flex-wrap:wrap;gap:8px;}
+  #screen-manual .mn-valor-chip{background:#e0e7ff;color:#4f46e5;font-weight:800;font-size:.78rem;padding:6px 14px;border-radius:20px;}
+  @media(max-width:680px){#screen-manual .mn-inst-grid{grid-template-columns:1fr;}}
+
+  /* Organograma */
+  #screen-manual .mn-org-wrap{overflow-x:auto;padding:10px 4px 30px;}
+  #screen-manual .mn-org-root{display:inline-flex;justify-content:center;min-width:100%;padding:0 10px;}
+  #screen-manual .mn-org-node{display:flex;flex-direction:column;align-items:center;position:relative;}
+  #screen-manual .mn-org-box{background:#fff;border:2px solid var(--border);border-radius:10px;padding:9px 14px;font-size:.72rem;font-weight:800;color:var(--text);white-space:nowrap;cursor:pointer;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.06);position:relative;z-index:2;}
+  #screen-manual .mn-org-box:hover{border-color:#4f46e5;color:#4f46e5;transform:translateY(-1px);}
+  #screen-manual .mn-org-box.mn-org-static{cursor:default;}
+  #screen-manual .mn-org-box.mn-org-static:hover{border-color:var(--border);color:var(--text);transform:none;}
+  #screen-manual .mn-org-box.mn-org-dir{background:#0f172a;color:#fff;border-color:#0f172a;font-size:.76rem;}
+  #screen-manual .mn-org-box.mn-org-dir:hover{border-color:#0f172a;color:#fff;transform:none;}
+  #screen-manual .mn-org-box.mn-org-staff{border-style:dashed;background:#f5f3ff;color:#6d28d9;border-color:#c4b5fd;}
+  #screen-manual .mn-org-box .mn-org-sub{display:block;font-weight:600;font-size:.62rem;opacity:.7;margin-top:1px;}
+  #screen-manual .mn-org-children{display:flex;padding-top:26px;position:relative;}
+  #screen-manual .mn-org-node > .mn-org-children::before{content:'';position:absolute;top:0;left:50%;width:0;height:26px;border-left:2px solid #cbd5e1;}
+  #screen-manual .mn-org-child{position:relative;padding:0 14px;display:flex;flex-direction:column;align-items:center;}
+  #screen-manual .mn-org-child::before{content:'';position:absolute;top:-26px;left:0;right:0;height:26px;border-top:2px solid #cbd5e1;}
+  #screen-manual .mn-org-child:first-child::before{left:50%;}
+  #screen-manual .mn-org-child:last-child::before{right:50%;}
+  #screen-manual .mn-org-child:only-child::before{display:none;}
+  #screen-manual .mn-org-child::after{content:'';position:absolute;top:-26px;left:50%;width:0;height:26px;border-left:2px solid #cbd5e1;}
+  #screen-manual .mn-org-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.7rem;color:var(--muted);font-weight:700;padding:0 4px 6px;}
+  #screen-manual .mn-org-legend span{display:inline-flex;align-items:center;gap:6px;}
+  #screen-manual .mn-org-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+
+  /* Cargos */
+  #screen-manual .mn-cargo-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  #screen-manual .mn-cargo-search{border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-size:.85rem;font-family:"DM Sans",sans-serif;width:100%;max-width:320px;outline:none;transition:border-color .2s;}
+  #screen-manual .mn-cargo-search:focus{border-color:#4f46e5;}
+  #screen-manual .mn-cargo-count{font-size:.76rem;color:var(--muted);font-weight:700;}
+  #screen-manual .mn-cargo-card{background:#fff;border:1px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;}
+  #screen-manual .mn-cargo-head{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;}
+  #screen-manual .mn-cargo-head:hover{background:#fafaff;}
+  #screen-manual .mn-cargo-ico{width:34px;height:34px;border-radius:9px;background:#e0e7ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem;}
+  #screen-manual .mn-cargo-titles{flex:1;min-width:0;}
+  #screen-manual .mn-cargo-titles .nome{font-weight:800;font-size:.88rem;color:var(--text);}
+  #screen-manual .mn-cargo-titles .meta{font-size:.72rem;color:var(--muted);font-weight:600;margin-top:1px;}
+  #screen-manual .mn-cargo-esp{display:inline-block;background:#fef3c7;color:#d97706;font-size:.62rem;font-weight:800;padding:1px 8px;border-radius:20px;margin-left:6px;}
+  #screen-manual .mn-cargo-chevron{color:var(--muted);transition:transform .2s;flex-shrink:0;}
+  #screen-manual .mn-cargo-card.open .mn-cargo-chevron{transform:rotate(180deg);}
+  #screen-manual .mn-cargo-body{display:none;padding:0 16px 18px;border-top:1px solid var(--border);}
+  #screen-manual .mn-cargo-card.open .mn-cargo-body{display:block;padding-top:14px;}
+  #screen-manual .mn-cargo-sec{margin-bottom:12px;}
+  #screen-manual .mn-cargo-sec:last-child{margin-bottom:0;}
+  #screen-manual .mn-cargo-sec h4{font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:#4f46e5;margin:0 0 5px;}
+  #screen-manual .mn-cargo-sec p{font-size:.82rem;line-height:1.55;margin:0;color:var(--text);}
+  #screen-manual .mn-cargo-sec ul{margin:0;padding-left:18px;font-size:.82rem;line-height:1.6;color:var(--text);}
+  #screen-manual .mn-cargo-sec ol{margin:0;padding-left:18px;font-size:.82rem;line-height:1.65;color:var(--text);}
+
+  /* Processo */
+  #screen-manual .mn-flow{display:flex;flex-direction:column;align-items:center;gap:0;padding:10px 0 20px;}
+  #screen-manual .mn-flow-step{background:#fff;border:2px solid var(--border);border-radius:12px;padding:13px 18px;max-width:540px;width:100%;box-shadow:0 1px 3px rgba(0,0,0,.05);cursor:pointer;transition:all .15s;}
+  #screen-manual .mn-flow-step:hover{border-color:#4f46e5;transform:translateY(-1px);}
+  #screen-manual .mn-flow-step.mn-flow-nolink{cursor:default;}
+  #screen-manual .mn-flow-step.mn-flow-nolink:hover{border-color:var(--border);transform:none;}
+  #screen-manual .mn-flow-step-title{font-weight:800;font-size:.85rem;color:var(--text);}
+  #screen-manual .mn-flow-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;}
+  #screen-manual .mn-flow-badge{font-size:.65rem;font-weight:800;padding:2px 9px;border-radius:20px;background:#e0e7ff;color:#4f46e5;white-space:nowrap;}
+  #screen-manual .mn-flow-status{font-size:.65rem;font-weight:800;padding:2px 9px;border-radius:20px;background:#dcfce7;color:#16a34a;white-space:nowrap;}
+  #screen-manual .mn-flow-obs{font-size:.74rem;color:var(--muted);margin-top:6px;line-height:1.4;}
+  #screen-manual .mn-flow-arrow{color:#94a3b8;font-size:1rem;padding:6px 0;}
+  #screen-manual .mn-flow-branchwrap{width:100%;max-width:900px;display:flex;flex-direction:column;align-items:center;}
+  #screen-manual .mn-flow-branch{display:flex;gap:16px;width:100%;align-items:stretch;justify-content:center;flex-wrap:wrap;}
+  #screen-manual .mn-flow-branch-col{flex:1;min-width:260px;display:flex;flex-direction:column;align-items:center;gap:10px;background:#f8fafc;border:1.5px dashed var(--border);border-radius:14px;padding:14px;}
+  #screen-manual .mn-flow-branch-label{font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);text-align:center;}
+
+  /* Regras e Conduta */
+  #screen-manual .mn-regras-doc{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.3rem;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  #screen-manual .mn-regras-doc b{color:#4f46e5;}
+  #screen-manual .mn-regras-wrap{display:flex;gap:20px;align-items:flex-start;}
+  #screen-manual .mn-regras-nav{width:240px;flex-shrink:0;position:sticky;top:110px;max-height:calc(100vh - 130px);overflow-y:auto;}
+  #screen-manual .mn-regras-group-label{font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 6px;padding:0 10px;}
+  #screen-manual .mn-regras-group-label:first-child{margin-top:0;}
+  #screen-manual .mn-regras-link{display:block;width:100%;text-align:left;background:none;border:none;padding:7px 10px;border-radius:8px;font-size:.78rem;font-weight:700;color:var(--muted);cursor:pointer;font-family:"DM Sans",sans-serif;}
+  #screen-manual .mn-regras-link:hover{background:#f1f5f9;color:var(--text);}
+  #screen-manual .mn-regras-link.active{background:#e0e7ff;color:#4f46e5;}
+  #screen-manual .mn-regras-content{flex:1;min-width:0;background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.4rem;}
+  #screen-manual .mn-regras-content h3{font-size:1rem;font-weight:900;color:var(--text);margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+  #screen-manual .mn-regras-content h3 span{color:#4f46e5;}
+  #screen-manual .mn-regras-content p{font-size:.86rem;line-height:1.65;color:var(--text);margin:0 0 10px;}
+  #screen-manual .mn-regras-content ul{margin:0 0 10px;padding-left:20px;font-size:.86rem;line-height:1.7;color:var(--text);}
+  #screen-manual .mn-regras-content .destaque{background:#f5f3ff;border-left:3px solid #4f46e5;padding:10px 14px;border-radius:0 8px 8px 0;font-weight:700;font-size:.82rem;color:#312e81;margin:10px 0;}
+  @media(max-width:820px){#screen-manual .mn-regras-wrap{flex-direction:column;}#screen-manual .mn-regras-nav{width:100%;position:static;max-height:none;display:flex;overflow-x:auto;gap:4px;padding-bottom:6px;}#screen-manual .mn-regras-group-label{display:none;}#screen-manual .mn-regras-link{white-space:nowrap;width:auto;}}
+
+  /* Configurações */
+  #screen-manual .mn-cfg-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.3rem;margin-bottom:14px;}
+  #screen-manual .mn-cfg-card h3{font-size:.9rem;font-weight:900;margin:0 0 8px;display:flex;align-items:center;gap:8px;color:var(--text);}
+  #screen-manual .mn-cfg-card p{font-size:.84rem;line-height:1.6;color:var(--muted);margin:0 0 10px;}
+  #screen-manual .mn-cfg-btn{display:inline-flex;align-items:center;gap:8px;background:#4f46e5;color:#fff;text-decoration:none;font-weight:800;font-size:.8rem;padding:9px 16px;border-radius:9px;}
+  #screen-manual .mn-cfg-btn:hover{opacity:.9;}
+
+  @media(max-width:640px){#screen-manual .mn-body{padding:14px;}}
+</style>
+
+  <div class="mn-topbar">
+    <button class="mn-back" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i> Início</button>
+    <div class="mn-title"><i class="fa-solid fa-book-open"></i> Manual da Empresa</div>
+    <div class="mn-spacer"></div>
+  </div>
+
+  <div class="mn-tabs">
+    <button class="mn-tab active" data-mntab="institucional" onclick="switchManualTab('institucional')"><i class="fa-solid fa-flag"></i> Institucional</button>
+    <button class="mn-tab" data-mntab="organograma" onclick="switchManualTab('organograma')"><i class="fa-solid fa-sitemap"></i> Organograma</button>
+    <button class="mn-tab" data-mntab="cargos" onclick="switchManualTab('cargos')"><i class="fa-solid fa-id-badge"></i> Descrições de Cargo</button>
+    <button class="mn-tab" data-mntab="processo" onclick="switchManualTab('processo')"><i class="fa-solid fa-diagram-project"></i> Processo Operacional</button>
+    <button class="mn-tab" data-mntab="regras" onclick="switchManualTab('regras')"><i class="fa-solid fa-scale-balanced"></i> Regras e Conduta</button>
+    <button class="mn-tab" data-mntab="config" onclick="switchManualTab('config')"><i class="fa-solid fa-gear"></i> Configurações</button>
+  </div>
+
+  <div class="mn-body">
+
+    <div class="mn-panel active" id="mn-panel-institucional">
+      <div class="mn-inst-hero">
+        <h2>Renova Manutenções</h2>
+        <p>Manual de Regras e Conduta &middot; Versão 1.0 &middot; 01/08/2026</p>
+      </div>
+      <div class="mn-inst-grid">
+        <div class="mn-inst-card">
+          <h3><i class="fa-solid fa-bullseye"></i> Missão</h3>
+          <p>Executar serviços de manutenção com qualidade, segurança, responsabilidade e comprometimento, buscando sempre a satisfação dos nossos clientes.</p>
+        </div>
+        <div class="mn-inst-card">
+          <h3><i class="fa-solid fa-eye"></i> Visão</h3>
+          <p>Ser referência em manutenção de veículos pesados, reconhecida pela qualidade dos serviços, organização e excelência operacional.</p>
+        </div>
+      </div>
+      <div class="mn-inst-card">
+        <h3><i class="fa-solid fa-heart"></i> Valores</h3>
+        <div class="mn-valores">
+          <span class="mn-valor-chip">Segurança</span>
+          <span class="mn-valor-chip">Honestidade</span>
+          <span class="mn-valor-chip">Respeito</span>
+          <span class="mn-valor-chip">Comprometimento</span>
+          <span class="mn-valor-chip">Trabalho em equipe</span>
+          <span class="mn-valor-chip">Qualidade</span>
+          <span class="mn-valor-chip">Responsabilidade</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mn-panel" id="mn-panel-organograma">
+      <div class="mn-org-legend">
+        <span><i style="background:#0f172a;"></i> Diretoria</span>
+        <span><i style="background:#fff;border:2px solid #cbd5e1;"></i> Cargo (clique para ver a descrição)</span>
+        <span><i style="background:#f5f3ff;border:2px dashed #c4b5fd;"></i> Assessoria/consultoria (reporta a ambos os diretores)</span>
+      </div>
+      <div class="mn-org-wrap"><div class="mn-org-root" id="mn-org-root"></div></div>
+    </div>
+
+    <div class="mn-panel" id="mn-panel-cargos">
+      <div class="mn-cargo-toolbar">
+        <input type="text" class="mn-cargo-search" id="mn-cargo-search" placeholder="Buscar cargo (ex: porteiro, mecânico, financeira)..." oninput="filterCargos(this.value)">
+        <span class="mn-cargo-count" id="mn-cargo-count"></span>
+      </div>
+      <div id="mn-cargo-list"></div>
+    </div>
+
+    <div class="mn-panel" id="mn-panel-processo">
+      <div id="mn-flow"></div>
+    </div>
+
+    <div class="mn-panel" id="mn-panel-regras">
+      <div class="mn-regras-doc">
+        <div><b>Manual de Regras e Conduta</b> &middot; Renova Manutenções &middot; Versão 1.0 &middot; Emissão: 01/08/2026</div>
+      </div>
+      <div class="mn-regras-wrap">
+        <div class="mn-regras-nav" id="mn-regras-nav"></div>
+        <div class="mn-regras-content" id="mn-regras-content"></div>
+      </div>
+    </div>
+
+    <div class="mn-panel" id="mn-panel-config">
+      <div class="mn-cfg-card">
+        <h3><i class="fa-solid fa-database"></i> Fonte dos dados</h3>
+        <p>O conteúdo deste módulo (organograma, cargos, processo operacional e apresentação institucional) é o mesmo aprovado no Manual da Empresa. Para consulta, histórico e futura edição colaborativa, a planilha de referência abaixo está disponível para qualquer pessoa com o link.</p>
+        <a class="mn-cfg-btn" href="https://docs.google.com/spreadsheets/d/1zHJwKw88K0ArhN9qpWM8T0bzSMFpglebn5PZIdfgev0/edit" target="_blank" rel="noopener"><i class="fa-solid fa-table"></i> Abrir planilha de referência</a>
+      </div>
+      <div class="mn-cfg-card">
+        <h3><i class="fa-solid fa-file-shield"></i> Regras e Conduta</h3>
+        <p>Conteúdo extraído do documento oficial "Manual de Regras e Conduta" (Versão 1.0, emitido em 01/08/2026 pelo RH da Renova Manutenções). Qualquer atualização de versão deve ser repassada para manter esta aba sincronizada com o documento oficial.</p>
+      </div>
+      <div class="mn-cfg-card">
+        <h3><i class="fa-solid fa-circle-info"></i> Acesso</h3>
+        <p>Este módulo usa o mesmo login do restante do portal. Não há edição de conteúdo diretamente por aqui — organograma e cargos são atualizados no código-fonte ou na planilha de referência acima.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <script>
 
 
@@ -1051,8 +1270,8 @@ textarea.inp{resize:vertical;min-height:64px;}
 const PASSWORD='renova2026';
 function doLogin(){const v=document.getElementById('pwd').value;if(v===PASSWORD){sessionStorage.setItem('rv_auth','1');document.getElementById('screen-login').style.display='none';document.getElementById('screen-home').style.display='block';document.getElementById('pwd-err').style.display='none';}else{document.getElementById('pwd-err').style.display='block';document.getElementById('pwd').value='';document.getElementById('pwd').focus();}}
 function doLogout(){sessionStorage.removeItem('rv_auth');location.reload();}
-function openModule(m){document.getElementById('screen-home').style.display='none';document.getElementById('screen-'+m).style.display='block';window.scrollTo(0,0);if(m==='dashboard'&&typeof fetchData==='function')fetchData();if(m==='prec'&&typeof calc==='function')calc();if(m==='abc'&&typeof loadABC==='function')loadABC();if(m==='kanban'&&typeof initKanban==='function')initKanban();if(m==='historico'&&typeof initHistorico==='function')initHistorico();}
-function goHome(){['dashboard','prec','abc','kanban','historico'].forEach(s=>document.getElementById('screen-'+s).style.display='none');document.getElementById('screen-home').style.display='block';window.scrollTo(0,0);}
+function openModule(m){document.getElementById('screen-home').style.display='none';document.getElementById('screen-'+m).style.display='block';window.scrollTo(0,0);if(m==='dashboard'&&typeof fetchData==='function')fetchData();if(m==='prec'&&typeof calc==='function')calc();if(m==='abc'&&typeof loadABC==='function')loadABC();if(m==='kanban'&&typeof initKanban==='function')initKanban();if(m==='historico'&&typeof initHistorico==='function')initHistorico();if(m==='manual'&&typeof initManual==='function')initManual();}
+function goHome(){['dashboard','prec','abc','kanban','historico','manual'].forEach(s=>document.getElementById('screen-'+s).style.display='none');document.getElementById('screen-home').style.display='block';window.scrollTo(0,0);}
 window.addEventListener('load',()=>{if(sessionStorage.getItem('rv_auth')==='1'){document.getElementById('screen-login').style.display='none';document.getElementById('screen-home').style.display='block';};});
 
 
@@ -2724,6 +2943,407 @@ function hiRenderizar(registros){
       '<td>'+hiStatusBadges(r)+'</td>'+
     '</tr>'
   )).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+// MANUAL DA EMPRESA
+// ══════════════════════════════════════════════════════════════
+
+const MN_CARGOS = [
+  { key:'porteiro', cargo:'Porteiro', area:'Operacional', reportaA:'Gerente Operacional', subordinados:'Nenhum',
+    objetivo:'Controlar o acesso de veículos e pessoas às dependências da empresa, garantindo o registro formal de entrada e saída de equipamentos, e atuar como ponto de contato inicial no recebimento de veículos para manutenção.',
+    responsabilidades:['Controle de entrada e saída de veículos, equipamentos e visitantes','Registro de entrada do equipamento no sistema de portaria (placa, motorista, horário)','Liberação de equipamentos após conclusão da manutenção e autorização da Gerência Operacional','Direcionamento do motorista ao balcão administrativo para abertura da OS'],
+    atividades:['Ao chegar um equipamento, registrar a entrada no sistema de portaria (placa, motorista opcional, horário de entrada)','Direcionar o motorista ao balcão administrativo para relatar o motivo da visita','Ao final da manutenção, e mediante confirmação da Gerência Operacional de que o equipamento está liberado, autorizar e registrar a saída do veículo','Em caso de dúvida sobre a liberação, contatar diretamente a Gerência Operacional antes de autorizar a saída'],
+    interfaces:['Motorista/cliente (recepção inicial)','Administrativo (encaminhamento para abertura de OS)','Gerente Operacional (autorização de saída)','Sistema de Portaria (portal.renovatruck.com.br)'],
+    documentos:['Registro de entrada (sistema de portaria): placa, horário, motorista','Registro de saída (sistema de portaria): horário de liberação'],
+    indicadores:'A definir — ex: tempo médio entre chegada e direcionamento ao balcão.' },
+
+  { key:'gerente-operacional', cargo:'Gerente Operacional', area:'Operacional', reportaA:'Diretor Comercial/Operacional', subordinados:'Administrativo, Almoxarife, Porteiro, Líder Operacional (Implementos), Líder Operacional (Mecânica Diesel)',
+    objetivo:'Coordenar toda a operação de manutenção da empresa, do recebimento do equipamento até a entrega ao cliente, garantindo que as ordens de serviço fluam sem gargalos entre as etapas de orçamento, execução, evidenciamento e faturamento, gerenciando a alocação de recursos (equipe, vagas de execução) e atuando como responsável pelo relacionamento operacional com o cliente.',
+    responsabilidades:['Gestão do fluxo de OSs no kanban operacional (aguardando vaga → em execução → finalizado)','Decisão de prioridade de execução: definir e autorizar qualquer alteração da ordem FIFO padrão nos organizadores físicos, com base na necessidade/urgência do cliente (decisão exclusiva do cargo — os líderes operacionais podem sinalizar uma necessidade, mas não decidem a repriorização)','Autorização final de liberação de equipamentos junto à Portaria','Gestão e desenvolvimento da equipe administrativa, almoxarife, porteiro e líderes operacionais','Garantir que o padrão de evidências fotográficas seja seguido em toda OS finalizada','Relacionamento operacional com o cliente: ser o ponto focal para tratar e resolver problemas operacionais reportados pelo cliente (atrasos, divergências de serviço, reclamações), e reportá-los à diretoria','Melhoria contínua: propor melhorias nos processos operacionais, identificar necessidades da área (equipe, ferramentas, capacidade) e levar essas propostas à diretoria','Servir de ponte entre a operação e a diretoria/comercial em questões de capacidade e prazo'],
+    atividades:['Acompanhar diariamente o kanban operacional e identificar OSs paradas ou em risco de atraso','Quando o Líder Operacional sinalizar uma necessidade de priorização por urgência de cliente, avaliar e decidir a reordenação do organizador físico correspondente (Implementos ou Mecânica Diesel)','Autorizar, via contato direto com o cargo de Porteiro, a liberação de equipamentos após confirmação de que a manutenção e o processo de evidências foram concluídos','Supervisionar a distribuição de tarefas entre a equipe administrativa, o almoxarife e os líderes operacionais','Atuar como ponto de escalonamento para problemas operacionais que os líderes ou o administrativo não conseguem resolver sozinhos','Ser o ponto de contato direto do cliente para questões operacionais (prazos, problemas na execução, divergências), buscando solução e formalizando o retorno','Reportar à diretoria sobre capacidade, gargalos, problemas de relacionamento com clientes e necessidade de recursos','Identificar e propor à diretoria melhorias de processo, ferramentas ou estrutura de equipe'],
+    interfaces:['Administrativo (fluxo de OS, evidências)','Almoxarife (disponibilidade de material, gargalos de compra)','Porteiro (liberação de equipamentos)','Líderes Operacionais (priorização, capacidade, briefings)','Diretor Comercial/Operacional (reporte direto)','Cliente (relacionamento operacional direto)'],
+    documentos:['Kanban operacional (registro de movimentação das OSs)','Registro de decisões de repriorização','Registro de ocorrências/reclamações de clientes e respectiva resolução','Propostas de melhoria operacional (registro simples, para histórico)'],
+    indicadores:'A definir — sugestões: tempo médio de ciclo por OS, % de OS com evidências completas, número de repriorizações por urgência/mês, tempo médio de resolução de ocorrências de cliente.' },
+
+  { key:'administrativo', cargo:'Administrativo', area:'Operacional', reportaA:'Gerente Operacional', subordinados:'Nenhum',
+    objetivo:'Executar e acompanhar o ciclo completo da Ordem de Serviço, desde a abertura até a etapa imediatamente anterior ao faturamento, garantindo que as informações no sistema estejam corretas, que a documentação de evidências seja produzida, que as tratativas com plataformas de clientes sejam concluídas, e que as compras de peças e insumos necessárias à operação sejam realizadas — sendo o elo entre o cliente, a operação e o financeiro.',
+    responsabilidades:['Atendimento inicial ao motorista/cliente no balcão, coletando o motivo da visita','Abertura da OS no sistema com a pré-configuração adequada conforme o relato do serviço','Envio do orçamento ao cliente e acompanhamento da aprovação','Impressão da OS (sem valor) e organização física no organizador correto (Implementos ou Mecânica Diesel), respeitando a ordem definida','Recebimento do papel da OS ao final da execução e registro fotográfico das evidências, junto com o Líder Operacional','Atualização do status da OS em cada etapa do processo (EM ORÇAMENTO, AGUARDANDO VAGA, EM EXECUÇÃO, FINALIZADO, AGUARDANDO PEDIDO)','Gestão das plataformas de clientes (ex: JSL, Fadel, Ritmo, entre outras): tratativa de finalização, descrição dos serviços executados e upload de evidências','Compras de peças e insumos necessários à operação','Acompanhamento da OS do início ao fim dentro de sua responsabilidade (mesma pessoa que abre normalmente segue até a etapa anterior ao faturamento)'],
+    atividades:['Atender o motorista no balcão e registrar o motivo da visita/manutenção relatada','Abrir a OS no sistema com status EM ORÇAMENTO, usando pré-configuração baseada no relato','Elaborar e enviar o orçamento ao cliente, com a devida ressalva de que o valor pode ser alterado após abertura do equipamento','Encaminhar casos de negociação de valores ao Comercial/Diretoria quando envolver alteração da tabela base de preços','Após aprovação do cliente: imprimir a OS sem valor e posicioná-la no organizador físico correspondente ao tipo de equipamento, respeitando FIFO (ou ordem definida pela Gerência Operacional em caso de urgência)','Ao receber o papel da OS de volta ao final da execução, dirigir-se ao equipamento junto com o Líder Operacional para registrar as fotos/evidências do serviço realizado','Atualizar o status da OS para FINALIZADO','Para clientes com plataforma própria: acessar a plataforma, descrever os serviços realizados e fazer upload das evidências, atualizando o status da OS para AGUARDANDO PEDIDO','Para clientes sem plataforma própria: sinalizar a OS como pronta para faturamento direto pela Analista Financeira','Realizar cotação e compra de peças e insumos necessários à operação, conforme demanda identificada'],
+    interfaces:['Cliente/motorista (atendimento inicial)','Gerente Operacional (reporte, dúvidas de priorização)','Líder Operacional (recebimento do papel da OS, registro conjunto de evidências)','Almoxarife (necessidade de peças e insumos, recebimento do material comprado)','Analista Financeira (encaminhamento de OS finalizadas para faturamento)','Comercial/Diretoria (negociações que exigem alteração de tabela de preços)','Plataformas de clientes (JSL, Fadel, Ritmo, outras)','Fornecedores (compras)','Sistema de gestão de OS'],
+    documentos:['OS aberta no sistema, com histórico de status','Orçamento enviado ao cliente','Registro fotográfico/evidências de serviço','Tratativas de finalização em plataformas de clientes','Registros de cotação e compra de peças/insumos'],
+    indicadores:'A definir — sugestões: tempo médio entre abertura da OS e envio do orçamento, % de OS com evidências completas registradas no mesmo dia da finalização, tempo médio de tratativa em plataforma de cliente, tempo médio de cotação/compra.',
+    nota:'Hoje a equipe é composta por 3 posições. Pode haver divisão informal de foco entre os membros (ex: uma pessoa mais dedicada a compras, outra a atendimento/plataformas), mas isso é uma distribuição operacional interna — não uma diferença de cargo. Todos os ocupantes da posição compartilham a mesma descrição e são, em princípio, aptos a cobrir qualquer uma das atividades.' },
+
+  { key:'almoxarife', cargo:'Almoxarife', area:'Operacional', reportaA:'Gerente Operacional', subordinados:'Nenhum',
+    objetivo:'Garantir a gestão física e documental do almoxarifado, assegurando o recebimento correto de peças e insumos, o controle de inventário, e o fornecimento adequado de materiais para a execução dos serviços — incluindo o ajuste da Ordem de Serviço quando houver consumo de itens não previstos originalmente.',
+    responsabilidades:['Recebimento físico de peças e insumos comprados pela equipe Administrativa','Lançamento das notas fiscais de compra no sistema','Controle de inventário do almoxarifado (entradas, saídas, contagens periódicas)','Atendimento às solicitações de material feitas pelos mecânicos durante a execução dos serviços','Inclusão, na Ordem de Serviço, de qualquer material utilizado que não estava previsto originalmente, na quantidade efetivamente entregue'],
+    atividades:['Receber fisicamente as peças e insumos entregues por fornecedores, conferindo quantidade e qualidade','Lançar a nota fiscal de compra correspondente no sistema','Organizar e armazenar os itens recebidos no almoxarifado','Realizar contagens de inventário (periodicidade a definir) e reportar divergências','Atender a solicitação de material feita pelo mecânico durante a execução de uma OS, entregando o item da lista prevista','Quando o mecânico solicitar um material que não conste na lista original da OS, incluir esse item na OS na quantidade efetivamente entregue','Sinalizar à equipe Administrativa/Gerência Operacional quando houver ruptura de estoque ou necessidade de reposição'],
+    interfaces:['Administrativo (compras realizadas, necessidade de reposição)','Mecânicos (solicitação de material durante execução)','Gerente Operacional (reporte de inventário e gargalos)','Fornecedores (recebimento de mercadorias)','Sistema de gestão de OS / estoque'],
+    documentos:['Lançamento de notas fiscais de compra','Registro de inventário (entradas, saídas, contagens)','Atualização da OS com itens extras utilizados'],
+    indicadores:'A definir — sugestões: acuracidade de inventário, tempo médio de atendimento a solicitação de material, número de itens incluídos fora da lista original por mês.',
+    nota:'Pendência: rotina de contagem de inventário (periodicidade, por categoria de item, etc.) ainda não formalizada — a definir com o cliente.' },
+
+  { key:'lider-operacional', cargo:'Líder Operacional', area:'Operacional', reportaA:'Gerente Operacional', subordinados:'Mecânico Oficial e Mecânico 1/2 Oficial da respectiva especialidade', especialidades:['Implementos Rodoviários','Mecânica Diesel'],
+    objetivo:'Liderar a execução técnica dos serviços de manutenção dentro de sua especialidade, organizando a equipe de mecânicos, garantindo a qualidade e o correto entendimento do que deve ser executado em cada Ordem de Serviço, e assegurando que o processo de finalização (entrega do papel da OS e registro de evidências) ocorra corretamente.',
+    responsabilidades:['Retirada da próxima OS do organizador físico correspondente à sua especialidade, respeitando a ordem estabelecida (FIFO, salvo repriorização da Gerência Operacional)','Realização de briefing com a equipe antes do início de cada serviço, garantindo entendimento do escopo','Fixação do papel da OS no equipamento a ser trabalhado','Supervisão técnica da execução do serviço pelos mecânicos','Sinalização à Gerência Operacional de necessidades de priorização por urgência do cliente','Entrega do papel da OS à equipe Administrativa ao final da execução','Acompanhamento da equipe Administrativa ao equipamento para registro das evidências fotográficas','Gestão da equipe de mecânicos sob sua liderança (organização, distribuição de tarefas, qualidade técnica)'],
+    atividades:['Ao haver disponibilidade de vaga, retirar o próximo papel de OS do organizador físico da sua especialidade','Reunir a equipe de mecânicos para um briefing rápido, explicando o serviço a ser executado','Fixar o papel da OS no equipamento com durex, identificando-o para a equipe','Acompanhar e orientar tecnicamente a execução do serviço pelos mecânicos','Caso identifique necessidade de priorizar outra OS por urgência sinalizada pelo cliente, comunicar à Gerência Operacional para decisão','Ao término da execução, recolher o papel da OS e entregá-lo à equipe Administrativa','Acompanhar o Administrativo até o equipamento para o registro fotográfico das evidências do serviço concluído','Zelar pela qualidade técnica do serviço executado por sua equipe'],
+    interfaces:['Gerente Operacional (retirada de vaga, sinalização de urgências, reporte)','Administrativo (entrega do papel da OS, registro conjunto de evidências)','Mecânico Oficial e Mecânico 1/2 Oficial (liderança direta, briefing, supervisão técnica)','Almoxarife (indiretamente, via necessidade de material da equipe)'],
+    documentos:'Nenhum registro formal direto no sistema (a atualização de status é feita pelo Administrativo) — o principal "registro" físico é o papel da OS fixado no equipamento durante a execução.',
+    indicadores:'A definir — sugestões: tempo médio de execução por tipo de serviço, número de retrabalhos por equipe, aderência ao briefing.' },
+
+  { key:'mecanico-oficial', cargo:'Mecânico Oficial', area:'Operacional', reportaA:'Líder Operacional da respectiva especialidade', subordinados:'Nenhum (pode orientar tecnicamente o Mecânico 1/2 Oficial durante a execução conjunta de um serviço, sem relação hierárquica formal)', especialidades:['Implementos Rodoviários','Mecânica Diesel'],
+    objetivo:'Executar com autonomia técnica os serviços de manutenção da sua especialidade, aplicando o conhecimento necessário para diagnosticar, reparar e concluir o serviço conforme o escopo definido na Ordem de Serviço, e apoiar o desenvolvimento técnico do Mecânico 1/2 Oficial quando atuarem juntos.',
+    responsabilidades:['Execução técnica completa do serviço de manutenção conforme o escopo da OS','Diagnóstico de problemas adicionais não previstos originalmente no orçamento','Solicitação de material necessário à execução junto ao Almoxarifado','Orientação técnica ao Mecânico 1/2 Oficial durante execução conjunta','Zelo pela qualidade e segurança na execução do serviço'],
+    atividades:['Participar do briefing conduzido pelo Líder Operacional antes do início do serviço','Executar o serviço de manutenção descrito na OS fixada no equipamento','Identificar e comunicar ao Líder Operacional qualquer necessidade de serviço adicional não prevista no orçamento original','Solicitar ao Almoxarifado os materiais necessários à execução, conforme lista da OS','Quando necessário material fora da lista original, solicitar ao Almoxarifado, que fará a inclusão na OS','Orientar tecnicamente o Mecânico 1/2 Oficial quando atuarem juntos no mesmo serviço','Comunicar ao Líder Operacional o término da execução do serviço','Zelar pelo uso correto de ferramentas, equipamentos de proteção e procedimentos de segurança'],
+    interfaces:['Líder Operacional (recebimento de escopo, comunicação de término)','Mecânico 1/2 Oficial (apoio técnico durante execução conjunta)','Almoxarife (solicitação de material)'],
+    documentos:'Nenhum registro formal direto no sistema — comunicação de status feita via Líder Operacional/Administrativo.',
+    indicadores:'A definir — sugestões: tempo médio de execução por tipo de serviço, taxa de retrabalho, número de serviços adicionais identificados corretamente.' },
+
+  { key:'mecanico-12-oficial', cargo:'Mecânico 1/2 Oficial', area:'Operacional', reportaA:'Líder Operacional da respectiva especialidade', subordinados:'Nenhum', especialidades:['Implementos Rodoviários','Mecânica Diesel'],
+    objetivo:'Apoiar a execução dos serviços de manutenção sob orientação do Mecânico Oficial e/ou do Líder Operacional, desenvolvendo progressivamente autonomia técnica na especialidade, e auxiliando nas tarefas operacionais do serviço.',
+    responsabilidades:['Apoio direto à execução do serviço sob supervisão do Mecânico Oficial ou Líder Operacional','Execução de tarefas de menor complexidade técnica dentro do escopo da OS','Solicitação de material necessário à execução junto ao Almoxarifado, quando direcionado','Desenvolvimento técnico contínuo na especialidade'],
+    atividades:['Participar do briefing conduzido pelo Líder Operacional antes do início do serviço','Auxiliar o Mecânico Oficial ou o Líder Operacional na execução do serviço, conforme orientação','Executar tarefas de menor complexidade técnica de forma mais autônoma, conforme nível de experiência','Solicitar ao Almoxarifado materiais necessários à execução, quando direcionado','Comunicar ao Mecânico Oficial ou Líder Operacional qualquer dificuldade técnica encontrada','Buscar desenvolvimento técnico progressivo na especialidade, visando evolução no cargo'],
+    interfaces:['Líder Operacional (recebimento de escopo/orientação)','Mecânico Oficial (apoio técnico direto)','Almoxarife (solicitação de material, quando direcionado)'],
+    documentos:'Nenhum registro formal direto no sistema.',
+    indicadores:'A definir — sugestões: evolução técnica/tempo de curva de aprendizado, participação em serviços concluídos sem retrabalho.' },
+
+  { key:'analista-financeira', cargo:'Analista Financeira', area:'Financeiro', reportaA:'Diretor Financeiro/Comercial', subordinados:'Nenhum',
+    objetivo:'Gerenciar o ciclo financeiro da empresa relacionado ao faturamento das Ordens de Serviço, contas a pagar e a receber, e antecipação de recebíveis, garantindo que os serviços finalizados sejam corretamente faturados e que a liberação junto aos clientes com plataforma própria seja acompanhada até a conclusão.',
+    responsabilidades:['Emissão de notas fiscais referentes aos serviços executados','Gestão de contas a pagar','Gestão de contas a receber','Antecipação de recebíveis junto às operações financeiras contratadas (ex: FIDC Atrio, FIDC Trust, entre outras)','Faturamento direto de OSs de clientes sem plataforma própria','Cobrança da liberação/pedido de compra junto a clientes com plataforma própria, para OSs com status AGUARDANDO PEDIDO'],
+    atividades:['Monitorar as OSs com status FINALIZADO para identificar quais estão prontas para faturamento','Para clientes sem plataforma própria: emitir a nota fiscal e realizar a cobrança conforme a forma de pagamento acordada (boleto, pix ou cartão), atualizando o status da OS para FATURADO','Para clientes com plataforma própria: acompanhar as OSs com status AGUARDANDO PEDIDO e realizar a cobrança da liberação/pedido de compra junto ao cliente na respectiva plataforma','Após a liberação do cliente, emitir a nota fiscal e atualizar o status da OS para FATURADO','Realizar a gestão de contas a pagar da empresa (fornecedores, despesas operacionais)','Realizar a gestão de contas a receber, incluindo o acompanhamento de inadimplência','Processar antecipação de recebíveis conforme necessidade de fluxo de caixa, junto às operações financeiras contratadas','Reportar ao Diretor Financeiro/Comercial sobre o status do fluxo de caixa e eventuais pendências relevantes'],
+    interfaces:['Administrativo (recebimento de OSs finalizadas e prontas para faturamento)','Clientes (cobrança, emissão de nota fiscal, tratativas de liberação)','Diretor Financeiro/Comercial (reporte direto)','Instituições financeiras/operações de antecipação de recebíveis (ex: FIDC Atrio, FIDC Trust, JSL, Ticket-Log, J.Bank)','Fornecedores (contas a pagar)'],
+    documentos:['Notas fiscais emitidas','Registros de contas a pagar e a receber','Registros de operações de antecipação de recebíveis','Atualização de status da OS (FATURADO)'],
+    indicadores:'A definir — sugestões: tempo médio entre FINALIZADO e FATURADO, taxa de inadimplência, custo médio de antecipação de recebíveis.' },
+
+  { key:'gestor-rh', cargo:'Gestor(a) de RH', area:'Administrativo', reportaA:'Diretor Financeiro/Comercial', subordinados:'Nenhum',
+    objetivo:'Gerenciar os processos de recursos humanos da empresa — recrutamento, admissão/demissão, gestão da folha de pagamento (em interface com o DP terceirizado), treinamentos e, futuramente, a gestão de segurança do trabalho via serviço terceirizado — apoiando a estrutura operacional e administrativa no dimensionamento, desenvolvimento e retenção de equipe.',
+    responsabilidades:['Recrutamento e seleção de novos colaboradores','Processos admissionais e demissionais','Gestão da folha de pagamento: coleta e organização das marcações de ponto (relógio), correção de inconsistências, e envio das informações ao DP terceirizado para geração dos holerites','Condução direta de treinamentos','Relações trabalhistas e conformidade com legislação','Clima organizacional','Gestão do serviço terceirizado de segurança do trabalho (NRs, EPIs, laudos), quando contratado'],
+    atividades:['Conduzir processos de recrutamento e seleção conforme necessidade de vaga sinalizada pelas áreas','Realizar os processos admissionais (documentação, integração) e demissionais (documentação, homologação)','Coletar as marcações do relógio de ponto dos colaboradores periodicamente','Organizar e corrigir inconsistências nas marcações antes do fechamento da folha','Enviar as informações consolidadas ao DP terceirizado para geração dos holerites','Planejar e conduzir treinamentos internos junto às equipes','Acompanhar questões de relações trabalhistas e conformidade com a legislação vigente','Monitorar e atuar sobre o clima organizacional da empresa','Quando aplicável, gerenciar a relação com o serviço terceirizado responsável por segurança do trabalho (NRs, EPIs, laudos, treinamentos obrigatórios)','Reportar ao Diretor Financeiro/Comercial sobre indicadores de pessoal, turnover e pendências relevantes'],
+    interfaces:['Todas as áreas da empresa (recrutamento, treinamento, questões trabalhistas)','DP terceirizado (envio de dados para folha de pagamento)','Serviço terceirizado de segurança do trabalho (quando contratado)','Diretor Financeiro/Comercial (reporte direto)'],
+    documentos:['Documentação admissional e demissional','Consolidação de ponto para folha de pagamento','Registros de treinamentos realizados','Registros de relações trabalhistas (advertências, ocorrências, quando aplicável)'],
+    indicadores:'A definir — sugestões: turnover, tempo médio de preenchimento de vaga, número de treinamentos realizados/mês, % de correções de ponto por período.' },
+
+  { key:'marketing-digital', cargo:'Marketing Digital', area:'Comercial/Marketing', reportaA:'Diretor Financeiro/Comercial', subordinados:'Nenhum',
+    objetivo:'Gerenciar toda a presença digital da empresa (redes sociais, site, campanhas pagas), produzindo ou coordenando a produção de conteúdo e artes — incluindo comunicações institucionais como avisos de feriados, datas comemorativas e recados internos — e direcionando ao Comercial qualquer contato direto recebido por canais digitais.',
+    responsabilidades:['Gestão das redes sociais (ex: Instagram), site institucional e campanhas de anúncios (ads)','Confecção de artes e conteúdo visual, incluindo comunicações institucionais (feriados, aniversários, avisos internos e externos)','Produção de conteúdo próprio ou gestão de terceiros contratados para produção (fotos, vídeos, artes)','Direcionamento ao Comercial de mensagens diretas recebidas pelos canais digitais da empresa'],
+    atividades:['Planejar e executar o calendário de postagens nas redes sociais da empresa','Criar ou coordenar (via terceiros, sob sua gestão) a produção de artes e conteúdo visual/audiovisual','Gerenciar e atualizar o site institucional da empresa','Planejar, configurar e acompanhar campanhas de anúncios pagos (ads)','Produzir ou solicitar a produção de artes para datas comemorativas, feriados, aniversários e comunicados internos','Monitorar as caixas de mensagem dos canais digitais (ex: Instagram) e direcionar contatos comerciais recebidos ao setor Comercial','Quando a produção de conteúdo for terceirizada, gerenciar o fornecedor (briefing, prazos, qualidade), mantendo a responsabilidade final pelo resultado','Reportar ao Diretor Financeiro/Comercial sobre desempenho de campanhas e engajamento digital'],
+    interfaces:['Comercial (encaminhamento de leads/contatos recebidos)','Diretor Financeiro/Comercial (reporte direto, aprovação de campanhas)','Fornecedores/terceiros de produção de conteúdo (quando aplicável)','Demais áreas da empresa (solicitação de informações para comunicados internos, ex: aniversários)'],
+    documentos:['Calendário/planejamento de postagens','Registros de campanhas de anúncios (investimento, período, resultado)','Contatos direcionados ao Comercial'],
+    indicadores:'A definir — sugestões: engajamento nas redes, número de leads gerados/direcionados ao Comercial, custo por lead em campanhas pagas.' },
+
+  { key:'comercial', cargo:'Comercial', area:'Comercial', reportaA:'Diretoria (Diretor Comercial/Operacional e Diretor Financeiro/Comercial)', subordinados:'Nenhum', vaga:true,
+    objetivo:'Conduzir a negociação comercial com clientes quando o orçamento inicial não for aprovado de imediato, gerenciar contatos comerciais recebidos via marketing digital, e atuar na captação e relacionamento comercial com clientes, respeitando a alçada de alteração de preços definida pela diretoria.',
+    responsabilidades:['Negociação de valores e condições comerciais com clientes, quando o orçamento inicial (elaborado pelo Administrativo) não for aprovado','Atendimento aos contatos comerciais direcionados pelo Marketing Digital','Prospecção e relacionamento comercial com clientes atuais e potenciais','Encaminhamento à Diretoria de qualquer negociação que exija alteração da tabela base de preços'],
+    atividades:['Receber da equipe Administrativa os casos em que o orçamento enviado ao cliente não foi aprovado','Negociar valores e condições comerciais diretamente com o cliente','Verificar se a negociação está dentro da alçada padrão; caso exija alteração da tabela base de preços, submeter à aprovação da Diretoria antes de fechar','Atender aos contatos comerciais recebidos e direcionados pelo Marketing Digital','Atualizar a OS/orçamento após negociação concluída, comunicando o resultado ao Administrativo','Atuar na prospecção de novos clientes e manutenção do relacionamento com a carteira atual'],
+    interfaces:['Administrativo (recebimento de orçamentos não aprovados, atualização pós-negociação)','Marketing Digital (recebimento de contatos/leads)','Diretoria (aprovação de alterações de tabela de preços, reporte direto)','Clientes (negociação comercial direta)'],
+    documentos:['Registro de negociações realizadas (condições finais acordadas)','Solicitações de aprovação de alteração de tabela enviadas à Diretoria'],
+    indicadores:'A definir — sugestões: taxa de conversão de orçamentos negociados, tempo médio de negociação, número de novos clientes captados/mês.',
+    nota:'Cargo atualmente vago.' },
+
+  { key:'planejamento-estrategico', cargo:'Planejamento Estratégico e Resultados', area:'Staff / Consultoria Externa', reportaA:'Diretoria', subordinados:'Nenhum',
+    objetivo:'Atuar como parceiro de transformação de gestão da empresa, estruturando a visibilidade do negócio através de business intelligence, consolidando o conhecimento organizacional em um repositório vivo de suporte contínuo, e conduzindo a evolução e padronização dos processos administrativos e operacionais — com foco em resultado e maturidade de gestão, não em suporte operacional do dia a dia.',
+    responsabilidades:['Estruturação de dashboards e relatórios gerenciais (financeiro, operacional, comercial) que deem aos donos visibilidade clara e atualizada do negócio','Identificação de KPIs relevantes ao setor de manutenção de frotas/caminhões','Organização e interpretação das bases de dados existentes, tradução de dados em insights acionáveis','Manutenção de um repositório vivo de informações da empresa: toda demanda pontual resolvida deixa rastro documentado (análises, decisões, comunicações)','Elaboração de comunicações, propostas comerciais e relatórios sob demanda da Diretoria','Mapeamento de processos administrativos e operacionais (fluxo, responsáveis, frequência, volume)','Identificação de gargalos, retrabalho e oportunidades de melhoria de eficiência, propondo e priorizando soluções por impacto e viabilidade (podendo envolver automações, novos sistemas ou ajustes de processo, conforme o caso mais adequado)','Documentação da estrutura organizacional da empresa (organograma, descrições de cargo) como base para padronização de processos e eventual adequação a normas de gestão (ex: ISO 9001)'],
+    atividades:['Levantar, estruturar e manter atualizados os dashboards gerenciais da empresa (financeiro, operacional, comercial)','Consolidar dados de diferentes fontes (ERP, planilhas, plataformas de clientes) em uma base coerente para análise','Responder a demandas pontuais da Diretoria e das áreas (dúvidas administrativas/operacionais, análise de documentos, rascunho de comunicações), registrando o resultado no espaço do projeto para consulta futura','Documentar o organograma da empresa e as descrições detalhadas de cada função/cargo','Mapear os processos operacionais e administrativos existentes, incluindo fluxogramas e regras de negócio','Identificar oportunidades de melhoria de processo e eficiência, propondo soluções (automações, novos sistemas ou ajustes de processo, conforme o mais adequado) e avaliando impacto e viabilidade antes de priorizar','Reportar periodicamente à Diretoria o andamento das iniciativas, resultados obtidos e próximos passos recomendados','Sinalizar proativamente quando faltar informação relevante para completar uma análise ou entrega'],
+    interfaces:['Diretoria (reporte direto, validação de prioridades e decisões estratégicas)','Gerente Operacional (levantamento de processos operacionais, dados de campo)','Analista Financeira (dados financeiros para dashboards e relatórios)','Demais áreas da empresa, conforme demanda pontual de suporte ou mapeamento de processo','Fornecedores de tecnologia, quando envolver estruturação de dados e sistemas'],
+    documentos:['Dashboards e relatórios gerenciais','Manual da empresa (organograma, descrições de cargo, procedimentos)','Análises, propostas e comunicações produzidas sob demanda','Mapeamentos de processo e propostas de melhoria'],
+    indicadores:'A definir — sugestões: número de dashboards/módulos entregues, tempo médio de resposta a demandas pontuais, número de melhorias de processo implementadas.' },
+];
+
+const MN_ORG = { label:'DIRETORIA', dir:true, static:true, children:[
+  { label:'Diretor Comercial/Operacional', static:true, children:[
+    { label:'Gerente Operacional', key:'gerente-operacional', children:[
+      { label:'Administrativo', sub:'3 posições', key:'administrativo' },
+      { label:'Almoxarife', key:'almoxarife' },
+      { label:'Porteiro', key:'porteiro' },
+      { label:'Líder Operacional', sub:'Implementos Rodoviários', key:'lider-operacional', children:[
+        { label:'Mecânico Oficial', sub:'Implementos', key:'mecanico-oficial' },
+        { label:'Mecânico 1/2 Oficial', sub:'Implementos', key:'mecanico-12-oficial' }
+      ]},
+      { label:'Líder Operacional', sub:'Mecânica Diesel', key:'lider-operacional', children:[
+        { label:'Mecânico Oficial', sub:'Mecânica Diesel', key:'mecanico-oficial' },
+        { label:'Mecânico 1/2 Oficial', sub:'Mecânica Diesel', key:'mecanico-12-oficial' }
+      ]}
+    ]}
+  ]},
+  { label:'Diretor Financeiro/Comercial', static:true, children:[
+    { label:'Analista Financeira', key:'analista-financeira' },
+    { label:'Gestor(a) de RH', key:'gestor-rh' },
+    { label:'Marketing Digital', key:'marketing-digital' },
+    { label:'Comercial', sub:'vaga', key:'comercial' }
+  ]},
+  { label:'Planejamento Estratégico e Resultados', sub:'reporta a ambos os diretores', staff:true, key:'planejamento-estrategico' }
+]};
+
+const MN_PROCESSO_STEPS = [
+  {etapa:'Entrada do equipamento, registro na portaria', resp:'Porteiro', key:'porteiro', status:'PORTARIA'},
+  {etapa:'Atendimento no balcão, coleta do motivo da visita', resp:'Administrativo', key:'administrativo', status:null},
+  {etapa:'Abertura da OS no sistema com pré-configuração conforme o relato', resp:'Administrativo', key:'administrativo', status:'EM ORÇAMENTO'},
+  {etapa:'Envio do orçamento ao cliente', resp:'Administrativo', key:'administrativo', status:'EM ORÇAMENTO'},
+  {etapa:'Negociação de valores, quando o orçamento não é aprovado (alteração de tabela base → aprovação da Diretoria)', resp:'Comercial / Diretor Comercial', key:'comercial', status:'EM ORÇAMENTO'},
+  {etapa:'Aprovado: impressão da OS sem valor e organização física por tipo de equipamento (Implementos ou Mecânica Diesel), respeitando FIFO — exceto repriorização pela Gerência Operacional', resp:'Administrativo', key:'administrativo', status:'AGUARDANDO VAGA'},
+  {etapa:'Líder retira o próximo papel do organizador, faz briefing com a equipe e fixa o papel no equipamento', resp:'Líder Operacional', key:'lider-operacional', status:'EM EXECUÇÃO'},
+  {etapa:'Execução da manutenção; solicitação de material ao almoxarifado (inclusão de itens extras na OS pelo almoxarife, se necessário)', resp:'Mecânicos / Almoxarife', key:'mecanico-oficial', status:'EM EXECUÇÃO'},
+  {etapa:'Fim da execução: papel da OS entregue ao Administrativo responsável', resp:'Líder Operacional → Administrativo', key:'administrativo', status:null},
+  {etapa:'Fotos e evidências do serviço — etapa crítica: sem elas o cliente pode negar o serviço. Administrativo vai ao equipamento junto com o Líder', resp:'Administrativo + Líder Operacional', key:'administrativo', status:'FINALIZADO'}
+];
+const MN_PROCESSO_BRANCH = {
+  a:{ label:'Cliente com plataforma própria (ex: JSL, Fadel, Ritmo)', steps:[
+        {etapa:'Tratativa de finalização + upload de evidências no portal do cliente', resp:'Administrativo', key:'administrativo', status:'AGUARDANDO PEDIDO'},
+        {etapa:'Cobrança da liberação/pedido de compra do cliente na plataforma', resp:'Analista Financeira', key:'analista-financeira', status:'AGUARDANDO PEDIDO → FATURADO'}
+      ]},
+  b:{ label:'Cliente sem plataforma própria', steps:[
+        {etapa:'Faturamento direto: emissão de NF e cobrança (boleto, pix ou cartão)', resp:'Analista Financeira', key:'analista-financeira', status:'FATURADO'}
+      ]}
+};
+const MN_PROCESSO_FINAL = {etapa:'Liberação do equipamento após confirmação da manutenção', resp:'Porteiro (em contato com a Gerência Operacional)', key:'porteiro', status:null};
+
+const MN_REGRAS = [
+  { grupo:'Regras de Conduta', itens:[
+    { id:'respeito', num:6, titulo:'Respeito e Convivência', body:[
+      {p:'Na Renova acreditamos que um ambiente de trabalho saudável depende do respeito entre todas as pessoas.'},
+      {label:'Espera-se de todos:', ul:['tratar colegas, clientes e fornecedores com educação','agir com profissionalismo','respeitar diferenças','colaborar com a equipe','manter postura ética']},
+      {label:'Não será permitido:', ul:['agressões físicas ou verbais','ameaças','assédio moral ou sexual','discriminação de qualquer natureza','brincadeiras ofensivas']}
+    ]},
+    { id:'seguranca', num:7, titulo:'Segurança do Trabalho', body:[
+      {p:'A segurança é responsabilidade de todos.'},
+      {label:'É obrigatório:', ul:['utilizar corretamente os EPIs fornecidos','seguir os procedimentos de segurança','participar dos treinamentos obrigatórios','comunicar acidentes imediatamente','comunicar situações de risco']},
+      {note:'Todo colaborador ou prestador de serviços deverá interromper imediatamente qualquer atividade que represente risco grave à integridade física das pessoas, comunicando o fato ao gestor responsável.'},
+      {label:'É proibido:', ul:['retirar proteções de máquinas','executar atividades inseguras','utilizar ferramentas danificadas sem comunicar']},
+      {note:'A prevenção de acidentes é um compromisso coletivo.'}
+    ]},
+    { id:'organizacao', num:8, titulo:'Organização e Limpeza', body:[
+      {p:'Cada profissional deve cuidar do ambiente de trabalho como se fosse seu, preservando ferramentas, equipamentos e instalações para garantir segurança, eficiência e respeito aos colegas.'},
+      {label:'Ao final das atividades:', ul:['guardar ferramentas','limpar a bancada','organizar materiais','descartar resíduos corretamente','manter corredores livres','conservar a limpeza das áreas comuns']},
+      {note:'Um ambiente organizado reduz acidentes e melhora a produtividade.'}
+    ]},
+    { id:'uniforme', num:9, titulo:'Uniforme e Apresentação', body:[
+      {label:'Durante a permanência nas dependências da empresa é obrigatório:', ul:['utilizar uniforme fornecido pela empresa','utilizar os EPIs obrigatórios','manter boa higiene pessoal']},
+      {note:'Não é permitido trabalhar sem identificação quando esta for exigida.'}
+    ]},
+    { id:'epis', num:10, titulo:'Equipamentos de Proteção Individual (EPIs)', body:[
+      {label:'Responsabilidades de cada colaborador ou prestador de serviços:', ul:['cuidar dos EPIs','comunicar perdas','devolver os EPIs quando solicitado pela empresa','solicitar substituição quando necessário']}
+    ]},
+    { id:'ferramentas', num:11, titulo:'Ferramentas e Patrimônio', body:[
+      {label:'É dever de cada profissional:', ul:['utilizar corretamente equipamentos e ferramentas','guardar ferramentas após o uso','comunicar perdas, danos ou defeitos','evitar desperdícios de materiais','manter os equipamentos limpos e organizados','devolver ferramentas ao local correto após sua utilização']},
+      {label:'É proibido:', ul:['retirar ferramentas ou materiais sem autorização','utilizar equipamentos para fins particulares','danificar, alterar ou inutilizar equipamentos da empresa']},
+      {note:'Todos são responsáveis pela conservação do patrimônio da Renova Manutenções. Ferramentas perdidas ou danificadas devem ser comunicadas imediatamente ao gestor.'}
+    ]},
+    { id:'qualidade', num:12, titulo:'Qualidade dos Serviços', body:[
+      {p:'Os serviços devem ser executados conforme os padrões de qualidade da Renova. Caso seja identificada alguma falha, o responsável deverá realizar as correções necessárias dentro do prazo estabelecido.'},
+      {p:'O compromisso com a qualidade fortalece a confiança dos clientes e a imagem da empresa.'},
+      {p:'Esse padrão está alinhado às obrigações contratuais de execução conforme o escopo e padrões de qualidade.'}
+    ]},
+    { id:'comunicacao', num:13, titulo:'Comunicação', body:[
+      {label:'O colaborador ou prestador de serviços deverá comunicar imediatamente ao gestor qualquer situação que possa comprometer:', ul:['a segurança','a qualidade dos serviços','os prazos','o patrimônio','os clientes','a imagem da empresa','quase acidentes','reclamações de clientes','perdas de ferramentas','danos ao patrimônio']}
+    ]},
+    { id:'cliente', num:14, titulo:'Relacionamento com o Cliente', body:[
+      {p:'Todo colaborador ou prestador de serviços representa a imagem da Renova perante seus clientes.'},
+      {label:'É esperado que todos:', ul:['tratem o cliente com educação e respeito','utilizem linguagem profissional','preservem o patrimônio do cliente','comuniquem imediatamente qualquer ocorrência envolvendo veículos ou equipamentos','preservem a imagem da empresa durante todo o atendimento, mantendo uma postura ética']}
+    ]},
+    { id:'celular', num:15, titulo:'Uso de Celular', body:[
+      {p:'O uso do celular deve ocorrer com bom senso.'},
+      {label:'É proibido utilizá-lo:', ul:['durante operações que ofereçam risco','enquanto estiver operando máquinas','durante atendimento ao cliente, salvo necessidade do serviço','com fones de ouvido durante atividades operacionais','para assistir vídeos ou utilizar redes sociais durante o expediente, salvo quando autorizado','para chamadas pessoais, exceto em situações necessárias','enquanto estiver conduzindo veículo da empresa']}
+    ]}
+  ]},
+  { grupo:'Proteção da Empresa', itens:[
+    { id:'sigilo', num:16, titulo:'Sigilo e Confidencialidade', body:[
+      {p:'Todas as informações da empresa são confidenciais.'},
+      {label:'Incluem-se:', ul:['clientes e fornecedores','valores dos serviços oferecidos','contratos','documentos e dados internos','processos e projetos','fotografias','sistemas']},
+      {note:'As informações obtidas durante a prestação dos serviços não poderão ser utilizadas para benefício próprio ou de terceiros. A obrigação de confidencialidade permanece mesmo após o encerramento da relação contratual.'}
+    ]},
+    { id:'lgpd', num:17, titulo:'Proteção de Dados (LGPD)', body:[
+      {p:'Dados pessoais e da empresa devem ser tratados com responsabilidade.'},
+      {label:'É proibido:', ul:['compartilhar documentos de clientes','divulgar dados pessoais','fotografar documentos sem autorização','utilizar informações para fins particulares','armazenar documentos sem autorização']},
+      {note:'Em caso de incidente envolvendo dados pessoais, a empresa deverá ser comunicada imediatamente, conforme previsto contratualmente.'}
+    ]},
+    { id:'marca', num:18, titulo:'Uso da Marca Renova', body:[
+      {label:'Não é permitido:', ul:['utilizar o nome da empresa para interesses particulares','utilizar o logotipo sem autorização','negociar em nome da empresa sem autorização','publicar informações internas em redes sociais']},
+      {note:'Essa regra acompanha a vedação contratual ao uso indevido da marca e da imagem da Renova.'}
+    ]},
+    { id:'propriedade', num:19, titulo:'Propriedade da Empresa', body:[
+      {p:'Tudo que for desenvolvido exclusivamente para a Renova durante a prestação dos serviços pertence à empresa.'},
+      {label:'Exemplos:', ul:['relatórios','planilhas','procedimentos','desenhos técnicos','projetos','formulários','manuais','documentos técnicos']}
+    ]},
+    { id:'anticorrupcao', num:20, titulo:'Política Anticorrupção', body:[
+      {label:'É proibido:', ul:['receber vantagens indevidas','oferecer propina','praticar fraude','oferecer, solicitar ou aceitar brindes, presentes ou vantagens que possam influenciar decisões comerciais','utilizar recursos da empresa para fins ilícitos']}
+    ]},
+    { id:'documental', num:21, titulo:'Regularidade Documental', body:[
+      {p:'Sempre que solicitado pela empresa, o prestador de serviços deverá apresentar a documentação necessária para comprovação de sua regularidade.'}
+    ]}
+  ]},
+  { grupo:'Normas Disciplinares', itens:[
+    { id:'alcool-drogas', num:22, titulo:'Álcool e Drogas', body:[
+      {label:'É proibido:', ul:['trabalhar sob efeito de álcool','trabalhar sob efeito de drogas ilícitas','consumir bebidas alcoólicas durante o expediente','portar drogas ilícitas nas dependências da empresa']},
+      {note:'A segurança de todos depende da responsabilidade individual.'}
+    ]},
+    { id:'condutas-proibidas', num:23, titulo:'Condutas Proibidas', body:[
+      {label:'São proibidas as seguintes condutas:', ul:['fraude','furto ou roubo','corrupção','falsificação de documentos','uso indevido da marca da empresa','dano intencional ao patrimônio','violação de informações confidenciais','desrespeitar clientes, colegas ou fornecedores','omitir acidentes ou situações de risco','utilizar equipamentos da empresa para fins particulares sem autorização','descumprimento das normas de segurança','qualquer prática ilícita','descumprimento deliberado das normas deste Manual']},
+      {note:'Essas condutas podem resultar em rescisão imediata do contrato ou demissão por justa causa, conforme previsto na cláusula de integridade e nas hipóteses de rescisão contratual e, para os colaboradores CLT, demissão por justa causa, conforme art. 482 da CLT.'}
+    ]},
+    { id:'medidas', num:24, titulo:'Medidas Disciplinares', body:[
+      {label:'O descumprimento das normas deste Manual poderá resultar, conforme a gravidade da ocorrência, em:', ul:['orientação verbal','advertência escrita','suspensão, quando aplicável','encerramento do contrato de prestação de serviços','demissão por justa causa, quando aplicável aos empregados regidos pela CLT','comunicação às autoridades competentes, quando houver indícios de prática ilícita']},
+      {p:'A medida disciplinar será aplicada considerando a natureza da ocorrência, seus impactos e a legislação vigente.'}
+    ]},
+    { id:'desligamento', num:25, titulo:'Desligamento', body:[
+      {label:'No encerramento do vínculo deverão ser devolvidos:', ul:['uniforme e EPIs','ferramentas','documentos','equipamentos','materiais e demais bens pertencentes à empresa']},
+      {note:'No encerramento do vínculo, todos os acessos físicos e eletrônicos deverão ser devolvidos ou cancelados, bem como qualquer informação, documento ou material pertencente à empresa.'}
+    ]}
+  ]},
+  { grupo:'Encerramento', itens:[
+    { id:'mensagem-final', num:26, titulo:'Mensagem Final', body:[
+      {p:'A Renova Manutenções acredita que a qualidade dos serviços, a segurança das pessoas e a confiança dos clientes são construídas diariamente por meio das atitudes de cada profissional.'},
+      {p:'Esperamos que este Manual seja utilizado como um guia para o desenvolvimento de um ambiente de trabalho organizado, seguro, respeitoso e comprometido com a excelência.'},
+      {p:'Contamos com você para fortalecer nossa equipe e representar a Renova Manutenções com ética, responsabilidade e profissionalismo.'},
+      {p:'Disposições finais: este Manual poderá ser atualizado sempre que necessário, visando atender alterações na legislação, nos procedimentos internos ou nas necessidades da Renova Manutenções. Todos deverão observar a versão vigente disponibilizada pela empresa. Casos não previstos serão analisados pela Diretoria, observando a legislação aplicável e as normas internas.'}
+    ]},
+    { id:'termo-ciencia', num:27, titulo:'Termo de Ciência', body:[
+      {p:'"Declaro que recebi, li e compreendi o Manual de Regras e Conduta da Renova Manutenções. Comprometo-me a cumprir todas as normas aqui estabelecidas, zelando pela segurança, qualidade dos serviços, respeito às pessoas e preservação do patrimônio da empresa."'},
+      {note:'Este é o texto de referência do termo assinado no processo admissional (nome, CPF, função, local, data e assinatura) — exibido aqui apenas como consulta, não é um formulário preenchível.'}
+    ]}
+  ]}
+];
+
+let mnIniciado = false;
+function initManual(){
+  if(mnIniciado) return;
+  mnIniciado = true;
+  renderOrganograma();
+  renderCargos();
+  renderProcesso();
+  renderRegras();
+}
+
+function switchManualTab(tab){
+  document.querySelectorAll('#screen-manual .mn-tab').forEach(b=>b.classList.toggle('active', b.dataset.mntab===tab));
+  document.querySelectorAll('#screen-manual .mn-panel').forEach(p=>p.classList.toggle('active', p.id==='mn-panel-'+tab));
+  document.querySelector('#screen-manual .mn-body').scrollIntoView({block:'start'});
+}
+
+function mnOrgNodeHTML(node){
+  const cls = ['mn-org-box'];
+  if(node.dir) cls.push('mn-org-dir');
+  if(node.staff) cls.push('mn-org-staff');
+  if(node.static || !node.key) cls.push('mn-org-static');
+  const onclick = node.key ? ' onclick="abrirCargoDoManual(\''+node.key+'\')"' : '';
+  const sub = node.sub ? '<span class="mn-org-sub">'+kbEsc(node.sub)+'</span>' : '';
+  let html = '<div class="mn-org-node"><div class="'+cls.join(' ')+'"'+onclick+'>'+kbEsc(node.label)+sub+'</div>';
+  if(node.children && node.children.length){
+    html += '<div class="mn-org-children">'+node.children.map(c=>'<div class="mn-org-child">'+mnOrgNodeHTML(c)+'</div>').join('')+'</div>';
+  }
+  html += '</div>';
+  return html;
+}
+function renderOrganograma(){
+  document.getElementById('mn-org-root').innerHTML = mnOrgNodeHTML(MN_ORG);
+}
+
+function mnCargoCardHTML(c){
+  const badges = (c.especialidades ? '<span class="mn-cargo-esp">2 especialidades</span>' : '') + (c.vaga ? '<span class="mn-cargo-esp" style="background:#fee2e2;color:#dc2626;">vaga em aberto</span>' : '');
+  const documentosHtml = Array.isArray(c.documentos) ? '<ul>'+c.documentos.map(d=>'<li>'+kbEsc(d)+'</li>').join('')+'</ul>' : '<p>'+kbEsc(c.documentos)+'</p>';
+  const notaHtml = c.nota ? '<div class="mn-cargo-sec"><h4>Observação</h4><p>'+kbEsc(c.nota)+'</p></div>' : '';
+  const espHtml = c.especialidades ? '<div class="mn-cargo-sec"><h4>Especialidades</h4><p>Este cargo existe em duas especialidades — <b>'+c.especialidades.join('</b> e <b>')+'</b> — com a mesma descrição-base; a diferença é a área técnica de atuação e a equipe subordinada.</p></div>' : '';
+  return '<div class="mn-cargo-card" id="mn-cargo-'+c.key+'" data-nome="'+kbEsc(c.cargo).toLowerCase()+' '+kbEsc(c.area).toLowerCase()+'">'
+    +'<div class="mn-cargo-head" onclick="toggleCargoCard(\''+c.key+'\')">'
+      +'<div class="mn-cargo-ico"><i class="fa-solid fa-id-badge"></i></div>'
+      +'<div class="mn-cargo-titles"><div class="nome">'+kbEsc(c.cargo)+badges+'</div><div class="meta">'+kbEsc(c.area)+' &middot; Reporta a: '+kbEsc(c.reportaA)+'</div></div>'
+      +'<i class="fa-solid fa-chevron-down mn-cargo-chevron"></i>'
+    +'</div>'
+    +'<div class="mn-cargo-body">'
+      +espHtml
+      +'<div class="mn-cargo-sec"><h4>Objetivo do cargo</h4><p>'+kbEsc(c.objetivo)+'</p></div>'
+      +'<div class="mn-cargo-sec"><h4>Subordinados diretos</h4><p>'+kbEsc(c.subordinados)+'</p></div>'
+      +'<div class="mn-cargo-sec"><h4>Responsabilidades principais</h4><ul>'+c.responsabilidades.map(r=>'<li>'+kbEsc(r)+'</li>').join('')+'</ul></div>'
+      +'<div class="mn-cargo-sec"><h4>Atividades detalhadas</h4><ol>'+c.atividades.map(a=>'<li>'+kbEsc(a)+'</li>').join('')+'</ol></div>'
+      +'<div class="mn-cargo-sec"><h4>Interfaces</h4><ul>'+c.interfaces.map(i=>'<li>'+kbEsc(i)+'</li>').join('')+'</ul></div>'
+      +'<div class="mn-cargo-sec"><h4>Documentos/registros gerados</h4>'+documentosHtml+'</div>'
+      +'<div class="mn-cargo-sec"><h4>Indicadores</h4><p>'+kbEsc(c.indicadores)+'</p></div>'
+      +notaHtml
+    +'</div>'
+  +'</div>';
+}
+function renderCargos(){
+  document.getElementById('mn-cargo-list').innerHTML = MN_CARGOS.map(mnCargoCardHTML).join('');
+  document.getElementById('mn-cargo-count').textContent = MN_CARGOS.length+' cargos';
+}
+function toggleCargoCard(key){
+  const el = document.getElementById('mn-cargo-'+key);
+  if(el) el.classList.toggle('open');
+}
+function filterCargos(v){
+  const q = v.toLowerCase().trim();
+  let visible = 0;
+  document.querySelectorAll('#mn-cargo-list .mn-cargo-card').forEach(el=>{
+    const match = el.dataset.nome.includes(q);
+    el.style.display = match ? '' : 'none';
+    if(match) visible++;
+  });
+  document.getElementById('mn-cargo-count').textContent = visible+' de '+MN_CARGOS.length+' cargos';
+}
+function abrirCargoDoManual(key){
+  switchManualTab('cargos');
+  const search = document.getElementById('mn-cargo-search');
+  search.value='';
+  filterCargos('');
+  document.querySelectorAll('#mn-cargo-list .mn-cargo-card').forEach(el=>el.classList.remove('open'));
+  const el = document.getElementById('mn-cargo-'+key);
+  if(el){
+    el.classList.add('open');
+    setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}), 80);
+  }
+}
+
+function mnFlowStepHTML(s){
+  const cls = 'mn-flow-step'+(s.key?'':' mn-flow-nolink');
+  const onclick = s.key ? ' onclick="abrirCargoDoManual(\''+s.key+'\')"' : '';
+  return '<div class="'+cls+'"'+onclick+'>'
+    +'<div class="mn-flow-step-title">'+kbEsc(s.etapa)+'</div>'
+    +'<div class="mn-flow-meta"><span class="mn-flow-badge"><i class="fa-solid fa-user"></i> '+kbEsc(s.resp)+'</span>'
+    +(s.status?'<span class="mn-flow-status">'+kbEsc(s.status)+'</span>':'')
+    +'</div></div>';
+}
+function mnArrow(){ return '<div class="mn-flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>'; }
+function renderProcesso(){
+  let html = '';
+  MN_PROCESSO_STEPS.forEach(s=>{ html += mnFlowStepHTML(s) + mnArrow(); });
+  html += '<div class="mn-flow-branchwrap"><div class="mn-flow-branch">';
+  html += '<div class="mn-flow-branch-col"><div class="mn-flow-branch-label"><i class="fa-solid fa-code-branch"></i> '+kbEsc(MN_PROCESSO_BRANCH.a.label)+'</div>'
+    + MN_PROCESSO_BRANCH.a.steps.map((s,i)=> mnFlowStepHTML(s) + (i<MN_PROCESSO_BRANCH.a.steps.length-1?mnArrow():'')).join('') + '</div>';
+  html += '<div class="mn-flow-branch-col"><div class="mn-flow-branch-label"><i class="fa-solid fa-code-branch"></i> '+kbEsc(MN_PROCESSO_BRANCH.b.label)+'</div>'
+    + MN_PROCESSO_BRANCH.b.steps.map(s=> mnFlowStepHTML(s)).join('') + '</div>';
+  html += '</div></div>';
+  html += mnArrow();
+  html += mnFlowStepHTML(MN_PROCESSO_FINAL);
+  document.getElementById('mn-flow').innerHTML = html;
+}
+
+function mnRegraBodyHTML(blocks){
+  return blocks.map(b=>{
+    if(b.note) return '<div class="destaque">'+b.note+'</div>';
+    if(b.ul) return (b.label?'<p><b>'+b.label+'</b></p>':'')+'<ul>'+b.ul.map(x=>'<li>'+x+'</li>').join('')+'</ul>';
+    if(b.p) return '<p>'+b.p+'</p>';
+    return '';
+  }).join('');
+}
+function renderRegras(){
+  let navHtml = '';
+  MN_REGRAS.forEach(group=>{
+    navHtml += '<div class="mn-regras-group-label">'+kbEsc(group.grupo)+'</div>';
+    group.itens.forEach(it=>{
+      navHtml += '<button class="mn-regras-link" id="mn-regra-nav-'+it.id+'" onclick="selecionarRegra(\''+it.id+'\')">'+it.num+'. '+kbEsc(it.titulo)+'</button>';
+    });
+  });
+  document.getElementById('mn-regras-nav').innerHTML = navHtml;
+  selecionarRegra(MN_REGRAS[0].itens[0].id);
+}
+function selecionarRegra(id){
+  let found=null;
+  MN_REGRAS.forEach(g=>g.itens.forEach(it=>{ if(it.id===id) found=it; }));
+  if(!found) return;
+  document.querySelectorAll('#mn-regras-nav .mn-regras-link').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('mn-regra-nav-'+id);
+  if(btn) btn.classList.add('active');
+  document.getElementById('mn-regras-content').innerHTML = '<h3><span>'+found.num+'.</span> '+kbEsc(found.titulo)+'</h3>'+mnRegraBodyHTML(found.body);
 }
 </script>
 </body>
