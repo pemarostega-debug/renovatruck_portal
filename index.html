@@ -1069,28 +1069,41 @@ textarea.inp{resize:vertical;min-height:64px;}
   @media(max-width:680px){#screen-manual .mn-inst-grid{grid-template-columns:1fr;}}
 
   /* Organograma */
-  #screen-manual .mn-org-wrap{overflow-x:auto;padding:10px 4px 30px;}
-  #screen-manual .mn-org-root{display:inline-flex;justify-content:center;min-width:100%;padding:0 10px;}
-  #screen-manual .mn-org-node{display:flex;flex-direction:column;align-items:center;position:relative;}
-  #screen-manual .mn-org-box{background:#fff;border:2px solid var(--border);border-radius:10px;padding:9px 14px;font-size:.72rem;font-weight:800;color:var(--text);white-space:nowrap;cursor:pointer;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.06);position:relative;z-index:2;}
-  #screen-manual .mn-org-box:hover{border-color:#4f46e5;color:#4f46e5;transform:translateY(-1px);}
-  #screen-manual .mn-org-box.mn-org-static{cursor:default;}
-  #screen-manual .mn-org-box.mn-org-static:hover{border-color:var(--border);color:var(--text);transform:none;}
-  #screen-manual .mn-org-box.mn-org-dir{background:#0f172a;color:#fff;border-color:#0f172a;font-size:.76rem;}
-  #screen-manual .mn-org-box.mn-org-dir:hover{border-color:#0f172a;color:#fff;transform:none;}
-  #screen-manual .mn-org-box.mn-org-staff{border-style:dashed;background:#f5f3ff;color:#6d28d9;border-color:#c4b5fd;}
-  #screen-manual .mn-org-box .mn-org-sub{display:block;font-weight:600;font-size:.62rem;opacity:.7;margin-top:1px;}
-  #screen-manual .mn-org-children{display:flex;padding-top:26px;position:relative;}
-  #screen-manual .mn-org-node > .mn-org-children::before{content:'';position:absolute;top:0;left:50%;width:0;height:26px;border-left:2px solid #cbd5e1;}
-  #screen-manual .mn-org-child{position:relative;padding:0 14px;display:flex;flex-direction:column;align-items:center;}
-  #screen-manual .mn-org-child::before{content:'';position:absolute;top:-26px;left:0;right:0;height:26px;border-top:2px solid #cbd5e1;}
-  #screen-manual .mn-org-child:first-child::before{left:50%;}
-  #screen-manual .mn-org-child:last-child::before{right:50%;}
-  #screen-manual .mn-org-child:only-child::before{display:none;}
-  #screen-manual .mn-org-child::after{content:'';position:absolute;top:-26px;left:50%;width:0;height:26px;border-left:2px solid #cbd5e1;}
-  #screen-manual .mn-org-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.7rem;color:var(--muted);font-weight:700;padding:0 4px 6px;}
+  #screen-manual .mn-org-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  #screen-manual .mn-tool-btn{border:1.5px solid var(--border);background:#fff;color:var(--muted);border-radius:8px;height:34px;min-width:34px;padding:0 10px;font-size:.76rem;font-weight:800;cursor:pointer;font-family:"DM Sans",sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;}
+  #screen-manual .mn-tool-btn:hover{border-color:#4f46e5;color:#4f46e5;background:#f5f3ff;}
+  #screen-manual .mn-tool-btn.on{background:#4f46e5;border-color:#4f46e5;color:#fff;}
+  #screen-manual .mn-tool-sep{width:1px;height:22px;background:var(--border);margin:0 4px;}
+  #screen-manual .mn-tool-zoom{font-size:.72rem;font-weight:800;color:var(--muted);min-width:44px;text-align:center;}
+  #screen-manual .mn-org-viewport{position:relative;background:#fff;border:1px solid var(--border);border-radius:14px;height:min(70vh,620px);overflow:hidden;cursor:grab;background-image:radial-gradient(circle,#e2e8f0 1px,transparent 1px);background-size:22px 22px;}
+  #screen-manual .mn-org-viewport.dragging{cursor:grabbing;}
+  #screen-manual .mn-org-canvas{position:absolute;top:0;left:0;transform-origin:0 0;}
+  #screen-manual .mn-org-links{position:absolute;top:0;left:0;overflow:visible;pointer-events:none;}
+  #screen-manual .mn-node{position:absolute;box-sizing:border-box;background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:8px 10px;display:flex;align-items:center;gap:9px;box-shadow:0 1px 4px rgba(15,23,42,.07);transition:box-shadow .15s,border-color .15s,transform .15s;cursor:pointer;}
+  #screen-manual .mn-node:hover{border-color:#4f46e5;box-shadow:0 6px 20px rgba(79,70,229,.18);transform:translateY(-1px);z-index:5;}
+  #screen-manual .mn-node.is-dir{background:linear-gradient(135deg,#0f172a,#1e293b);border-color:#0f172a;}
+  #screen-manual .mn-node.is-dir .mn-node-cargo{color:#fff;}
+  #screen-manual .mn-node.is-dir .mn-node-pessoa{color:rgba(255,255,255,.62);}
+  #screen-manual .mn-node.is-staff{background:#faf5ff;border-color:#d8b4fe;border-style:dashed;}
+  #screen-manual .mn-node.is-staff .mn-node-cargo{color:#7e22ce;}
+  #screen-manual .mn-node.is-vaga{border-style:dashed;border-color:#fca5a5;background:#fff7f7;}
+  #screen-manual .mn-node-av{width:34px;height:34px;border-radius:50%;flex-shrink:0;object-fit:cover;background:#e0e7ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:900;border:2px solid #fff;box-shadow:0 0 0 1.5px #e0e7ff;overflow:hidden;}
+  #screen-manual .mn-node.is-dir .mn-node-av{background:#334155;color:#e2e8f0;box-shadow:0 0 0 1.5px #475569;}
+  #screen-manual .mn-node.is-staff .mn-node-av{background:#f3e8ff;color:#7e22ce;box-shadow:0 0 0 1.5px #e9d5ff;}
+  #screen-manual .mn-node-txt{min-width:0;flex:1;}
+  #screen-manual .mn-node-cargo{font-size:.72rem;font-weight:800;color:var(--text);line-height:1.22;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;}
+  #screen-manual .mn-node-pessoa{font-size:.64rem;font-weight:600;color:var(--muted);line-height:1.3;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #screen-manual .mn-node-pessoa.vazio{font-style:italic;opacity:.65;}
+  #screen-manual .mn-node-tag{display:inline-block;font-size:.55rem;font-weight:900;padding:1px 6px;border-radius:20px;background:#fef3c7;color:#b45309;margin-left:5px;vertical-align:middle;}
+  #screen-manual .mn-node-toggle{position:absolute;bottom:-11px;left:50%;transform:translateX(-50%);width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:#fff;color:#4f46e5;font-size:.6rem;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:6;box-shadow:0 1px 4px rgba(0,0,0,.12);}
+  #screen-manual .mn-node-toggle:hover{background:#4f46e5;color:#fff;border-color:#4f46e5;}
+  #screen-manual .mn-node-edit{position:absolute;top:-9px;right:-9px;width:23px;height:23px;border-radius:50%;border:1.5px solid #c7d2fe;background:#fff;color:#4f46e5;font-size:.62rem;display:none;align-items:center;justify-content:center;cursor:pointer;z-index:7;box-shadow:0 1px 5px rgba(0,0,0,.15);}
+  #screen-manual.edit-mode .mn-node-edit{display:flex;}
+  #screen-manual .mn-node-edit:hover{background:#4f46e5;color:#fff;}
+  #screen-manual .mn-org-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.68rem;color:var(--muted);font-weight:700;padding:10px 4px 0;}
   #screen-manual .mn-org-legend span{display:inline-flex;align-items:center;gap:6px;}
   #screen-manual .mn-org-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+  #screen-manual .mn-org-hint{font-size:.68rem;color:var(--muted);font-weight:600;padding:6px 4px 0;}
 
   /* Cargos */
   #screen-manual .mn-cargo-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
@@ -1113,8 +1126,11 @@ textarea.inp{resize:vertical;min-height:64px;}
   #screen-manual .mn-cargo-sec:last-child{margin-bottom:0;}
   #screen-manual .mn-cargo-sec h4{font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:#4f46e5;margin:0 0 5px;}
   #screen-manual .mn-cargo-sec p{font-size:.82rem;line-height:1.55;margin:0;color:var(--text);}
-  #screen-manual .mn-cargo-sec ul{margin:0;padding-left:18px;font-size:.82rem;line-height:1.6;color:var(--text);}
-  #screen-manual .mn-cargo-sec ol{margin:0;padding-left:18px;font-size:.82rem;line-height:1.65;color:var(--text);}
+  /* list-style explícito: o preflight do Tailwind CDN zera os marcadores */
+  #screen-manual .mn-cargo-sec ul{margin:0;padding-left:20px;font-size:.82rem;line-height:1.6;color:var(--text);list-style:disc outside;}
+  #screen-manual .mn-cargo-sec ol{margin:0;padding-left:20px;font-size:.82rem;line-height:1.65;color:var(--text);list-style:decimal outside;}
+  #screen-manual .mn-cargo-sec li{margin-bottom:3px;}
+  #screen-manual .mn-cargo-sec li::marker{color:#a5b4fc;}
 
   /* Processo */
   #screen-manual .mn-flow{display:flex;flex-direction:column;align-items:center;gap:0;padding:10px 0 20px;}
@@ -1147,7 +1163,8 @@ textarea.inp{resize:vertical;min-height:64px;}
   #screen-manual .mn-regras-content h3{font-size:1rem;font-weight:900;color:var(--text);margin:0 0 12px;display:flex;align-items:center;gap:8px;}
   #screen-manual .mn-regras-content h3 span{color:#4f46e5;}
   #screen-manual .mn-regras-content p{font-size:.86rem;line-height:1.65;color:var(--text);margin:0 0 10px;}
-  #screen-manual .mn-regras-content ul{margin:0 0 10px;padding-left:20px;font-size:.86rem;line-height:1.7;color:var(--text);}
+  #screen-manual .mn-regras-content ul{margin:0 0 10px;padding-left:22px;font-size:.86rem;line-height:1.7;color:var(--text);list-style:disc outside;}
+  #screen-manual .mn-regras-content li::marker{color:#a5b4fc;}
   #screen-manual .mn-regras-content .destaque{background:#f5f3ff;border-left:3px solid #4f46e5;padding:10px 14px;border-radius:0 8px 8px 0;font-weight:700;font-size:.82rem;color:#312e81;margin:10px 0;}
   @media(max-width:820px){#screen-manual .mn-regras-wrap{flex-direction:column;}#screen-manual .mn-regras-nav{width:100%;position:static;max-height:none;display:flex;overflow-x:auto;gap:4px;padding-bottom:6px;}#screen-manual .mn-regras-group-label{display:none;}#screen-manual .mn-regras-link{white-space:nowrap;width:auto;}}
 
@@ -1155,10 +1172,38 @@ textarea.inp{resize:vertical;min-height:64px;}
   #screen-manual .mn-cfg-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.3rem;margin-bottom:14px;}
   #screen-manual .mn-cfg-card h3{font-size:.9rem;font-weight:900;margin:0 0 8px;display:flex;align-items:center;gap:8px;color:var(--text);}
   #screen-manual .mn-cfg-card p{font-size:.84rem;line-height:1.6;color:var(--muted);margin:0 0 10px;}
-  #screen-manual .mn-cfg-btn{display:inline-flex;align-items:center;gap:8px;background:#4f46e5;color:#fff;text-decoration:none;font-weight:800;font-size:.8rem;padding:9px 16px;border-radius:9px;}
+  #screen-manual .mn-cfg-btn{display:inline-flex;align-items:center;gap:8px;background:#4f46e5;color:#fff;text-decoration:none;font-weight:800;font-size:.8rem;padding:9px 16px;border-radius:9px;border:none;cursor:pointer;font-family:"DM Sans",sans-serif;}
   #screen-manual .mn-cfg-btn:hover{opacity:.9;}
+  #screen-manual .mn-cfg-btn.ghost{background:#fff;color:#4f46e5;border:1.5px solid #c7d2fe;}
+  #screen-manual .mn-cfg-status{display:inline-flex;align-items:center;gap:7px;font-size:.74rem;font-weight:800;padding:5px 12px;border-radius:20px;}
+  #screen-manual .mn-cfg-status.limpo{background:#dcfce7;color:#16a34a;}
+  #screen-manual .mn-cfg-status.rascunho{background:#fef3c7;color:#b45309;}
+  #screen-manual .mn-cfg-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 
-  @media(max-width:640px){#screen-manual .mn-body{padding:14px;}}
+  /* Avatares nos cards de cargo */
+  #screen-manual .mn-cargo-pessoas{display:flex;align-items:center;gap:-6px;padding-right:4px;flex-shrink:0;}
+  #screen-manual .mn-av-mini{width:26px;height:26px;border-radius:50%;background:#e0e7ff;color:#4f46e5;font-size:.58rem;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid #fff;margin-left:-7px;overflow:hidden;object-fit:cover;box-shadow:0 1px 3px rgba(0,0,0,.12);}
+  #screen-manual .mn-av-mini:first-child{margin-left:0;}
+  #screen-manual .mn-equipe-grid{display:flex;flex-wrap:wrap;gap:8px;}
+  #screen-manual .mn-equipe-chip{display:inline-flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid var(--border);border-radius:30px;padding:4px 14px 4px 4px;font-size:.78rem;font-weight:700;color:var(--text);}
+  #screen-manual .mn-equipe-chip img,#screen-manual .mn-equipe-chip .ini{width:28px;height:28px;border-radius:50%;object-fit:cover;background:#e0e7ff;color:#4f46e5;font-size:.6rem;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+  /* Editor */
+  #mn-modal-edit .modal{max-width:520px;width:100%;}
+  #mn-modal-edit .mn-ed-row{margin-bottom:14px;}
+  #mn-modal-edit .mn-ed-row label{display:block;font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:5px;}
+  #mn-modal-edit .mn-ed-row input[type=text]{width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:.86rem;font-family:"DM Sans",sans-serif;outline:none;box-sizing:border-box;}
+  #mn-modal-edit .mn-ed-row input[type=text]:focus{border-color:#4f46e5;}
+  #mn-modal-edit .mn-ed-foto{display:flex;align-items:center;gap:14px;}
+  #mn-modal-edit .mn-ed-prev{width:64px;height:64px;border-radius:50%;background:#e0e7ff;color:#4f46e5;font-size:1.05rem;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;object-fit:cover;overflow:hidden;border:2px solid #fff;box-shadow:0 0 0 2px #e0e7ff;}
+  #mn-modal-edit .mn-ed-foto-btns{display:flex;flex-direction:column;gap:6px;flex:1;}
+  #mn-modal-edit .mn-ed-mini{border:1.5px solid var(--border);background:#fff;color:var(--muted);border-radius:8px;padding:7px 12px;font-size:.75rem;font-weight:800;cursor:pointer;font-family:"DM Sans",sans-serif;text-align:center;}
+  #mn-modal-edit .mn-ed-mini:hover{border-color:#4f46e5;color:#4f46e5;}
+  #mn-modal-edit .mn-ed-mini.danger:hover{border-color:var(--danger);color:var(--danger);}
+  #mn-modal-edit .mn-ed-struct{display:flex;gap:7px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:14px;}
+  #mn-modal-edit .mn-ed-note{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:10px;}
+
+  @media(max-width:640px){#screen-manual .mn-body{padding:14px;}#screen-manual .mn-org-viewport{height:min(62vh,460px);}}
 </style>
 
   <div class="mn-topbar">
@@ -1208,12 +1253,31 @@ textarea.inp{resize:vertical;min-height:64px;}
     </div>
 
     <div class="mn-panel" id="mn-panel-organograma">
+      <div class="mn-org-toolbar">
+        <button class="mn-tool-btn" onclick="orgZoom(-1)" title="Diminuir zoom"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+        <span class="mn-tool-zoom" id="mn-zoom-label">100%</span>
+        <button class="mn-tool-btn" onclick="orgZoom(1)" title="Aumentar zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+        <button class="mn-tool-btn" onclick="orgFit()" title="Ajustar à tela"><i class="fa-solid fa-expand"></i> Ajustar</button>
+        <span class="mn-tool-sep"></span>
+        <button class="mn-tool-btn" onclick="orgExpandAll(true)"><i class="fa-solid fa-chevron-down"></i> Expandir tudo</button>
+        <button class="mn-tool-btn" onclick="orgExpandAll(false)"><i class="fa-solid fa-chevron-up"></i> Recolher</button>
+        <span class="mn-tool-sep"></span>
+        <button class="mn-tool-btn" id="mn-btn-fotos" onclick="orgToggleFotos()"><i class="fa-solid fa-image-portrait"></i> Fotos</button>
+        <button class="mn-tool-btn" id="mn-btn-edit" onclick="orgToggleEdit()"><i class="fa-solid fa-pen-to-square"></i> Editar</button>
+      </div>
+      <div class="mn-org-viewport" id="mn-org-viewport">
+        <div class="mn-org-canvas" id="mn-org-canvas">
+          <svg class="mn-org-links" id="mn-org-links"></svg>
+          <div id="mn-org-nodes"></div>
+        </div>
+      </div>
       <div class="mn-org-legend">
         <span><i style="background:#0f172a;"></i> Diretoria</span>
-        <span><i style="background:#fff;border:2px solid #cbd5e1;"></i> Cargo (clique para ver a descrição)</span>
-        <span><i style="background:#f5f3ff;border:2px dashed #c4b5fd;"></i> Assessoria/consultoria (reporta a ambos os diretores)</span>
+        <span><i style="background:#fff;border:2px solid #cbd5e1;"></i> Cargo</span>
+        <span><i style="background:#faf5ff;border:2px dashed #d8b4fe;"></i> Assessoria (reporta a ambos os diretores)</span>
+        <span><i style="background:#fff7f7;border:2px dashed #fca5a5;"></i> Vaga em aberto</span>
       </div>
-      <div class="mn-org-wrap"><div class="mn-org-root" id="mn-org-root"></div></div>
+      <div class="mn-org-hint"><i class="fa-solid fa-hand-pointer"></i> Clique no cargo para ver a descrição completa &middot; arraste para mover &middot; use a roda do mouse com Ctrl para dar zoom &middot; clique no <b>+</b> abaixo do cargo para expandir a equipe.</div>
     </div>
 
     <div class="mn-panel" id="mn-panel-cargos">
@@ -1240,20 +1304,77 @@ textarea.inp{resize:vertical;min-height:64px;}
 
     <div class="mn-panel" id="mn-panel-config">
       <div class="mn-cfg-card">
+        <h3><i class="fa-solid fa-pen-to-square"></i> Suas alterações</h3>
+        <p>Ao ativar o modo <b>Editar</b> na aba Organograma você pode incluir os nomes e fotos das pessoas, renomear cargos, criar novas posições, reordenar e remover. As alterações ficam salvas neste navegador como um rascunho.</p>
+        <div class="mn-cfg-actions" style="margin-bottom:12px;">
+          <span class="mn-cfg-status limpo" id="mn-cfg-status"><i class="fa-solid fa-check"></i> Sem alterações locais</span>
+        </div>
+        <div class="mn-cfg-actions">
+          <button class="mn-cfg-btn" onclick="mnBaixarJSON()"><i class="fa-solid fa-download"></i> Baixar backup (JSON)</button>
+          <button class="mn-cfg-btn ghost" onclick="document.getElementById('mn-import-file').click()"><i class="fa-solid fa-upload"></i> Restaurar backup</button>
+          <button class="mn-cfg-btn ghost" onclick="mnCopiarTSV()"><i class="fa-solid fa-clipboard"></i> Copiar para a planilha</button>
+          <button class="mn-cfg-btn ghost" onclick="mnResetarEdicoes()"><i class="fa-solid fa-rotate-left"></i> Descartar alterações</button>
+        </div>
+        <input type="file" id="mn-import-file" accept="application/json" style="display:none" onchange="mnImportarJSON(this)">
+        <p class="mn-ed-note" style="margin-top:12px;font-size:.75rem;">O rascunho fica apenas neste navegador. Para que a equipe toda enxergue as mesmas informações, use <b>Baixar backup</b> e me envie o arquivo — eu publico no portal — ou <b>Copiar para a planilha</b> e cole na aba <code>Pessoas</code> da planilha de referência.</p>
+      </div>
+      <div class="mn-cfg-card">
         <h3><i class="fa-solid fa-database"></i> Fonte dos dados</h3>
-        <p>O conteúdo deste módulo (organograma, cargos, processo operacional e apresentação institucional) é o mesmo aprovado no Manual da Empresa. Para consulta, histórico e futura edição colaborativa, a planilha de referência abaixo está disponível para qualquer pessoa com o link.</p>
+        <p>Organograma, cargos, processo operacional e apresentação institucional vêm do Manual da Empresa aprovado. A planilha de referência abaixo está liberada para qualquer pessoa com o link.</p>
         <a class="mn-cfg-btn" href="https://docs.google.com/spreadsheets/d/1zHJwKw88K0ArhN9qpWM8T0bzSMFpglebn5PZIdfgev0/edit" target="_blank" rel="noopener"><i class="fa-solid fa-table"></i> Abrir planilha de referência</a>
       </div>
       <div class="mn-cfg-card">
         <h3><i class="fa-solid fa-file-shield"></i> Regras e Conduta</h3>
         <p>Conteúdo extraído do documento oficial "Manual de Regras e Conduta" (Versão 1.0, emitido em 01/08/2026 pelo RH da Renova Manutenções). Qualquer atualização de versão deve ser repassada para manter esta aba sincronizada com o documento oficial.</p>
       </div>
-      <div class="mn-cfg-card">
-        <h3><i class="fa-solid fa-circle-info"></i> Acesso</h3>
-        <p>Este módulo usa o mesmo login do restante do portal. Não há edição de conteúdo diretamente por aqui — organograma e cargos são atualizados no código-fonte ou na planilha de referência acima.</p>
-      </div>
     </div>
 
+  </div>
+</div>
+
+<div class="overlay" id="mn-modal-edit">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3 id="mn-ed-title">Editar posição</h3>
+      <button class="close-btn" onclick="fecharEditor()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="mn-ed-row">
+        <label>Cargo</label>
+        <input type="text" id="mn-ed-cargo" placeholder="Ex: Mecânico Oficial">
+      </div>
+      <div class="mn-ed-row">
+        <label>Complemento / especialidade</label>
+        <input type="text" id="mn-ed-sub" placeholder="Ex: Implementos Rodoviários (opcional)">
+      </div>
+      <div class="mn-ed-row">
+        <label>Nome da pessoa que ocupa a função</label>
+        <input type="text" id="mn-ed-nome" placeholder="Deixe em branco se for uma vaga em aberto" oninput="mnPreviewAvatar()">
+      </div>
+      <div class="mn-ed-row">
+        <label>Foto</label>
+        <div class="mn-ed-foto">
+          <div class="mn-ed-prev" id="mn-ed-prev">?</div>
+          <div class="mn-ed-foto-btns">
+            <button class="mn-ed-mini" onclick="document.getElementById('mn-ed-file').click()"><i class="fa-solid fa-camera"></i> Enviar foto do computador</button>
+            <input type="text" id="mn-ed-foto-url" placeholder="ou cole o link de uma imagem" oninput="mnPreviewAvatar()" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;font-size:.78rem;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;">
+            <button class="mn-ed-mini danger" onclick="mnRemoverFoto()"><i class="fa-solid fa-trash"></i> Remover foto</button>
+          </div>
+        </div>
+        <input type="file" id="mn-ed-file" accept="image/*" style="display:none" onchange="mnUploadFoto(this)">
+      </div>
+      <div class="mn-ed-struct">
+        <button class="mn-ed-mini" onclick="mnAddFilho()"><i class="fa-solid fa-plus"></i> Adicionar subordinado</button>
+        <button class="mn-ed-mini" onclick="mnMover(-1)"><i class="fa-solid fa-arrow-left"></i> Mover</button>
+        <button class="mn-ed-mini" onclick="mnMover(1)">Mover <i class="fa-solid fa-arrow-right"></i></button>
+        <button class="mn-ed-mini danger" onclick="mnRemoverNo()"><i class="fa-solid fa-trash"></i> Remover posição</button>
+      </div>
+      <div class="mn-ed-note" id="mn-ed-note"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="mn-ed-mini" onclick="fecharEditor()">Cancelar</button>
+      <button class="mn-cfg-btn" onclick="salvarEditor()"><i class="fa-solid fa-check"></i> Salvar</button>
+    </div>
   </div>
 </div>
 
@@ -3204,52 +3325,433 @@ const MN_REGRAS = [
   ]}
 ];
 
+// ── Estado editável (rascunho local; ver aba Configurações) ──
+const MN_STORE_KEY = 'renova_manual_org_v1';
+let MN_TREE = null;          // árvore viva do organograma
+let mnEditMode = false;
+let mnMostrarFotos = true;
+let mnEdAtual = null;        // nó em edição
+let mnFotoTmp = null;        // foto em edição (data-url ou url)
+
+function mnNovoUid(){
+  return 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+}
+function mnCloneOrg(node, parent){
+  const n = {
+    uid: node.uid || mnNovoUid(),
+    label: node.label, sub: node.sub||'', key: node.key||null,
+    dir: !!node.dir, staff: !!node.staff, vaga: !!node.vaga,
+    nome: node.nome||'', foto: node.foto||'',
+    collapsed: !!node.collapsed,
+    _parent: parent||null, children: []
+  };
+  (node.children||[]).forEach(c => n.children.push(mnCloneOrg(c, n)));
+  return n;
+}
+function mnRelink(node, parent){
+  node._parent = parent||null;
+  (node.children||[]).forEach(c=>mnRelink(c,node));
+}
+function mnSerialize(node){
+  return { uid:node.uid, label:node.label, sub:node.sub, key:node.key, dir:node.dir, staff:node.staff,
+           vaga:node.vaga, nome:node.nome, foto:node.foto, collapsed:node.collapsed,
+           children:(node.children||[]).map(mnSerialize) };
+}
+function mnSalvarEstado(){
+  try{ localStorage.setItem(MN_STORE_KEY, JSON.stringify(mnSerialize(MN_TREE))); }catch(e){ console.warn('Manual: não foi possível salvar o rascunho', e); }
+  mnAtualizarStatusCfg();
+}
+function mnCarregarEstado(){
+  let base = null;
+  try{
+    const raw = localStorage.getItem(MN_STORE_KEY);
+    if(raw) base = JSON.parse(raw);
+  }catch(e){ console.warn('Manual: rascunho inválido, usando padrão', e); }
+  MN_TREE = mnCloneOrg(base || MN_ORG, null);
+  mnRelink(MN_TREE, null);
+}
+function mnTemRascunho(){ try{ return !!localStorage.getItem(MN_STORE_KEY); }catch(e){ return false; } }
+function mnAtualizarStatusCfg(){
+  const el = document.getElementById('mn-cfg-status');
+  if(!el) return;
+  const tem = mnTemRascunho();
+  el.className = 'mn-cfg-status ' + (tem?'rascunho':'limpo');
+  el.innerHTML = tem
+    ? '<i class="fa-solid fa-pen"></i> Rascunho local salvo neste navegador'
+    : '<i class="fa-solid fa-check"></i> Sem alterações locais';
+}
+function mnIniciais(nome){
+  if(!nome) return '';
+  const p = nome.trim().split(/\s+/);
+  return ((p[0]||'')[0]||'').toUpperCase() + ((p.length>1?p[p.length-1]:'')[0]||'').toUpperCase();
+}
+function mnAvatarHTML(node, cls){
+  const ini = mnIniciais(node.nome);
+  if(mnMostrarFotos && node.foto) return '<img class="'+cls+'" src="'+kbEsc(node.foto)+'" alt="'+kbEsc(node.nome)+'">';
+  return '<div class="'+cls+'">'+(ini || '<i class="fa-solid fa-user"></i>')+'</div>';
+}
+
 let mnIniciado = false;
 function initManual(){
   if(mnIniciado) return;
   mnIniciado = true;
+  mnCarregarEstado();
   renderOrganograma();
   renderCargos();
   renderProcesso();
   renderRegras();
+  mnAtualizarStatusCfg();
+  mnLigarPanZoom();
 }
 
 function switchManualTab(tab){
   document.querySelectorAll('#screen-manual .mn-tab').forEach(b=>b.classList.toggle('active', b.dataset.mntab===tab));
   document.querySelectorAll('#screen-manual .mn-panel').forEach(p=>p.classList.toggle('active', p.id==='mn-panel-'+tab));
   document.querySelector('#screen-manual .mn-body').scrollIntoView({block:'start'});
+  if(tab==='organograma') setTimeout(orgFit, 30);
 }
 
-function mnOrgNodeHTML(node){
-  const cls = ['mn-org-box'];
-  if(node.dir) cls.push('mn-org-dir');
-  if(node.staff) cls.push('mn-org-staff');
-  if(node.static || !node.key) cls.push('mn-org-static');
-  const onclick = node.key ? ' onclick="abrirCargoDoManual(\''+node.key+'\')"' : '';
-  const sub = node.sub ? '<span class="mn-org-sub">'+kbEsc(node.sub)+'</span>' : '';
-  let html = '<div class="mn-org-node"><div class="'+cls.join(' ')+'"'+onclick+'>'+kbEsc(node.label)+sub+'</div>';
-  if(node.children && node.children.length){
-    html += '<div class="mn-org-children">'+node.children.map(c=>'<div class="mn-org-child">'+mnOrgNodeHTML(c)+'</div>').join('')+'</div>';
+// ══ Motor de layout do organograma ══
+const NW=214, NH=64, HG=26, VG=58, STACK_IND=26, STACK_VG=9;
+
+function mnVisibleKids(n){ return n.collapsed ? [] : (n.children||[]); }
+// A partir do nível 1 os subordinados "penduram" na vertical (padrão de organograma
+// grande): mantém a árvore estreita e legível em vez de correr para o lado.
+const MN_NIVEL_PENDURA = 1;
+function mnMedir(n, depth){
+  n._depth = depth;
+  const kids = mnVisibleKids(n);
+  if(!kids.length){ n._stack=false; n._w=NW; n._h=NH; return; }
+  kids.forEach(k=>mnMedir(k, depth+1));
+  n._stack = depth >= MN_NIVEL_PENDURA;
+  if(n._stack){
+    n._w = STACK_IND + Math.max(NW, ...kids.map(k=>k._w));
+    n._h = NH + VG - 26 + kids.reduce((s,k)=>s+k._h,0) + STACK_VG*(kids.length-1);
+  } else {
+    n._w = Math.max(NW, kids.reduce((s,k)=>s+k._w,0) + HG*(kids.length-1));
+    n._h = NH + VG + Math.max(...kids.map(k=>k._h));
   }
-  html += '</div>';
-  return html;
 }
-function renderOrganograma(){
-  document.getElementById('mn-org-root').innerHTML = mnOrgNodeHTML(MN_ORG);
+function mnPosicionar(n, left, top){
+  n.y = top;
+  const kids = mnVisibleKids(n);
+  if(!kids.length){ n.x = left + (n._w-NW)/2; return; }
+  if(n._stack){
+    n.x = left;
+    let cy = top + NH + VG - 26;
+    kids.forEach(k=>{ mnPosicionar(k, left+STACK_IND, cy); cy += k._h + STACK_VG; });
+    return;
+  }
+  let cx = left;
+  kids.forEach(k=>{ mnPosicionar(k, cx, top+NH+VG); cx += k._w + HG; });
+  n.x = (kids[0].x + kids[kids.length-1].x)/2;
 }
 
+function mnNodeHTML(n){
+  const cls = ['mn-node'];
+  if(n.dir) cls.push('is-dir');
+  if(n.staff) cls.push('is-staff');
+  if(!n.nome && !n.dir) cls.push('is-vaga');
+  const kids = n.children||[];
+  const temFilhos = kids.length>0;
+  // Especialidade e nome dividem a segunda linha — evita truncar o nome do cargo.
+  const partes = [];
+  if(n.sub)  partes.push('<b style="color:#b45309;font-weight:800;">'+kbEsc(n.sub)+'</b>');
+  if(n.nome) partes.push(kbEsc(n.nome));
+  const pessoa = partes.length
+    ? '<div class="mn-node-pessoa">'+partes.join(' &middot; ')+'</div>'
+    : (n.dir ? '' : '<div class="mn-node-pessoa vazio">a definir</div>');
+  const sub = '';
+  const toggle = temFilhos
+    ? '<div class="mn-node-toggle" onclick="event.stopPropagation();orgToggleNo(\''+n.uid+'\')" title="'+(n.collapsed?'Expandir equipe':'Recolher equipe')+'">'
+      + (n.collapsed ? '<b>'+mnContarDesc(n)+'</b>' : '<i class="fa-solid fa-minus"></i>') + '</div>'
+    : '';
+  const edit = '<div class="mn-node-edit" onclick="event.stopPropagation();abrirEditor(\''+n.uid+'\')" title="Editar"><i class="fa-solid fa-pen"></i></div>';
+  const click = n.key ? ' onclick="abrirCargoDoManual(\''+n.key+'\')"' : ' onclick="abrirEditor(\''+n.uid+'\')"';
+  return '<div class="'+cls.join(' ')+'" style="left:'+n.x+'px;top:'+n.y+'px;width:'+NW+'px;height:'+NH+'px;"'+click+'>'
+    + mnAvatarHTML(n,'mn-node-av')
+    + '<div class="mn-node-txt"><div class="mn-node-cargo">'+kbEsc(n.label)+sub+'</div>'+pessoa+'</div>'
+    + toggle + edit + '</div>';
+}
+function mnContarDesc(n){
+  let c=0; (n.children||[]).forEach(k=>{ c += 1 + mnContarDesc(k); }); return c;
+}
+
+function mnLinksSVG(n, acc){
+  const kids = mnVisibleKids(n);
+  if(!kids.length) return acc;
+  const px = n.x + NW/2, pb = n.y + NH;
+  if(n._stack){
+    const spineX = n.x + 16;
+    const last = kids[kids.length-1];
+    acc.push('<path d="M '+spineX+' '+pb+' V '+(last.y+NH/2)+'" />');
+    kids.forEach(k=>{ acc.push('<path d="M '+spineX+' '+(k.y+NH/2)+' H '+k.x+'" />'); });
+  } else {
+    const midY = n.y + NH + VG/2;
+    acc.push('<path d="M '+px+' '+pb+' V '+midY+'" />');
+    kids.forEach(k=>{
+      const cx = k.x + NW/2;
+      acc.push('<path d="M '+px+' '+midY+' H '+cx+' V '+k.y+'" />');
+    });
+  }
+  kids.forEach(k=>mnLinksSVG(k, acc));
+  return acc;
+}
+
+function mnFlat(n, acc){ acc.push(n); mnVisibleKids(n).forEach(k=>mnFlat(k,acc)); return acc; }
+
+function renderOrganograma(){
+  if(!MN_TREE) mnCarregarEstado();
+  mnMedir(MN_TREE, 0);
+  mnPosicionar(MN_TREE, 40, 30);
+  const nodes = mnFlat(MN_TREE, []);
+  const maxX = Math.max(...nodes.map(n=>n.x)) + NW + 60;
+  const maxY = Math.max(...nodes.map(n=>n.y)) + NH + 60;
+  document.getElementById('mn-org-nodes').innerHTML = nodes.map(mnNodeHTML).join('');
+  const svg = document.getElementById('mn-org-links');
+  svg.setAttribute('width', maxX); svg.setAttribute('height', maxY);
+  svg.innerHTML = '<g fill="none" stroke="#cbd5e1" stroke-width="1.8" stroke-linejoin="round">'+mnLinksSVG(MN_TREE, []).join('')+'</g>';
+  const canvas = document.getElementById('mn-org-canvas');
+  canvas.style.width = maxX+'px'; canvas.style.height = maxY+'px';
+  canvas._w = maxX; canvas._h = maxY;
+}
+
+// ══ Zoom / pan ══
+let orgZ = 1, orgTx = 0, orgTy = 0;
+function orgAplicar(){
+  const c = document.getElementById('mn-org-canvas');
+  c.style.transform = 'translate('+orgTx+'px,'+orgTy+'px) scale('+orgZ+')';
+  const lbl = document.getElementById('mn-zoom-label');
+  if(lbl) lbl.textContent = Math.round(orgZ*100)+'%';
+}
+function orgZoom(dir){
+  orgZ = Math.min(2, Math.max(0.3, orgZ + dir*0.12));
+  orgAplicar();
+}
+function orgFit(){
+  const vp = document.getElementById('mn-org-viewport');
+  const c = document.getElementById('mn-org-canvas');
+  if(!vp || !c || !c._w) return;
+  const pad = 28;
+  // Ajusta pela largura (a altura navega arrastando) — mantém os cards legíveis
+  // em vez de encolher tudo para caber a árvore inteira na vertical.
+  const zLargura = (vp.clientWidth - pad) / c._w;
+  const zAltura  = (vp.clientHeight - pad) / c._h;
+  orgZ = Math.max(0.4, Math.min(zLargura, Math.max(zAltura, 0.72), 1.1));
+  orgTx = Math.max(0, (vp.clientWidth - c._w*orgZ)/2);
+  orgTy = 12;
+  orgAplicar();
+}
+function orgToggleNo(uid){
+  const n = mnFlat(MN_TREE,[]).find(x=>x.uid===uid) || mnBuscarUid(MN_TREE, uid);
+  if(!n) return;
+  n.collapsed = !n.collapsed;
+  renderOrganograma(); mnSalvarEstado();
+}
+function mnBuscarUid(n, uid){
+  if(n.uid===uid) return n;
+  for(const k of (n.children||[])){ const r = mnBuscarUid(k, uid); if(r) return r; }
+  return null;
+}
+function orgExpandAll(abrir){
+  (function walk(n){ n.collapsed = !abrir && n!==MN_TREE; (n.children||[]).forEach(walk); })(MN_TREE);
+  renderOrganograma(); setTimeout(orgFit,10); mnSalvarEstado();
+}
+function orgToggleFotos(){
+  mnMostrarFotos = !mnMostrarFotos;
+  document.getElementById('mn-btn-fotos').classList.toggle('on', mnMostrarFotos);
+  renderOrganograma();
+}
+function orgToggleEdit(){
+  mnEditMode = !mnEditMode;
+  document.getElementById('screen-manual').classList.toggle('edit-mode', mnEditMode);
+  document.getElementById('mn-btn-edit').classList.toggle('on', mnEditMode);
+}
+function mnLigarPanZoom(){
+  const vp = document.getElementById('mn-org-viewport');
+  if(!vp || vp._ligado) return;
+  vp._ligado = true;
+  let arrastando=false, sx=0, sy=0, ox=0, oy=0, moveu=false;
+  vp.addEventListener('mousedown', e=>{
+    if(e.target.closest('.mn-node')) return;
+    arrastando=true; moveu=false; sx=e.clientX; sy=e.clientY; ox=orgTx; oy=orgTy;
+    vp.classList.add('dragging');
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!arrastando) return;
+    orgTx = ox + (e.clientX-sx); orgTy = oy + (e.clientY-sy); moveu=true; orgAplicar();
+  });
+  window.addEventListener('mouseup', ()=>{ arrastando=false; vp.classList.remove('dragging'); });
+  vp.addEventListener('wheel', e=>{
+    if(!e.ctrlKey) return;
+    e.preventDefault();
+    orgZoom(e.deltaY>0 ? -1 : 1);
+  }, {passive:false});
+  window.addEventListener('resize', ()=>{ if(document.getElementById('mn-panel-organograma').classList.contains('active')) orgFit(); });
+}
+
+// ══ Editor ══
+function abrirEditor(uid){
+  const n = mnBuscarUid(MN_TREE, uid);
+  if(!n) return;
+  mnEdAtual = n; mnFotoTmp = n.foto||'';
+  document.getElementById('mn-ed-title').textContent = 'Editar: '+n.label;
+  document.getElementById('mn-ed-cargo').value = n.label||'';
+  document.getElementById('mn-ed-sub').value = n.sub||'';
+  document.getElementById('mn-ed-nome').value = n.nome||'';
+  document.getElementById('mn-ed-foto-url').value = (n.foto && !n.foto.startsWith('data:')) ? n.foto : '';
+  document.getElementById('mn-ed-note').innerHTML = n.key
+    ? 'Este cargo está ligado à descrição <b>'+kbEsc(n.label)+'</b> na aba Descrições de Cargo.'
+    : 'Posição criada por você — ainda sem descrição de cargo vinculada.';
+  mnPreviewAvatar();
+  document.getElementById('mn-modal-edit').classList.add('open');
+}
+function fecharEditor(){ document.getElementById('mn-modal-edit').classList.remove('open'); mnEdAtual=null; }
+function mnPreviewAvatar(){
+  const prev = document.getElementById('mn-ed-prev');
+  const url = document.getElementById('mn-ed-foto-url').value.trim();
+  const foto = url || mnFotoTmp;
+  const nome = document.getElementById('mn-ed-nome').value;
+  if(foto) prev.outerHTML = '<img class="mn-ed-prev" id="mn-ed-prev" src="'+kbEsc(foto)+'" alt="">';
+  else prev.outerHTML = '<div class="mn-ed-prev" id="mn-ed-prev">'+(mnIniciais(nome)||'<i class="fa-solid fa-user"></i>')+'</div>';
+}
+function mnUploadFoto(input){
+  const f = input.files && input.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const S=160, cv=document.createElement('canvas'); cv.width=S; cv.height=S;
+      const ctx=cv.getContext('2d');
+      const lado=Math.min(img.width,img.height);
+      ctx.drawImage(img,(img.width-lado)/2,(img.height-lado)/2,lado,lado,0,0,S,S);
+      mnFotoTmp = cv.toDataURL('image/jpeg',0.82);
+      document.getElementById('mn-ed-foto-url').value='';
+      mnPreviewAvatar();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(f);
+  input.value='';
+}
+function mnRemoverFoto(){ mnFotoTmp=''; document.getElementById('mn-ed-foto-url').value=''; mnPreviewAvatar(); }
+function salvarEditor(){
+  if(!mnEdAtual) return;
+  const url = document.getElementById('mn-ed-foto-url').value.trim();
+  mnEdAtual.label = document.getElementById('mn-ed-cargo').value.trim() || mnEdAtual.label;
+  mnEdAtual.sub   = document.getElementById('mn-ed-sub').value.trim();
+  mnEdAtual.nome  = document.getElementById('mn-ed-nome').value.trim();
+  mnEdAtual.foto  = url || mnFotoTmp || '';
+  fecharEditor(); renderOrganograma(); renderCargos(); mnSalvarEstado();
+}
+function mnAddFilho(){
+  if(!mnEdAtual) return;
+  const novo = mnCloneOrg({label:'Nova posição', sub:'', nome:''}, mnEdAtual);
+  mnEdAtual.children.push(novo);
+  mnEdAtual.collapsed = false;
+  fecharEditor(); renderOrganograma(); mnSalvarEstado();
+  setTimeout(()=>abrirEditor(novo.uid), 120);
+}
+function mnMover(dir){
+  const n = mnEdAtual; if(!n || !n._parent) return;
+  const irmaos = n._parent.children;
+  const i = irmaos.indexOf(n), j = i+dir;
+  if(j<0 || j>=irmaos.length) return;
+  irmaos[i]=irmaos[j]; irmaos[j]=n;
+  renderOrganograma(); mnSalvarEstado();
+}
+function mnRemoverNo(){
+  const n = mnEdAtual; if(!n) return;
+  if(!n._parent){ alert('A raiz do organograma não pode ser removida.'); return; }
+  const qtd = mnContarDesc(n);
+  const msg = qtd ? 'Remover "'+n.label+'" e as '+qtd+' posições subordinadas?' : 'Remover a posição "'+n.label+'"?';
+  if(!confirm(msg)) return;
+  const irmaos = n._parent.children;
+  irmaos.splice(irmaos.indexOf(n),1);
+  fecharEditor(); renderOrganograma(); renderCargos(); mnSalvarEstado();
+}
+
+// ══ Backup / sincronização ══
+function mnPessoasLista(){
+  const out=[];
+  (function walk(n){ if(n.nome||n.foto) out.push({cargo:n.label, sub:n.sub||'', nome:n.nome||'', foto:n.foto||''}); (n.children||[]).forEach(walk); })(MN_TREE);
+  return out;
+}
+function mnBaixarJSON(){
+  const blob = new Blob([JSON.stringify(mnSerialize(MN_TREE),null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'organograma-renova-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function mnImportarJSON(input){
+  const f = input.files && input.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = e=>{
+    try{
+      const dados = JSON.parse(e.target.result);
+      if(!dados || !dados.label) throw new Error('formato inesperado');
+      MN_TREE = mnCloneOrg(dados,null); mnRelink(MN_TREE,null);
+      renderOrganograma(); renderCargos(); mnSalvarEstado(); setTimeout(orgFit,20);
+      alert('Backup restaurado com sucesso.');
+    }catch(err){ alert('Não foi possível ler este arquivo: '+err.message); }
+  };
+  r.readAsText(f); input.value='';
+}
+function mnCopiarTSV(){
+  const linhas = mnPessoasLista();
+  if(!linhas.length){ alert('Nenhum nome preenchido ainda. Ative o modo Editar na aba Organograma para incluir as pessoas.'); return; }
+  const tsv = 'cargo\tespecialidade\tnome\tfoto_url\n' + linhas.map(l=>{
+    const foto = l.foto.startsWith('data:') ? '(foto enviada do computador — publicar via backup JSON)' : l.foto;
+    return [l.cargo,l.sub,l.nome,foto].join('\t');
+  }).join('\n');
+  navigator.clipboard.writeText(tsv).then(
+    ()=>alert('Copiado! Cole na aba "Pessoas" da planilha de referência ('+linhas.length+' linhas).'),
+    ()=>alert('Não foi possível copiar automaticamente. Use o botão "Baixar backup (JSON)".')
+  );
+}
+function mnResetarEdicoes(){
+  if(!confirm('Descartar todas as alterações locais e voltar ao organograma original?')) return;
+  try{ localStorage.removeItem(MN_STORE_KEY); }catch(e){}
+  MN_TREE = mnCloneOrg(MN_ORG,null); mnRelink(MN_TREE,null);
+  renderOrganograma(); renderCargos(); mnAtualizarStatusCfg(); setTimeout(orgFit,20);
+}
+
+function mnOcupantes(key){
+  const out=[];
+  if(!MN_TREE) return out;
+  (function walk(n){ if(n.key===key && (n.nome||n.foto)) out.push(n); (n.children||[]).forEach(walk); })(MN_TREE);
+  return out;
+}
 function mnCargoCardHTML(c){
   const badges = (c.especialidades ? '<span class="mn-cargo-esp">2 especialidades</span>' : '') + (c.vaga ? '<span class="mn-cargo-esp" style="background:#fee2e2;color:#dc2626;">vaga em aberto</span>' : '');
   const documentosHtml = Array.isArray(c.documentos) ? '<ul>'+c.documentos.map(d=>'<li>'+kbEsc(d)+'</li>').join('')+'</ul>' : '<p>'+kbEsc(c.documentos)+'</p>';
   const notaHtml = c.nota ? '<div class="mn-cargo-sec"><h4>Observação</h4><p>'+kbEsc(c.nota)+'</p></div>' : '';
   const espHtml = c.especialidades ? '<div class="mn-cargo-sec"><h4>Especialidades</h4><p>Este cargo existe em duas especialidades — <b>'+c.especialidades.join('</b> e <b>')+'</b> — com a mesma descrição-base; a diferença é a área técnica de atuação e a equipe subordinada.</p></div>' : '';
-  return '<div class="mn-cargo-card" id="mn-cargo-'+c.key+'" data-nome="'+kbEsc(c.cargo).toLowerCase()+' '+kbEsc(c.area).toLowerCase()+'">'
+  const gente = mnOcupantes(c.key);
+  const avatares = gente.length
+    ? '<div class="mn-cargo-pessoas">'+gente.slice(0,4).map(p=>mnAvatarHTML(p,'mn-av-mini')).join('')
+      +(gente.length>4 ? '<div class="mn-av-mini">+'+(gente.length-4)+'</div>' : '')+'</div>'
+    : '';
+  const equipeHtml = gente.length
+    ? '<div class="mn-cargo-sec"><h4>Quem ocupa esta função</h4><div class="mn-equipe-grid">'
+      + gente.map(p=>'<span class="mn-equipe-chip">'
+          + (mnMostrarFotos && p.foto ? '<img src="'+kbEsc(p.foto)+'" alt="">' : '<span class="ini">'+(mnIniciais(p.nome)||'?')+'</span>')
+          + kbEsc(p.nome || 'sem nome') + (p.sub?' <span style="color:var(--muted);font-weight:600;">· '+kbEsc(p.sub)+'</span>':'')
+        +'</span>').join('')
+      +'</div></div>'
+    : '';
+  const nomesBusca = gente.map(p=>kbEsc(p.nome).toLowerCase()).join(' ');
+  return '<div class="mn-cargo-card" id="mn-cargo-'+c.key+'" data-nome="'+kbEsc(c.cargo).toLowerCase()+' '+kbEsc(c.area).toLowerCase()+' '+nomesBusca+'">'
     +'<div class="mn-cargo-head" onclick="toggleCargoCard(\''+c.key+'\')">'
       +'<div class="mn-cargo-ico"><i class="fa-solid fa-id-badge"></i></div>'
       +'<div class="mn-cargo-titles"><div class="nome">'+kbEsc(c.cargo)+badges+'</div><div class="meta">'+kbEsc(c.area)+' &middot; Reporta a: '+kbEsc(c.reportaA)+'</div></div>'
+      +avatares
       +'<i class="fa-solid fa-chevron-down mn-cargo-chevron"></i>'
     +'</div>'
     +'<div class="mn-cargo-body">'
+      +equipeHtml
       +espHtml
       +'<div class="mn-cargo-sec"><h4>Objetivo do cargo</h4><p>'+kbEsc(c.objetivo)+'</p></div>'
       +'<div class="mn-cargo-sec"><h4>Subordinados diretos</h4><p>'+kbEsc(c.subordinados)+'</p></div>'
