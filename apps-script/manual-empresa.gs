@@ -22,7 +22,8 @@
 
 const PLANILHA_ID = '1zHJwKw88K0ArhN9qpWM8T0bzSMFpglebn5PZIdfgev0';
 const ABA         = 'Organograma';
-const PASTA_FOTOS = 'Renova - Fotos do Organograma';
+// Pasta do Drive onde ficam as fotos das pessoas do organograma.
+const PASTA_FOTOS_ID = '1TXIMglGCPwrkgN3sJRbN-_GHxLqP4bH4';
 
 // A ordem aqui define a ordem das colunas na planilha. Não reordene sem
 // ajustar o cliente (index.html, funções mnAchatar/mnMontarArvore).
@@ -281,8 +282,7 @@ function gravarLinhas(linhas) {
 }
 
 function obterPastaFotos() {
-  const it = DriveApp.getFoldersByName(PASTA_FOTOS);
-  return it.hasNext() ? it.next() : DriveApp.createFolder(PASTA_FOTOS);
+  return DriveApp.getFolderById(PASTA_FOTOS_ID);
 }
 
 /**
