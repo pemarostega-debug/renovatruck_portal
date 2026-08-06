@@ -32,7 +32,8 @@ function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || '';
   try {
     if (action === 'organograma_get') return json({ success: true, data: lerLinhas() });
-    if (action === 'ping')            return json({ success: true, versao: 1 });
+    if (action === 'cargos_get')      return json({ success: true, data: lerCargos() });
+    if (action === 'ping')            return json({ success: true, versao: 2 });
     return json({ success: false, error: 'Ação desconhecida: ' + action });
   } catch (err) {
     return json({ success: false, error: String(err) });
@@ -43,15 +44,44 @@ function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
     const action = body.action || '';
+
+    // ── Público ──
+    if (action === 'login') return json(autenticar(body.usuario, body.senha));
+
+    // ── Exige sessão válida ──
     if (action === 'organograma_set') {
+      exigirAdmin(body.token);
       return json({ success: true, gravadas: gravarLinhas(body.linhas || []) });
     }
     if (action === 'organograma_foto') {
+      exigirAdmin(body.token);
       return json({ success: true, url: salvarFoto(body.nome, body.base64, body.mime) });
     }
+    if (action === 'cargos_set') {
+      exigirAdmin(body.token);
+      return json({ success: true, gravadas: gravarCargos(body.cargos || []) });
+    }
+    if (action === 'usuarios_get') {
+      exigirAdmin(body.token);
+      return json({ success: true, data: listarUsuarios() });
+    }
+    if (action === 'usuario_salvar') {
+      exigirAdmin(body.token);
+      return json({ success: true, data: salvarUsuario(body.usuario) });
+    }
+    if (action === 'usuario_remover') {
+      const sessao = exigirAdmin(body.token);
+      return json({ success: true, removidos: removerUsuario(body.login, sessao.usuario) });
+    }
+    if (action === 'trocar_senha') {
+      const sessao = exigirSessao(body.token);
+      return json({ success: true, ok: trocarSenha(sessao.usuario, body.senhaAtual, body.senhaNova) });
+    }
+    if (action === 'logout') { encerrarSessao(body.token); return json({ success: true }); }
+
     return json({ success: false, error: 'Ação desconhecida: ' + action });
   } catch (err) {
-    return json({ success: false, error: String(err) });
+    return json({ success: false, error: String(err && err.message ? err.message : err) });
   }
 }
 
@@ -271,6 +301,298 @@ function salvarFoto(nome, base64, mime) {
   // Formato lh3: funciona em <img>. O antigo drive.google.com/uc?id= passou
   // a devolver página de confirmação e quebra a imagem.
   return 'https://lh3.googleusercontent.com/d/' + arquivo.getId();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DESCRIÇÕES DE CARGO — aba "Cargos" na planilha compartilhada
+   ══════════════════════════════════════════════════════════════ */
+
+const ABA_CARGOS = 'Cargos';
+// Os campos de lista (responsabilidades, atividades, interfaces, documentos)
+// são guardados como texto com um item por linha dentro da célula.
+const CAB_CARGOS = ['cargo_key','cargo','area','reporta_a','subordinados','especialidades',
+                    'objetivo','responsabilidades','atividades','interfaces','documentos',
+                    'indicadores','nota','ordem'];
+
+function abaCargos() {
+  const ss = SpreadsheetApp.openById(PLANILHA_ID);
+  let sh = ss.getSheetByName(ABA_CARGOS);
+  if (!sh) {
+    sh = ss.insertSheet(ABA_CARGOS);
+    sh.getRange(1, 1, 1, CAB_CARGOS.length).setValues([CAB_CARGOS]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(2, 200);
+    for (var c = 7; c <= 13; c++) sh.setColumnWidth(c, 420);
+  }
+  return sh;
+}
+
+function lerCargos() {
+  const sh = abaCargos();
+  const ultima = sh.getLastRow();
+  if (ultima < 2) return [];
+  const cols = Math.min(CAB_CARGOS.length, sh.getLastColumn());
+  const valores = sh.getRange(2, 1, ultima - 1, cols).getValues();
+  const listas = ['responsabilidades', 'atividades', 'interfaces', 'documentos', 'especialidades'];
+  return valores
+    .filter(function (r) { return String(r[0]).trim() !== ''; })
+    .map(function (r) {
+      const o = {};
+      CAB_CARGOS.forEach(function (col, i) {
+        let v = i < cols ? r[i] : '';
+        if (listas.indexOf(col) !== -1) {
+          v = String(v || '').split('\n')
+            .map(function (x) { return x.replace(/^[-•\s]+/, '').trim(); })
+            .filter(function (x) { return x !== ''; });
+        } else {
+          v = String(v === null || v === undefined ? '' : v);
+        }
+        o[col] = v;
+      });
+      o.ordem = Number(o.ordem) || 0;
+      return o;
+    })
+    .sort(function (a, b) { return a.ordem - b.ordem; });
+}
+
+function gravarCargos(cargos) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sh = abaCargos();
+    if (sh.getLastRow() > 1) {
+      sh.getRange(2, 1, sh.getLastRow() - 1, CAB_CARGOS.length).clearContent();
+    }
+    if (!cargos.length) return 0;
+    const matriz = cargos.map(function (c, idx) {
+      return CAB_CARGOS.map(function (col) {
+        if (col === 'ordem') return c.ordem === undefined ? idx : c.ordem;
+        const v = c[col];
+        if (Array.isArray(v)) return v.join('\n');
+        return v === undefined || v === null ? '' : v;
+      });
+    });
+    sh.getRange(2, 1, matriz.length, CAB_CARGOS.length).setValues(matriz);
+    return matriz.length;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   USUÁRIOS E SESSÕES
+
+   Os usuários ficam numa planilha SEPARADA e PRIVADA, criada pelo
+   próprio script. A planilha do Manual é compartilhada por link, então
+   guardar senha lá deixaria a lista visível para qualquer pessoa que
+   abrisse o arquivo. Só o Apps Script (que roda como o dono) lê esta.
+
+   Limitação que vale saber: o portal é um site estático, então isto
+   organiza quem faz o quê no dia a dia — não é barreira contra alguém
+   técnico determinado. Para isso seria preciso um servidor de verdade.
+   ══════════════════════════════════════════════════════════════ */
+
+const PROP_PLANILHA_USUARIOS = 'planilha_usuarios_id';
+const PROP_SESSAO = 'sessao_';
+const HORAS_SESSAO = 12;
+const CAB_USUARIOS = ['login', 'nome', 'senha_hash', 'salt', 'papel', 'ativo', 'criado_em'];
+
+function abaUsuarios() {
+  const props = PropertiesService.getScriptProperties();
+  let id = props.getProperty(PROP_PLANILHA_USUARIOS);
+  let ss = null;
+  if (id) {
+    try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; }
+  }
+  if (!ss) {
+    ss = SpreadsheetApp.create('Renova - Usuarios do Portal (NAO COMPARTILHAR)');
+    props.setProperty(PROP_PLANILHA_USUARIOS, ss.getId());
+  }
+  let sh = ss.getSheetByName('Usuarios');
+  if (!sh) {
+    sh = ss.getSheets()[0];
+    sh.setName('Usuarios');
+    sh.getRange(1, 1, 1, CAB_USUARIOS.length).setValues([CAB_USUARIOS]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  if (sh.getLastRow() < 2) criarAdminInicial(sh);
+  return sh;
+}
+
+/** Primeiro acesso: admin / renova2026. A troca é cobrada na interface. */
+function criarAdminInicial(sh) {
+  const salt = Utilities.getUuid();
+  sh.appendRow(['admin', 'Administrador', hashSenha('renova2026', salt), salt, 'admin', 'sim',
+                new Date().toISOString()]);
+}
+
+function hashSenha(senha, salt) {
+  const bytes = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256, String(salt) + '|' + String(senha), Utilities.Charset.UTF_8);
+  return bytes.map(function (b) {
+    return ('0' + (b < 0 ? b + 256 : b).toString(16)).slice(-2);
+  }).join('');
+}
+
+function lerUsuariosBrutos() {
+  const sh = abaUsuarios();
+  const ultima = sh.getLastRow();
+  if (ultima < 2) return [];
+  const valores = sh.getRange(2, 1, ultima - 1, CAB_USUARIOS.length).getValues();
+  return valores
+    .filter(function (r) { return String(r[0]).trim() !== ''; })
+    .map(function (r, i) {
+      const o = { _linha: i + 2 };
+      CAB_USUARIOS.forEach(function (c, j) { o[c] = String(r[j] === null ? '' : r[j]); });
+      return o;
+    });
+}
+
+/** Nunca devolve hash nem salt para o cliente. */
+function listarUsuarios() {
+  return lerUsuariosBrutos().map(function (u) {
+    return { login: u.login, nome: u.nome, papel: u.papel, ativo: u.ativo, criado_em: u.criado_em };
+  });
+}
+
+function autenticar(login, senha) {
+  const alvo = String(login || '').trim().toLowerCase();
+  if (!alvo) return { success: false, error: 'Informe o usuário.' };
+  const u = lerUsuariosBrutos().filter(function (x) {
+    return x.login.trim().toLowerCase() === alvo;
+  })[0];
+  // Mensagem única para usuário inexistente e senha errada: não entregar
+  // quais logins existem.
+  const generico = { success: false, error: 'Usuário ou senha inválidos.' };
+  if (!u) return generico;
+  if (String(u.ativo).trim().toLowerCase() !== 'sim') {
+    return { success: false, error: 'Este acesso está desativado. Procure o administrador.' };
+  }
+  if (hashSenha(senha, u.salt) !== u.senha_hash) return generico;
+
+  const token = Utilities.getUuid();
+  PropertiesService.getScriptProperties().setProperty(PROP_SESSAO + token, JSON.stringify({
+    usuario: u.login, nome: u.nome, papel: u.papel,
+    expira: Date.now() + HORAS_SESSAO * 3600 * 1000
+  }));
+  limparSessoesVencidas();
+  return { success: true, token: token, nome: u.nome, papel: u.papel, usuario: u.login,
+           senhaPadrao: hashSenha('renova2026', u.salt) === u.senha_hash };
+}
+
+function lerSessao(token) {
+  if (!token) return null;
+  const raw = PropertiesService.getScriptProperties().getProperty(PROP_SESSAO + token);
+  if (!raw) return null;
+  const s = JSON.parse(raw);
+  if (Date.now() > s.expira) {
+    PropertiesService.getScriptProperties().deleteProperty(PROP_SESSAO + token);
+    return null;
+  }
+  return s;
+}
+
+function exigirSessao(token) {
+  const s = lerSessao(token);
+  if (!s) throw new Error('Sessão expirada. Entre novamente.');
+  return s;
+}
+
+function exigirAdmin(token) {
+  const s = exigirSessao(token);
+  if (s.papel !== 'admin') throw new Error('Ação permitida apenas para administradores.');
+  return s;
+}
+
+function encerrarSessao(token) {
+  if (token) PropertiesService.getScriptProperties().deleteProperty(PROP_SESSAO + token);
+}
+
+function limparSessoesVencidas() {
+  const props = PropertiesService.getScriptProperties();
+  const todas = props.getProperties();
+  Object.keys(todas).forEach(function (k) {
+    if (k.indexOf(PROP_SESSAO) !== 0) return;
+    try {
+      if (Date.now() > JSON.parse(todas[k]).expira) props.deleteProperty(k);
+    } catch (e) { props.deleteProperty(k); }
+  });
+}
+
+function salvarUsuario(dados) {
+  const login = String(dados && dados.login || '').trim().toLowerCase();
+  if (!login) throw new Error('Informe o login.');
+  if (!/^[a-z0-9._-]+$/.test(login)) {
+    throw new Error('Login deve ter apenas letras, números, ponto, hífen ou sublinhado.');
+  }
+  const sh = abaUsuarios();
+  const existentes = lerUsuariosBrutos();
+  const atual = existentes.filter(function (u) { return u.login.trim().toLowerCase() === login; })[0];
+  const papel = dados.papel === 'admin' ? 'admin' : 'comum';
+  const ativo = dados.ativo === false ? 'nao' : 'sim';
+
+  if (atual) {
+    // Impede remover o último admin ativo rebaixando-o.
+    if (atual.papel === 'admin' && papel !== 'admin' && contarAdminsAtivos(existentes, atual.login) === 0) {
+      throw new Error('É preciso manter ao menos um administrador ativo.');
+    }
+    if (atual.papel === 'admin' && ativo === 'nao' && contarAdminsAtivos(existentes, atual.login) === 0) {
+      throw new Error('É preciso manter ao menos um administrador ativo.');
+    }
+    sh.getRange(atual._linha, 2).setValue(String(dados.nome || atual.nome));
+    sh.getRange(atual._linha, 5).setValue(papel);
+    sh.getRange(atual._linha, 6).setValue(ativo);
+    if (dados.senha) {
+      const salt = Utilities.getUuid();
+      sh.getRange(atual._linha, 3).setValue(hashSenha(dados.senha, salt));
+      sh.getRange(atual._linha, 4).setValue(salt);
+    }
+    return { login: login, criado: false };
+  }
+
+  if (!dados.senha) throw new Error('Defina uma senha para o novo usuário.');
+  const salt = Utilities.getUuid();
+  sh.appendRow([login, String(dados.nome || login), hashSenha(dados.senha, salt), salt,
+                papel, ativo, new Date().toISOString()]);
+  return { login: login, criado: true };
+}
+
+function contarAdminsAtivos(usuarios, exceto) {
+  return usuarios.filter(function (u) {
+    return u.papel === 'admin' && String(u.ativo).toLowerCase() === 'sim' &&
+           u.login.trim().toLowerCase() !== String(exceto || '').trim().toLowerCase();
+  }).length;
+}
+
+function removerUsuario(login, solicitante) {
+  const alvo = String(login || '').trim().toLowerCase();
+  if (alvo === String(solicitante || '').trim().toLowerCase()) {
+    throw new Error('Você não pode remover o próprio acesso.');
+  }
+  const usuarios = lerUsuariosBrutos();
+  const u = usuarios.filter(function (x) { return x.login.trim().toLowerCase() === alvo; })[0];
+  if (!u) throw new Error('Usuário não encontrado.');
+  if (u.papel === 'admin' && contarAdminsAtivos(usuarios, u.login) === 0) {
+    throw new Error('É preciso manter ao menos um administrador ativo.');
+  }
+  abaUsuarios().deleteRow(u._linha);
+  return 1;
+}
+
+function trocarSenha(login, senhaAtual, senhaNova) {
+  if (!senhaNova || String(senhaNova).length < 6) {
+    throw new Error('A nova senha precisa ter ao menos 6 caracteres.');
+  }
+  const sh = abaUsuarios();
+  const u = lerUsuariosBrutos().filter(function (x) {
+    return x.login.trim().toLowerCase() === String(login).trim().toLowerCase();
+  })[0];
+  if (!u) throw new Error('Usuário não encontrado.');
+  if (hashSenha(senhaAtual, u.salt) !== u.senha_hash) throw new Error('Senha atual incorreta.');
+  const salt = Utilities.getUuid();
+  sh.getRange(u._linha, 3).setValue(hashSenha(senhaNova, salt));
+  sh.getRange(u._linha, 4).setValue(salt);
+  return true;
 }
 
 function json(obj) {
