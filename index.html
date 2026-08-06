@@ -3331,7 +3331,7 @@ const MN_REGRAS = [
 // Publicação: ver apps-script/manual-empresa.gs no repositório.
 // Enquanto a URL não for preenchida o módulo funciona em rascunho local.
 const MN_API = {
-  URL: 'COLE_A_URL_DO_APPS_SCRIPT_AQUI',
+  URL: 'https://script.google.com/macros/s/AKfycbxmdLCRPZwf6u7l8BnbtqbomFRcjplzJOKCeNWSTRNCKq8M9NtO2uWO7DjEP-xN7WBkkg/exec',
   salvando: false,
   pendente: false
 };
@@ -3405,13 +3405,25 @@ function mnMontarArvore(linhas){
       collapsed:String(l.recolhido)==='1', children:[], _ordem:Number(l.ordem)||0 };
   });
   let raiz = null;
+  const orfaos = [];
   linhas.forEach(l=>{
     const n = mapa[String(l.uid||'').trim()];
     if(!n) return;
-    const pai = mapa[String(l.parent_uid||'').trim()];
-    if(pai) pai.children.push(n); else if(!raiz) raiz = n;
+    const idPai = String(l.parent_uid||'').trim();
+    const pai = mapa[idPai];
+    if(pai){ pai.children.push(n); return; }
+    if(!idPai && !raiz){ raiz = n; return; }
+    // Pai inexistente ou segunda raiz: pendura na raiz em vez de descartar.
+    // Sumir com uma posição seria perder gente do organograma em silêncio.
+    orfaos.push(n);
   });
+  if(!raiz) raiz = orfaos.shift() || null;
   if(!raiz) return null;
+  if(orfaos.length){
+    console.warn('Manual: '+orfaos.length+' posição(ões) sem pai válido, anexadas à raiz:',
+      orfaos.map(o=>o.label+(o.nome?' ('+o.nome+')':'')).join(', '));
+    orfaos.forEach(o=>raiz.children.push(o));
+  }
   (function ord(n){ n.children.sort((a,b)=>a._ordem-b._ordem); n.children.forEach(ord); })(raiz);
   return raiz;
 }
