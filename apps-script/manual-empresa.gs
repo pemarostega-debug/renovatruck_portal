@@ -55,31 +55,168 @@ function doPost(e) {
   }
 }
 
-/** Devolve a aba, criando-a com o cabeçalho na primeira execução. */
+/**
+ * Devolve a aba no formato novo, criando-a se preciso.
+ * Se encontrar a aba no formato antigo (id, nome, cargo, reporta_a_id, area),
+ * migra o conteúdo preservando os nomes já digitados e guarda a original
+ * renomeada como backup — nada é apagado.
+ */
 function obterAba() {
   const ss = SpreadsheetApp.openById(PLANILHA_ID);
   let sh = ss.getSheetByName(ABA);
-  if (!sh) {
-    sh = ss.insertSheet(ABA);
-    sh.getRange(1, 1, 1, CABECALHO.length).setValues([CABECALHO]).setFontWeight('bold');
-    sh.setFrozenRows(1);
-    sh.setColumnWidth(4, 220); // cargo
-    sh.setColumnWidth(7, 200); // nome
-    sh.setColumnWidth(8, 320); // foto_url
+
+  if (sh && ehFormatoAntigo(sh)) {
+    const migradas = migrarFormatoAntigo(ss, sh);
+    sh = ss.getSheetByName(ABA);
+    Logger.log('Migradas ' + migradas + ' posições do formato antigo.');
   }
+
+  if (!sh) sh = criarAba(ss, ABA);
   return sh;
+}
+
+function criarAba(ss, nome) {
+  const sh = ss.insertSheet(nome);
+  sh.getRange(1, 1, 1, CABECALHO.length).setValues([CABECALHO]).setFontWeight('bold');
+  sh.setFrozenRows(1);
+  sh.setColumnWidth(4, 220); // cargo
+  sh.setColumnWidth(7, 200); // nome
+  sh.setColumnWidth(8, 320); // foto_url
+  return sh;
+}
+
+function ehFormatoAntigo(sh) {
+  if (sh.getLastRow() < 1) return false;
+  const cab = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0]
+    .map(function (c) { return String(c).trim().toLowerCase(); });
+  return cab.indexOf('reporta_a_id') !== -1 || (cab[0] === 'id' && cab.indexOf('uid') === -1);
+}
+
+/**
+ * Normaliza texto para comparação: sem acento, minúsculo, só letras e números.
+ * O NFD separa a letra do acento e o filtro final descarta tudo que não for
+ * [a-z0-9] — inclusive os acentos soltos. Evita de propósito um intervalo de
+ * caracteres combinantes no código, que se corrompe fácil ao copiar e colar.
+ */
+function chaveDe(txt) {
+  return String(txt || '')
+    .normalize('NFD')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+/** Liga o cargo da planilha à descrição correspondente no portal. */
+function mapearCargo(cargo) {
+  const k = chaveDe(cargo);
+  const tabela = [
+    ['planejamentoestrategico', 'planejamento-estrategico'],
+    ['gerenteoperacional',      'gerente-operacional'],
+    ['administrativo',          'administrativo'],
+    ['almoxarife',              'almoxarife'],
+    ['porteiro',                'porteiro'],
+    ['lideroperacional',        'lider-operacional'],
+    ['mecanico12oficial',       'mecanico-12-oficial'],
+    ['mecanicomeiooficial',     'mecanico-12-oficial'],
+    ['mecanicooficial',         'mecanico-oficial'],
+    ['analistafinanceira',      'analista-financeira'],
+    ['gestorderh',              'gestor-rh'],
+    ['gestoraderh',             'gestor-rh'],
+    ['marketingdigital',        'marketing-digital'],
+    ['comercial',               'comercial']
+  ];
+  // "mecanico12oficial" contém "mecanicooficial"? não — mas a ordem acima
+  // garante que o mais específico seja testado primeiro de qualquer forma.
+  for (var i = 0; i < tabela.length; i++) {
+    if (k.indexOf(tabela[i][0]) !== -1) return tabela[i][1];
+  }
+  return '';
+}
+
+/** Separa "Líder Operacional - Implementos" em cargo + especialidade. */
+function separarEspecialidade(cargo) {
+  const partes = String(cargo || '').split(/\s+[-–—]\s+/);
+  if (partes.length >= 2) {
+    return { cargo: partes[0].trim(), especialidade: partes.slice(1).join(' - ').trim() };
+  }
+  return { cargo: String(cargo || '').trim(), especialidade: '' };
+}
+
+function migrarFormatoAntigo(ss, shAntiga) {
+  const ultima = shAntiga.getLastRow();
+  const ultimaCol = shAntiga.getLastColumn();
+  const valores = ultima > 1 ? shAntiga.getRange(2, 1, ultima - 1, ultimaCol).getValues() : [];
+
+  // Índices pelo cabeçalho, não por posição fixa.
+  const cab = shAntiga.getRange(1, 1, 1, ultimaCol).getValues()[0]
+    .map(function (c) { return String(c).trim().toLowerCase(); });
+  const iId = cab.indexOf('id'), iNome = cab.indexOf('nome');
+  const iCargo = cab.indexOf('cargo'), iPai = cab.indexOf('reporta_a_id'), iArea = cab.indexOf('area');
+
+  const RAIZ = 'raiz';
+  const linhas = [{
+    uid: RAIZ, parent_uid: '', ordem: 0, cargo: 'DIRETORIA', especialidade: '',
+    cargo_key: '', nome: '', foto_url: '', tipo: 'diretoria', recolhido: ''
+  }];
+
+  const ordemPorPai = {};
+  valores.forEach(function (r) {
+    const id = String(r[iId] || '').trim();
+    if (!id) return;
+
+    // Em algumas linhas o cargo foi digitado na coluna "area" — usa o que houver.
+    let cargoBruto = String(r[iCargo] || '').trim();
+    const area = String(r[iArea] || '').trim();
+    if (!cargoBruto) cargoBruto = area;
+    if (!cargoBruto) return;
+
+    const paiBruto = String(r[iPai] || '').trim();
+    const duplo = paiBruto.indexOf(',') !== -1;   // reporta a ambos os diretores
+    const pai = (!paiBruto || duplo) ? RAIZ : ('n' + paiBruto.split(',')[0].trim());
+    const sep = separarEspecialidade(cargoBruto);
+
+    ordemPorPai[pai] = (ordemPorPai[pai] || 0) + 1;
+    linhas.push({
+      uid: 'n' + id,
+      parent_uid: pai,
+      ordem: ordemPorPai[pai],
+      cargo: sep.cargo,
+      especialidade: sep.especialidade,
+      // Diretores não recebem cargo_key: "Diretor Financeiro/Comercial" casaria
+      // com a descrição do cargo "Comercial", que é outra função.
+      cargo_key: !paiBruto ? '' : mapearCargo(cargoBruto),
+      nome: String(r[iNome] || '').trim(),
+      foto_url: '',
+      tipo: !paiBruto ? 'diretoria' : (duplo ? 'assessoria' : 'cargo'),
+      recolhido: ''
+    });
+  });
+
+  // Preserva a aba original antes de assumir o nome "Organograma".
+  const backup = 'Organograma (formato antigo)';
+  const jaExiste = ss.getSheetByName(backup);
+  if (jaExiste) ss.deleteSheet(jaExiste);
+  shAntiga.setName(backup);
+
+  const nova = criarAba(ss, ABA);
+  const matriz = linhas.map(function (l) {
+    return CABECALHO.map(function (col) { return l[col] === undefined ? '' : l[col]; });
+  });
+  nova.getRange(2, 1, matriz.length, CABECALHO.length).setValues(matriz);
+  return matriz.length;
 }
 
 function lerLinhas() {
   const sh = obterAba();
   const ultima = sh.getLastRow();
   if (ultima < 2) return [];
-  const valores = sh.getRange(2, 1, ultima - 1, CABECALHO.length).getValues();
+  // Nunca pedir mais colunas do que a aba tem: getRange estoura a grade.
+  const cols = Math.min(CABECALHO.length, sh.getLastColumn());
+  const valores = sh.getRange(2, 1, ultima - 1, cols).getValues();
   return valores
     .filter(function (r) { return String(r[0]).trim() !== ''; })
     .map(function (r) {
       const o = {};
-      CABECALHO.forEach(function (col, i) { o[col] = r[i]; });
+      CABECALHO.forEach(function (col, i) { o[col] = i < cols ? r[i] : ''; });
       return o;
     });
 }
