@@ -1416,8 +1416,10 @@ textarea.inp{resize:vertical;min-height:64px;}
 
     <div class="mn-panel" id="mn-panel-cargos">
       <div class="mn-cargo-toolbar">
-        <input type="text" class="mn-cargo-search" id="mn-cargo-search" placeholder="Buscar cargo (ex: porteiro, mecânico, financeira)..." oninput="filterCargos(this.value)">
+        <input type="text" class="mn-cargo-search" id="mn-cargo-search" placeholder="Buscar por cargo, área ou nome da pessoa..." oninput="filterCargos(this.value)">
         <span class="mn-cargo-count" id="mn-cargo-count"></span>
+        <span style="flex:1"></span>
+        <button class="mn-tool-btn so-admin" onclick="abrirEditorCargo(null)"><i class="fa-solid fa-plus"></i> Novo cargo</button>
       </div>
       <div id="mn-cargo-list"></div>
     </div>
@@ -1573,6 +1575,71 @@ textarea.inp{resize:vertical;min-height:64px;}
     <div class="modal-footer">
       <button class="mn-ed-mini" onclick="document.getElementById('mn-modal-usuario').classList.remove('open')">Cancelar</button>
       <button class="mn-cfg-btn" onclick="salvarUsuarioPortal()"><i class="fa-solid fa-check"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mn-modal-cargo">
+  <div class="modal" style="max-width:620px;width:100%;">
+    <div class="modal-hdr">
+      <h3 id="mn-cg-titulo">Editar cargo</h3>
+      <button class="close-btn" onclick="document.getElementById('mn-modal-cargo').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="mn-form-erro" id="mn-cg-erro"></div>
+      <div class="mn-form-row">
+        <label>Nome do cargo</label>
+        <input type="text" id="mn-cg-cargo" placeholder="ex: Auxiliar de Logística">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="mn-form-row"><label>Área</label><input type="text" id="mn-cg-area" placeholder="ex: Operacional"></div>
+        <div class="mn-form-row"><label>Reporta a</label><input type="text" id="mn-cg-reporta" placeholder="ex: Gerente Operacional"></div>
+      </div>
+      <div class="mn-form-row">
+        <label>Subordinados diretos</label>
+        <input type="text" id="mn-cg-subordinados" placeholder="ex: Nenhum">
+      </div>
+      <div class="mn-form-row">
+        <label>Especialidades</label>
+        <input type="text" id="mn-cg-especialidades" placeholder="ex: Implementos Rodoviários, Mecânica Diesel">
+        <span class="dica">Separe por vírgula. Deixe em branco se o cargo não tem especialidades.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Objetivo do cargo</label>
+        <textarea id="mn-cg-objetivo" placeholder="Para que esta função existe"></textarea>
+      </div>
+      <div class="mn-form-row">
+        <label>Responsabilidades principais</label>
+        <textarea id="mn-cg-responsabilidades" placeholder="Uma por linha"></textarea>
+        <span class="dica">Uma por linha.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Atividades detalhadas</label>
+        <textarea id="mn-cg-atividades" placeholder="Uma por linha, na ordem em que acontecem"></textarea>
+        <span class="dica">Uma por linha. Vira lista numerada.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Interfaces</label>
+        <textarea id="mn-cg-interfaces" placeholder="Uma por linha"></textarea>
+        <span class="dica">Com quem esta função se relaciona. Uma por linha.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Documentos e registros gerados</label>
+        <textarea id="mn-cg-documentos" placeholder="Um por linha"></textarea>
+        <span class="dica">Um por linha.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Indicadores</label>
+        <textarea id="mn-cg-indicadores" placeholder="Como o desempenho desta função é medido" style="min-height:60px;"></textarea>
+      </div>
+      <div class="mn-form-row">
+        <label>Observação</label>
+        <textarea id="mn-cg-nota" placeholder="Opcional" style="min-height:60px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mn-ed-mini" onclick="document.getElementById('mn-modal-cargo').classList.remove('open')">Cancelar</button>
+      <button class="mn-cfg-btn" onclick="salvarEditorCargo()"><i class="fa-solid fa-check"></i> Salvar</button>
     </div>
   </div>
 </div>
@@ -3388,7 +3455,8 @@ function hiRenderizar(registros){
 // MANUAL DA EMPRESA
 // ══════════════════════════════════════════════════════════════
 
-const MN_CARGOS = [
+// Substituído pelo conteúdo da planilha quando ela responde (ver mnCarregarCargosDaNuvem).
+let MN_CARGOS = [
   { key:'porteiro', cargo:'Porteiro', area:'Operacional', reportaA:'Gerente Operacional', subordinados:'Nenhum',
     objetivo:'Controlar o acesso de veículos e pessoas às dependências da empresa, garantindo o registro formal de entrada e saída de equipamentos, e atuar como ponto de contato inicial no recebimento de veículos para manutenção.',
     responsabilidades:['Controle de entrada e saída de veículos, equipamentos e visitantes','Registro de entrada do equipamento no sistema de portaria (placa, motorista, horário)','Liberação de equipamentos após conclusão da manutenção e autorização da Gerência Operacional','Direcionamento do motorista ao balcão administrativo para abertura da OS'],
@@ -3873,6 +3941,62 @@ function mnAvatarHTML(node, cls){
   return '<div class="'+cls+'">'+(ini || '<i class="fa-solid fa-user"></i>')+'</div>';
 }
 
+// ══ Descrições de cargo: planilha ↔ formato usado na tela ══
+// MN_CARGOS nasce embutido no código e é substituído pelo conteúdo da planilha
+// assim que ela responde. Serve de reserva se a planilha estiver fora do ar.
+function mnCargoDaPlanilha(r){
+  return {
+    key: String(r.cargo_key||'').trim(),
+    cargo: r.cargo||'', area: r.area||'', reportaA: r.reporta_a||'',
+    subordinados: r.subordinados||'',
+    especialidades: (r.especialidades||[]).length ? r.especialidades : null,
+    objetivo: r.objetivo||'',
+    responsabilidades: r.responsabilidades||[],
+    atividades: r.atividades||[],
+    interfaces: r.interfaces||[],
+    documentos: r.documentos||[],
+    indicadores: r.indicadores||'',
+    nota: r.nota||'',
+    ordem: Number(r.ordem)||0
+  };
+}
+function mnCargoParaPlanilha(c, i){
+  return {
+    cargo_key: c.key, cargo: c.cargo, area: c.area, reporta_a: c.reportaA,
+    subordinados: c.subordinados, especialidades: c.especialidades||[],
+    objetivo: c.objetivo, responsabilidades: c.responsabilidades,
+    atividades: c.atividades, interfaces: c.interfaces,
+    documentos: Array.isArray(c.documentos) ? c.documentos : [c.documentos],
+    indicadores: c.indicadores, nota: c.nota||'', ordem: i
+  };
+}
+async function mnCarregarCargosDaNuvem(){
+  if(!mnNuvemAtiva()) return false;
+  try{
+    const r = await fetch(MN_API.URL+'?action=cargos_get&t='+Date.now());
+    const d = await r.json();
+    if(!d.success) throw new Error(d.error||'resposta inválida');
+    if(!d.data || !d.data.length) return false;   // planilha vazia → mantém o embutido
+    MN_CARGOS = d.data.map(mnCargoDaPlanilha);
+    return true;
+  }catch(e){
+    console.warn('Manual: falha ao ler os cargos da planilha, usando cópia do código', e);
+    return false;
+  }
+}
+async function mnSalvarCargosNaNuvem(){
+  if(!mnNuvemAtiva() || !rvPodeEditar()) return;
+  mnStatusNuvem('salvando');
+  try{
+    await mnPost({action:'cargos_set', cargos: MN_CARGOS.map(mnCargoParaPlanilha)});
+    mnStatusNuvem('ok');
+  }catch(e){
+    console.warn('Manual: falha ao salvar os cargos', e);
+    mnStatusNuvem('erro', e.message);
+    alert('Não consegui salvar na planilha: '+e.message);
+  }
+}
+
 let mnIniciado = false;
 function initManual(){
   if(mnIniciado) return;
@@ -3889,9 +4013,10 @@ function initManual(){
   mnAplicarLogo();
   mnStatusNuvem(mnNuvemAtiva() ? 'salvando' : 'off');
   if(mnNuvemAtiva()){
-    mnCarregarDaNuvem().then(ok=>{
-      if(ok){ renderOrganograma(); renderCargos(); setTimeout(orgFit,20); mnStatusNuvem('ok'); }
-      else if(!MN_API.erroLeitura) mnStatusNuvem('ok');
+    Promise.all([mnCarregarDaNuvem(), mnCarregarCargosDaNuvem()]).then(([org, cargos])=>{
+      if(org){ renderOrganograma(); setTimeout(orgFit,20); }
+      if(org || cargos) renderCargos();
+      if(!MN_API.erroLeitura) mnStatusNuvem('ok');
     });
   }
 }
@@ -4350,7 +4475,9 @@ function mnOcupantes(key){
   return out;
 }
 function mnCargoCardHTML(c){
-  const badges = (c.especialidades ? '<span class="mn-cargo-esp">2 especialidades</span>' : '') + (c.vaga ? '<span class="mn-cargo-esp" style="background:#fee2e2;color:#dc2626;">vaga em aberto</span>' : '');
+  const semGente = mnOcupantes(c.key).length === 0;
+  const badges = (c.especialidades ? '<span class="mn-cargo-esp">'+c.especialidades.length+' especialidades</span>' : '')
+    + (semGente ? '<span class="mn-cargo-esp" style="background:#fee2e2;color:#dc2626;">sem ocupante</span>' : '');
   const documentosHtml = Array.isArray(c.documentos) ? '<ul>'+c.documentos.map(d=>'<li>'+kbEsc(d)+'</li>').join('')+'</ul>' : '<p>'+kbEsc(c.documentos)+'</p>';
   const notaHtml = c.nota ? '<div class="mn-cargo-sec"><h4>Observação</h4><p>'+kbEsc(c.nota)+'</p></div>' : '';
   const espHtml = c.especialidades ? '<div class="mn-cargo-sec"><h4>Especialidades</h4><p>Este cargo existe em duas especialidades — <b>'+c.especialidades.join('</b> e <b>')+'</b> — com a mesma descrição-base; a diferença é a área técnica de atuação e a equipe subordinada.</p></div>' : '';
@@ -4386,6 +4513,10 @@ function mnCargoCardHTML(c){
       +'<div class="mn-cargo-sec"><h4>Documentos/registros gerados</h4>'+documentosHtml+'</div>'
       +'<div class="mn-cargo-sec"><h4>Indicadores</h4><p>'+kbEsc(c.indicadores)+'</p></div>'
       +notaHtml
+      +'<div class="mn-cargo-sec so-admin bloco" style="border-top:1px solid var(--border);padding-top:12px;">'
+        +'<button class="cfg-mini" onclick="event.stopPropagation();abrirEditorCargo(\''+c.key+'\')"><i class="fa-solid fa-pen"></i> Editar este cargo</button> '
+        +'<button class="cfg-mini danger" onclick="event.stopPropagation();excluirCargo(\''+c.key+'\')"><i class="fa-solid fa-trash"></i> Excluir</button>'
+      +'</div>'
     +'</div>'
   +'</div>';
 }
@@ -4393,6 +4524,84 @@ function renderCargos(){
   document.getElementById('mn-cargo-list').innerHTML = MN_CARGOS.map(mnCargoCardHTML).join('');
   document.getElementById('mn-cargo-count').textContent = MN_CARGOS.length+' cargos';
 }
+// ══ CRUD das descrições de cargo ══
+let mnCargoEditando = null;   // null = novo cargo
+
+/** Gera uma chave estável a partir do nome, sem colidir com as existentes. */
+function mnChaveCargo(nome){
+  let base = nome.toLowerCase().normalize('NFD')
+    .replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').slice(0,40);
+  if(!base) base = 'cargo';
+  let k = base, i = 2;
+  while(MN_CARGOS.some(c=>c.key===k)) k = base+'-'+(i++);
+  return k;
+}
+const mnLinhas = txt => String(txt||'').split('\n').map(s=>s.trim()).filter(Boolean);
+
+function abrirEditorCargo(key){
+  if(!rvPodeEditar()) return;
+  const c = key ? MN_CARGOS.find(x=>x.key===key) : null;
+  mnCargoEditando = c || null;
+  document.getElementById('mn-cg-titulo').textContent = c ? 'Editar: '+c.cargo : 'Novo cargo';
+  document.getElementById('mn-cg-erro').style.display='none';
+  const p = (id,v)=>document.getElementById(id).value = v||'';
+  p('mn-cg-cargo', c&&c.cargo); p('mn-cg-area', c&&c.area);
+  p('mn-cg-reporta', c&&c.reportaA); p('mn-cg-subordinados', c&&c.subordinados);
+  p('mn-cg-especialidades', c&&c.especialidades ? c.especialidades.join(', ') : '');
+  p('mn-cg-objetivo', c&&c.objetivo);
+  p('mn-cg-responsabilidades', c ? (c.responsabilidades||[]).join('\n') : '');
+  p('mn-cg-atividades', c ? (c.atividades||[]).join('\n') : '');
+  p('mn-cg-interfaces', c ? (c.interfaces||[]).join('\n') : '');
+  p('mn-cg-documentos', c ? (Array.isArray(c.documentos)?c.documentos:[c.documentos]).filter(Boolean).join('\n') : '');
+  p('mn-cg-indicadores', c&&c.indicadores); p('mn-cg-nota', c&&c.nota);
+  document.getElementById('mn-modal-cargo').classList.add('open');
+}
+
+async function salvarEditorCargo(){
+  const erro = document.getElementById('mn-cg-erro');
+  const v = id => document.getElementById(id).value.trim();
+  const nome = v('mn-cg-cargo');
+  if(!nome){ erro.textContent='Informe o nome do cargo.'; erro.style.display='block'; return; }
+
+  const esp = v('mn-cg-especialidades').split(',').map(s=>s.trim()).filter(Boolean);
+  const dados = {
+    cargo: nome, area: v('mn-cg-area'), reportaA: v('mn-cg-reporta'),
+    subordinados: v('mn-cg-subordinados') || 'Nenhum',
+    especialidades: esp.length ? esp : null,
+    objetivo: v('mn-cg-objetivo'),
+    responsabilidades: mnLinhas(v('mn-cg-responsabilidades')),
+    atividades: mnLinhas(v('mn-cg-atividades')),
+    interfaces: mnLinhas(v('mn-cg-interfaces')),
+    documentos: mnLinhas(v('mn-cg-documentos')),
+    indicadores: v('mn-cg-indicadores'), nota: v('mn-cg-nota')
+  };
+
+  if(mnCargoEditando){
+    Object.assign(mnCargoEditando, dados);   // a chave não muda: o organograma aponta para ela
+  } else {
+    MN_CARGOS.push(Object.assign({key: mnChaveCargo(nome)}, dados));
+  }
+  document.getElementById('mn-modal-cargo').classList.remove('open');
+  renderCargos();
+  await mnSalvarCargosNaNuvem();
+}
+
+async function excluirCargo(key){
+  if(!rvPodeEditar()) return;
+  const c = MN_CARGOS.find(x=>x.key===key);
+  if(!c) return;
+  const usos = mnOcupantes(key).length;
+  const ligados = (function(){ let n=0; (function w(x){ if(x.key===key) n++; (x.children||[]).forEach(w); })(MN_TREE||{children:[]}); return n; })();
+  let msg = 'Excluir a descrição do cargo "'+c.cargo+'"?';
+  if(ligados) msg += '\n\nAtenção: '+ligados+' posição(ões) do organograma apontam para este cargo'
+    + (usos ? ' ('+usos+' com pessoa definida)' : '')
+    + '. Elas continuam no organograma, mas ficam sem descrição vinculada.';
+  if(!confirm(msg)) return;
+  MN_CARGOS = MN_CARGOS.filter(x=>x.key!==key);
+  renderCargos();
+  await mnSalvarCargosNaNuvem();
+}
+
 function toggleCargoCard(key){
   const el = document.getElementById('mn-cargo-'+key);
   if(el) el.classList.toggle('open');
