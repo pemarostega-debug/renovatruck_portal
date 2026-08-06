@@ -1178,6 +1178,7 @@ textarea.inp{resize:vertical;min-height:64px;}
   #screen-manual .mn-cfg-status{display:inline-flex;align-items:center;gap:7px;font-size:.74rem;font-weight:800;padding:5px 12px;border-radius:20px;}
   #screen-manual .mn-cfg-status.limpo{background:#dcfce7;color:#16a34a;}
   #screen-manual .mn-cfg-status.rascunho{background:#fef3c7;color:#b45309;}
+  #screen-manual .mn-cfg-status.erro{background:#fee2e2;color:#b91c1c;}
   #screen-manual .mn-cfg-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 
   /* Avatares nos cards de cargo */
@@ -1305,8 +1306,9 @@ textarea.inp{resize:vertical;min-height:64px;}
     <div class="mn-panel" id="mn-panel-config">
       <div class="mn-cfg-card">
         <h3><i class="fa-solid fa-pen-to-square"></i> Suas alterações</h3>
-        <p>Ao ativar o modo <b>Editar</b> na aba Organograma você pode incluir os nomes e fotos das pessoas, renomear cargos, criar novas posições, reordenar e remover. As alterações ficam salvas neste navegador como um rascunho.</p>
+        <p>Ao ativar o modo <b>Editar</b> na aba Organograma você pode incluir os nomes e fotos das pessoas, renomear cargos, criar novas posições, reordenar e remover. Com a planilha conectada as alterações são gravadas automaticamente e todo mundo passa a enxergá-las; sem conexão elas ficam guardadas apenas neste navegador.</p>
         <div class="mn-cfg-actions" style="margin-bottom:12px;">
+          <span class="mn-cfg-status limpo" id="mn-cfg-nuvem"><i class="fa-solid fa-plug-circle-xmark"></i> Verificando conexão…</span>
           <span class="mn-cfg-status limpo" id="mn-cfg-status"><i class="fa-solid fa-check"></i> Sem alterações locais</span>
         </div>
         <div class="mn-cfg-actions">
@@ -3325,7 +3327,17 @@ const MN_REGRAS = [
   ]}
 ];
 
-// ── Estado editável (rascunho local; ver aba Configurações) ──
+// ── Backend do organograma (Apps Script da planilha do Manual) ──
+// Publicação: ver apps-script/manual-empresa.gs no repositório.
+// Enquanto a URL não for preenchida o módulo funciona em rascunho local.
+const MN_API = {
+  URL: 'COLE_A_URL_DO_APPS_SCRIPT_AQUI',
+  salvando: false,
+  pendente: false
+};
+function mnNuvemAtiva(){ return MN_API.URL.indexOf('COLE_A_URL') === -1; }
+
+// ── Estado editável (nuvem quando configurada; rascunho local como reserva) ──
 const MN_STORE_KEY = 'renova_manual_org_v1';
 let MN_TREE = null;          // árvore viva do organograma
 let mnEditMode = false;
@@ -3360,6 +3372,108 @@ function mnSerialize(node){
 function mnSalvarEstado(){
   try{ localStorage.setItem(MN_STORE_KEY, JSON.stringify(mnSerialize(MN_TREE))); }catch(e){ console.warn('Manual: não foi possível salvar o rascunho', e); }
   mnAtualizarStatusCfg();
+  if(mnNuvemAtiva()) mnAgendarSalvarNuvem();
+}
+
+// ══ Sincronização com a planilha ══
+// A árvore vira linhas (uma por posição) e volta. Sempre gravamos a árvore
+// inteira: é mais simples que atualização parcial e não deixa estado meio-gravado.
+function mnAchatar(){
+  const linhas = [];
+  (function walk(n, pai, ordem){
+    linhas.push({
+      uid:n.uid, parent_uid: pai?pai.uid:'', ordem:ordem,
+      cargo:n.label||'', especialidade:n.sub||'', cargo_key:n.key||'',
+      nome:n.nome||'', foto_url:n.foto||'',
+      tipo: n.dir?'diretoria':(n.staff?'assessoria':'cargo'),
+      recolhido: n.collapsed?'1':''
+    });
+    (n.children||[]).forEach((c,i)=>walk(c,n,i));
+  })(MN_TREE, null, 0);
+  return linhas;
+}
+function mnMontarArvore(linhas){
+  if(!linhas || !linhas.length) return null;
+  const mapa = {};
+  linhas.forEach(l=>{
+    const uid = String(l.uid||'').trim();
+    if(!uid) return;
+    mapa[uid] = { uid, label:String(l.cargo||'').trim(), sub:String(l.especialidade||'').trim(),
+      key:String(l.cargo_key||'').trim()||null,
+      dir:l.tipo==='diretoria', staff:l.tipo==='assessoria',
+      nome:String(l.nome||'').trim(), foto:String(l.foto_url||'').trim(),
+      collapsed:String(l.recolhido)==='1', children:[], _ordem:Number(l.ordem)||0 };
+  });
+  let raiz = null;
+  linhas.forEach(l=>{
+    const n = mapa[String(l.uid||'').trim()];
+    if(!n) return;
+    const pai = mapa[String(l.parent_uid||'').trim()];
+    if(pai) pai.children.push(n); else if(!raiz) raiz = n;
+  });
+  if(!raiz) return null;
+  (function ord(n){ n.children.sort((a,b)=>a._ordem-b._ordem); n.children.forEach(ord); })(raiz);
+  return raiz;
+}
+async function mnCarregarDaNuvem(){
+  if(!mnNuvemAtiva()) return false;
+  try{
+    const r = await fetch(MN_API.URL+'?action=organograma_get&t='+Date.now());
+    const d = await r.json();
+    if(!d.success) throw new Error(d.error||'resposta inválida');
+    if(!d.data || !d.data.length) return false;   // planilha ainda vazia → mantém o padrão
+    const arvore = mnMontarArvore(d.data);
+    if(!arvore) return false;
+    MN_TREE = mnCloneOrg(arvore, null); mnRelink(MN_TREE, null);
+    return true;
+  }catch(e){
+    console.warn('Manual: falha ao ler da planilha, usando cópia local', e);
+    MN_API.erroLeitura = true;
+    mnStatusNuvem('erro', e.message);
+    return false;
+  }
+}
+let mnTimerNuvem = null;
+function mnAgendarSalvarNuvem(){
+  clearTimeout(mnTimerNuvem);
+  mnStatusNuvem('pendente');
+  mnTimerNuvem = setTimeout(mnSalvarNaNuvem, 900);
+}
+async function mnSalvarNaNuvem(){
+  if(!mnNuvemAtiva()) return;
+  if(MN_API.salvando){ MN_API.pendente = true; return; }
+  MN_API.salvando = true;
+  mnStatusNuvem('salvando');
+  try{
+    const r = await fetch(MN_API.URL, {
+      method:'POST', mode:'cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'organograma_set', linhas: mnAchatar()})
+    });
+    const d = await r.json();
+    if(!d.success) throw new Error(d.error||'resposta inválida');
+    mnStatusNuvem('ok');
+  }catch(e){
+    console.warn('Manual: falha ao salvar na planilha', e);
+    mnStatusNuvem('erro', e.message);
+  }finally{
+    MN_API.salvando = false;
+    if(MN_API.pendente){ MN_API.pendente = false; mnAgendarSalvarNuvem(); }
+  }
+}
+function mnStatusNuvem(estado, detalhe){
+  const el = document.getElementById('mn-cfg-nuvem');
+  if(!el) return;
+  const mapa = {
+    pendente:['rascunho','<i class="fa-solid fa-clock"></i> Alterações pendentes…'],
+    salvando:['rascunho','<i class="fa-solid fa-arrows-rotate"></i> Salvando na planilha…'],
+    ok:['limpo','<i class="fa-solid fa-cloud-arrow-up"></i> Salvo na planilha — visível para toda a equipe'],
+    erro:['erro','<i class="fa-solid fa-triangle-exclamation"></i> Falha ao salvar'+(detalhe?': '+kbEsc(detalhe):'')+' — guardado neste navegador'],
+    off:['rascunho','<i class="fa-solid fa-plug-circle-xmark"></i> Planilha não conectada — alterações só neste navegador']
+  };
+  const [cls, html] = mapa[estado] || mapa.off;
+  el.className = 'mn-cfg-status ' + cls;
+  el.innerHTML = html;
 }
 function mnCarregarEstado(){
   let base = null;
@@ -3395,6 +3509,8 @@ let mnIniciado = false;
 function initManual(){
   if(mnIniciado) return;
   mnIniciado = true;
+  // Desenha imediatamente com o que já temos (cópia local ou padrão do código)
+  // e, se a planilha estiver conectada, substitui pelo conteúdo dela.
   mnCarregarEstado();
   renderOrganograma();
   renderCargos();
@@ -3402,6 +3518,13 @@ function initManual(){
   renderRegras();
   mnAtualizarStatusCfg();
   mnLigarPanZoom();
+  mnStatusNuvem(mnNuvemAtiva() ? 'salvando' : 'off');
+  if(mnNuvemAtiva()){
+    mnCarregarDaNuvem().then(ok=>{
+      if(ok){ renderOrganograma(); renderCargos(); setTimeout(orgFit,20); mnStatusNuvem('ok'); }
+      else if(!MN_API.erroLeitura) mnStatusNuvem('ok');
+    });
+  }
 }
 
 function switchManualTab(tab){
@@ -3629,11 +3752,39 @@ function mnUploadFoto(input){
       mnFotoTmp = cv.toDataURL('image/jpeg',0.82);
       document.getElementById('mn-ed-foto-url').value='';
       mnPreviewAvatar();
+      // Com a planilha conectada a foto vai para o Drive e guardamos só o link:
+      // base64 numa célula estoura o limite de 50 mil caracteres do Sheets.
+      if(mnNuvemAtiva()) mnEnviarFotoDrive(mnFotoTmp);
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(f);
   input.value='';
+}
+async function mnEnviarFotoDrive(dataUrl){
+  const nota = document.getElementById('mn-ed-note');
+  const textoAnterior = nota ? nota.innerHTML : '';
+  if(nota) nota.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Enviando a foto para o Drive…';
+  try{
+    const r = await fetch(MN_API.URL, {
+      method:'POST', mode:'cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({
+        action:'organograma_foto',
+        nome: (document.getElementById('mn-ed-nome').value||'foto').trim(),
+        base64: dataUrl, mime:'image/jpeg'
+      })
+    });
+    const d = await r.json();
+    if(!d.success || !d.url) throw new Error(d.error||'resposta inválida');
+    mnFotoTmp = d.url;
+    mnPreviewAvatar();
+    if(nota) nota.innerHTML = '<i class="fa-solid fa-check" style="color:#16a34a"></i> Foto enviada. Clique em Salvar para aplicar.';
+  }catch(e){
+    console.warn('Manual: falha ao enviar foto', e);
+    if(nota) nota.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color:#b45309"></i> Não consegui enviar a foto ao Drive ('+kbEsc(e.message)+'). Ela ficará salva só neste navegador.';
+    setTimeout(()=>{ if(nota) nota.innerHTML = textoAnterior; }, 6000);
+  }
 }
 function mnRemoverFoto(){ mnFotoTmp=''; document.getElementById('mn-ed-foto-url').value=''; mnPreviewAvatar(); }
 function salvarEditor(){
