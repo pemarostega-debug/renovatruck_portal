@@ -169,9 +169,12 @@ function migrarFormatoAntigo(ss, shAntiga) {
     if (!cargoBruto) cargoBruto = area;
     if (!cargoBruto) return;
 
-    const paiBruto = String(r[iPai] || '').trim();
-    const duplo = paiBruto.indexOf(',') !== -1;   // reporta a ambos os diretores
-    const pai = (!paiBruto || duplo) ? RAIZ : ('n' + paiBruto.split(',')[0].trim());
+    // "1,2" (reporta a ambos os diretores) chega como o NÚMERO 1.2: a planilha
+    // está em pt-BR e o Sheets lê a vírgula como separador decimal. Por isso
+    // aceitamos vírgula e ponto como indicação de reporte duplo.
+    const paiBruto = String(r[iPai] === null || r[iPai] === undefined ? '' : r[iPai]).trim();
+    const duplo = /[.,]/.test(paiBruto);
+    const pai = (!paiBruto || duplo) ? RAIZ : ('n' + paiBruto.split(/[.,]/)[0].trim());
     const sep = separarEspecialidade(cargoBruto);
 
     ordemPorPai[pai] = (ordemPorPai[pai] || 0) + 1;
