@@ -282,9 +282,10 @@ textarea.inp{resize:vertical;min-height:64px;}
         <h1 style="font-size:1.2rem;font-weight:900;color:#0f172a;">Grupo Renova</h1>
         <p style="font-size:.78rem;color:var(--muted);margin-top:4px;">Sistema de Gestão Gerencial</p>
       </div>
+      <input type="text" id="usr" class="login-input" placeholder="Usuário" onkeydown="if(event.key==='Enter')document.getElementById('pwd').focus()" autocomplete="username" style="margin-bottom:10px;" />
       <input type="password" id="pwd" class="login-input" placeholder="Senha de acesso" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password" />
       <p id="pwd-err" style="display:none;color:var(--danger);font-size:.75rem;text-align:center;margin:.4rem 0 0;">Senha incorreta.</p>
-      <button class="login-btn" onclick="doLogin()">Acessar</button>
+      <button class="login-btn" id="btn-login" onclick="doLogin()">Acessar</button>
       <p style="text-align:center;font-size:.68rem;color:#cbd5e1;margin-top:1.2rem;">Acesso restrito · Grupo Renova · v1.0</p>
     </div>
   </div>
@@ -1135,6 +1136,14 @@ textarea.inp{resize:vertical;min-height:64px;}
   #screen-manual .mn-org-legend span{display:inline-flex;align-items:center;gap:6px;}
   #screen-manual .mn-org-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
   #screen-manual .mn-org-hint{font-size:.68rem;color:var(--muted);font-weight:600;padding:6px 4px 0;}
+  /* Controles de edição só existem para administradores */
+  #screen-manual .so-admin{display:none;}
+  body.rv-admin #screen-manual .so-admin{display:inline-flex;}
+  body.rv-admin #screen-manual .so-admin.bloco{display:block;}
+  #screen-manual .mn-quem-barra{display:inline-flex;align-items:center;gap:8px;font-size:.75rem;font-weight:700;color:var(--muted);}
+  #screen-manual .rv-papel{font-size:.62rem;font-weight:900;padding:2px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;}
+  #screen-manual .rv-papel.admin{background:#e0e7ff;color:#4f46e5;}
+  #screen-manual .rv-papel.comum{background:#f1f5f9;color:#64748b;}
 
   /* Cargos */
   #screen-manual .mn-cargo-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
@@ -1262,6 +1271,28 @@ textarea.inp{resize:vertical;min-height:64px;}
   #mn-modal-edit .mn-ed-mini.danger:hover{border-color:var(--danger);color:var(--danger);}
   #mn-modal-edit .mn-ed-struct{display:flex;gap:7px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:14px;}
   #mn-modal-edit .mn-ed-note{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:10px;}
+  #screen-manual .mn-ed-note{font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:10px;}
+
+  /* Lista de usuários */
+  #screen-manual .cfg-user{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--border);border-radius:11px;margin-bottom:8px;background:#fff;}
+  #screen-manual .cfg-user .ini{width:34px;height:34px;border-radius:50%;background:#e0e7ff;color:#4f46e5;font-size:.7rem;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  #screen-manual .cfg-user .dados{flex:1;min-width:0;}
+  #screen-manual .cfg-user .dados b{display:block;font-size:.85rem;color:var(--text);}
+  #screen-manual .cfg-user .dados small{font-size:.72rem;color:var(--muted);}
+  #screen-manual .cfg-user.inativo{opacity:.55;}
+  #screen-manual .cfg-user .acoes{display:flex;gap:6px;flex-shrink:0;}
+  #screen-manual .cfg-mini{border:1.5px solid var(--border);background:#fff;color:var(--muted);border-radius:8px;padding:6px 11px;font-size:.73rem;font-weight:800;cursor:pointer;font-family:"DM Sans",sans-serif;}
+  #screen-manual .cfg-mini:hover{border-color:#4f46e5;color:#4f46e5;}
+  #screen-manual .cfg-mini.danger:hover{border-color:var(--danger);color:var(--danger);}
+
+  .mn-form-row{margin-bottom:13px;}
+  .mn-form-row label{display:block;font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:5px;}
+  .mn-form-row input,.mn-form-row select,.mn-form-row textarea{width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:.86rem;font-family:"DM Sans",sans-serif;outline:none;box-sizing:border-box;background:#fff;color:var(--text);}
+  .mn-form-row input:focus,.mn-form-row select:focus,.mn-form-row textarea:focus{border-color:#4f46e5;}
+  .mn-form-row textarea{resize:vertical;min-height:82px;line-height:1.5;}
+  .mn-form-row .dica{font-size:.7rem;color:var(--muted);margin-top:4px;display:block;line-height:1.45;}
+  .mn-form-erro{background:#fee2e2;color:#b91c1c;border-radius:9px;padding:9px 13px;font-size:.79rem;font-weight:700;margin-bottom:12px;display:none;}
+  .mn-form-ok{background:#dcfce7;color:#15803d;border-radius:9px;padding:9px 13px;font-size:.79rem;font-weight:700;margin-bottom:12px;display:none;}
 
   @media(max-width:640px){#screen-manual .mn-body{padding:14px;}#screen-manual .mn-org-viewport{height:min(62vh,460px);}}
 </style>
@@ -1270,6 +1301,7 @@ textarea.inp{resize:vertical;min-height:64px;}
     <button class="mn-back" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i> Início</button>
     <div class="mn-title"><i class="fa-solid fa-book-open"></i> Manual da Empresa</div>
     <div class="mn-spacer"></div>
+    <span class="mn-quem-barra"><i class="fa-solid fa-user"></i> <span id="rv-quem">—</span> <span class="rv-papel comum" id="rv-papel">Consulta</span></span>
   </div>
 
   <div class="mn-tabs">
@@ -1365,7 +1397,7 @@ textarea.inp{resize:vertical;min-height:64px;}
         <button class="mn-tool-btn" onclick="orgExpandAll(false)"><i class="fa-solid fa-chevron-up"></i> Recolher</button>
         <span class="mn-tool-sep"></span>
         <button class="mn-tool-btn" id="mn-btn-fotos" onclick="orgToggleFotos()"><i class="fa-solid fa-image-portrait"></i> Fotos</button>
-        <button class="mn-tool-btn" id="mn-btn-edit" onclick="orgToggleEdit()"><i class="fa-solid fa-pen-to-square"></i> Editar</button>
+        <button class="mn-tool-btn so-admin" id="mn-btn-edit" onclick="orgToggleEdit()"><i class="fa-solid fa-pen-to-square"></i> Editar</button>
       </div>
       <div class="mn-org-viewport" id="mn-org-viewport">
         <div class="mn-org-canvas" id="mn-org-canvas">
@@ -1405,6 +1437,26 @@ textarea.inp{resize:vertical;min-height:64px;}
     </div>
 
     <div class="mn-panel" id="mn-panel-config">
+
+      <div class="mn-cfg-card">
+        <h3><i class="fa-solid fa-user-shield"></i> Sua conta</h3>
+        <p>Você está conectado como <b id="cfg-eu-nome">—</b> (<span id="cfg-eu-login">—</span>), com perfil <b id="cfg-eu-papel">—</b>.</p>
+        <div class="mn-cfg-actions">
+          <button class="mn-cfg-btn ghost" onclick="abrirTrocarSenha(false)"><i class="fa-solid fa-key"></i> Trocar minha senha</button>
+          <button class="mn-cfg-btn ghost" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+        </div>
+      </div>
+
+      <div class="mn-cfg-card so-admin bloco">
+        <h3><i class="fa-solid fa-users-gear"></i> Acessos ao sistema</h3>
+        <p>Quem pode entrar no portal e o que cada um pode fazer. <b>Administrador</b> edita organograma, cargos e gerencia acessos. <b>Consulta</b> apenas visualiza.</p>
+        <div class="mn-cfg-actions" style="margin-bottom:14px;">
+          <button class="mn-cfg-btn" onclick="abrirUsuario(null)"><i class="fa-solid fa-user-plus"></i> Novo acesso</button>
+          <button class="mn-cfg-btn ghost" onclick="carregarUsuarios()"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+        </div>
+        <div id="cfg-usuarios"><p class="mn-ed-note">Carregando…</p></div>
+      </div>
+
       <div class="mn-cfg-card">
         <h3><i class="fa-solid fa-pen-to-square"></i> Suas alterações</h3>
         <p>Ao ativar o modo <b>Editar</b> na aba Organograma você pode incluir os nomes e fotos das pessoas, renomear cargos, criar novas posições, reordenar e remover. Com a planilha conectada as alterações são gravadas automaticamente e todo mundo passa a enxergá-las; sem conexão elas ficam guardadas apenas neste navegador.</p>
@@ -1481,6 +1533,83 @@ textarea.inp{resize:vertical;min-height:64px;}
   </div>
 </div>
 
+<div class="overlay" id="mn-modal-usuario">
+  <div class="modal" style="max-width:460px;width:100%;">
+    <div class="modal-hdr">
+      <h3 id="mn-us-titulo">Novo acesso</h3>
+      <button class="close-btn" onclick="document.getElementById('mn-modal-usuario').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="mn-form-erro" id="mn-us-erro"></div>
+      <div class="mn-form-row">
+        <label>Login</label>
+        <input type="text" id="mn-us-login" placeholder="ex: karina.rh" autocomplete="off">
+        <span class="dica">Só letras, números, ponto, hífen ou sublinhado. Não pode ser alterado depois.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Nome da pessoa</label>
+        <input type="text" id="mn-us-nome" placeholder="ex: Karina Souza" autocomplete="off">
+      </div>
+      <div class="mn-form-row">
+        <label>Perfil</label>
+        <select id="mn-us-papel">
+          <option value="comum">Consulta — apenas visualiza</option>
+          <option value="admin">Administrador — edita e gerencia acessos</option>
+        </select>
+      </div>
+      <div class="mn-form-row">
+        <label>Situação</label>
+        <select id="mn-us-ativo">
+          <option value="sim">Ativo</option>
+          <option value="nao">Desativado — não consegue entrar</option>
+        </select>
+      </div>
+      <div class="mn-form-row">
+        <label id="mn-us-lbl-senha">Senha</label>
+        <input type="text" id="mn-us-senha" placeholder="mínimo 6 caracteres" autocomplete="off">
+        <span class="dica" id="mn-us-dica-senha">Combine a senha com a pessoa. Ela pode trocá-la depois em Configurações.</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mn-ed-mini" onclick="document.getElementById('mn-modal-usuario').classList.remove('open')">Cancelar</button>
+      <button class="mn-cfg-btn" onclick="salvarUsuarioPortal()"><i class="fa-solid fa-check"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mn-modal-senha">
+  <div class="modal" style="max-width:420px;width:100%;">
+    <div class="modal-hdr">
+      <h3>Trocar minha senha</h3>
+      <button class="close-btn" onclick="document.getElementById('mn-modal-senha').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="mn-form-erro" id="mn-sn-erro"></div>
+      <div class="mn-form-ok" id="mn-sn-ok"></div>
+      <p class="mn-ed-note" id="mn-sn-aviso" style="display:none;background:#fef3c7;color:#92400e;padding:10px 13px;border-radius:9px;font-weight:700;margin:0 0 13px;">
+        <i class="fa-solid fa-triangle-exclamation"></i> Você ainda está usando a senha inicial. Defina uma senha própria agora.
+      </p>
+      <div class="mn-form-row">
+        <label>Senha atual</label>
+        <input type="password" id="mn-sn-atual" autocomplete="current-password">
+      </div>
+      <div class="mn-form-row">
+        <label>Nova senha</label>
+        <input type="password" id="mn-sn-nova" autocomplete="new-password">
+        <span class="dica">Mínimo de 6 caracteres.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Repita a nova senha</label>
+        <input type="password" id="mn-sn-nova2" autocomplete="new-password" onkeydown="if(event.key==='Enter')salvarNovaSenha()">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mn-ed-mini" onclick="document.getElementById('mn-modal-senha').classList.remove('open')">Cancelar</button>
+      <button class="mn-cfg-btn" onclick="salvarNovaSenha()"><i class="fa-solid fa-check"></i> Trocar senha</button>
+    </div>
+  </div>
+</div>
+
 <script>
 
 
@@ -1492,11 +1621,97 @@ textarea.inp{resize:vertical;min-height:64px;}
 
 
 const PASSWORD='renova2026';
-function doLogin(){const v=document.getElementById('pwd').value;if(v===PASSWORD){sessionStorage.setItem('rv_auth','1');document.getElementById('screen-login').style.display='none';document.getElementById('screen-home').style.display='block';document.getElementById('pwd-err').style.display='none';}else{document.getElementById('pwd-err').style.display='block';document.getElementById('pwd').value='';document.getElementById('pwd').focus();}}
-function doLogout(){sessionStorage.removeItem('rv_auth');location.reload();}
+
+// ── Sessão do usuário ──
+// O login é validado no Apps Script (a lista de senhas fica numa planilha
+// privada, nunca no navegador). Se o Apps Script estiver fora do ar, a senha
+// antiga ainda entra, mas só como consulta — assim uma falha de rede não
+// impede a equipe de ler o manual, e também não libera edição sem validação.
+let RV = { token:null, usuario:null, nome:null, papel:'comum', degradado:false };
+const API_MANUAL = 'https://script.google.com/macros/s/AKfycbxmdLCRPZwf6u7l8BnbtqbomFRcjplzJOKCeNWSTRNCKq8M9NtO2uWO7DjEP-xN7WBkkg/exec';
+
+function rvPodeEditar(){ return RV.papel === 'admin'; }
+
+function rvSalvarSessao(){
+  try{ sessionStorage.setItem('rv_sessao', JSON.stringify(RV)); }catch(e){}
+}
+function rvRestaurarSessao(){
+  try{
+    const raw = sessionStorage.getItem('rv_sessao');
+    if(raw){ RV = JSON.parse(raw); return true; }
+  }catch(e){}
+  return false;
+}
+
+function rvEntrar(){
+  document.getElementById('screen-login').style.display='none';
+  document.getElementById('screen-home').style.display='block';
+  document.getElementById('pwd-err').style.display='none';
+  rvAplicarPapel();
+}
+
+function rvAplicarPapel(){
+  document.body.classList.toggle('rv-admin', rvPodeEditar());
+  const el = document.getElementById('rv-quem');
+  if(el){
+    el.textContent = RV.nome || 'Visitante';
+    el.title = (RV.usuario||'') + ' · ' + (rvPodeEditar() ? 'Administrador' : 'Consulta');
+  }
+  const selo = document.getElementById('rv-papel');
+  if(selo){
+    selo.textContent = rvPodeEditar() ? 'Administrador' : 'Consulta';
+    selo.className = 'rv-papel ' + (rvPodeEditar() ? 'admin' : 'comum');
+  }
+}
+
+async function doLogin(){
+  const usuario = (document.getElementById('usr').value||'').trim();
+  const senha   = document.getElementById('pwd').value;
+  const erro    = document.getElementById('pwd-err');
+  const botao   = document.getElementById('btn-login');
+  const falhar  = msg => { erro.textContent = msg; erro.style.display='block';
+                           document.getElementById('pwd').value=''; document.getElementById('pwd').focus(); };
+
+  if(!usuario){ falhar('Informe o usuário.'); return; }
+  botao.disabled = true; botao.textContent = 'Entrando…';
+  try{
+    const r = await fetch(API_MANUAL, {
+      method:'POST', mode:'cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'login', usuario, senha})
+    });
+    const d = await r.json();
+    if(!d.success){ falhar(d.error || 'Usuário ou senha inválidos.'); return; }
+    RV = { token:d.token, usuario:d.usuario, nome:d.nome, papel:d.papel, degradado:false };
+    rvSalvarSessao(); rvEntrar();
+    if(d.senhaPadrao) setTimeout(()=>abrirTrocarSenha(true), 600);
+  }catch(e){
+    console.warn('Login: Apps Script indisponível, tentando modo consulta', e);
+    if(senha === PASSWORD){
+      RV = { token:null, usuario:usuario, nome:usuario, papel:'comum', degradado:true };
+      rvSalvarSessao(); rvEntrar();
+      setTimeout(()=>alert('Não consegui validar seu acesso no servidor agora.\n\nVocê entrou em modo consulta: dá para ver tudo, mas não para editar. Tente novamente mais tarde para voltar ao acesso completo.'), 400);
+    } else {
+      falhar('Sem conexão com o servidor de acesso. Tente novamente.');
+    }
+  }finally{
+    botao.disabled = false; botao.textContent = 'Acessar';
+  }
+}
+
+function doLogout(){
+  if(RV.token){
+    fetch(API_MANUAL, {method:'POST', mode:'cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'logout', token:RV.token})}).catch(()=>{});
+  }
+  sessionStorage.removeItem('rv_sessao');
+  sessionStorage.removeItem('rv_auth');
+  location.reload();
+}
 function openModule(m){document.getElementById('screen-home').style.display='none';document.getElementById('screen-'+m).style.display='block';window.scrollTo(0,0);if(m==='dashboard'&&typeof fetchData==='function')fetchData();if(m==='prec'&&typeof calc==='function')calc();if(m==='abc'&&typeof loadABC==='function')loadABC();if(m==='kanban'&&typeof initKanban==='function')initKanban();if(m==='historico'&&typeof initHistorico==='function')initHistorico();if(m==='manual'&&typeof initManual==='function')initManual();}
 function goHome(){['dashboard','prec','abc','kanban','historico','manual'].forEach(s=>document.getElementById('screen-'+s).style.display='none');document.getElementById('screen-home').style.display='block';window.scrollTo(0,0);}
-window.addEventListener('load',()=>{if(sessionStorage.getItem('rv_auth')==='1'){document.getElementById('screen-login').style.display='none';document.getElementById('screen-home').style.display='block';};});
+window.addEventListener('load',()=>{ if(rvRestaurarSessao()) rvEntrar(); });
 
 
 // ── CONFIG ──
@@ -3468,12 +3683,20 @@ const MN_REGRAS = [
 // ── Backend do organograma (Apps Script da planilha do Manual) ──
 // Publicação: ver apps-script/manual-empresa.gs no repositório.
 // Enquanto a URL não for preenchida o módulo funciona em rascunho local.
-const MN_API = {
-  URL: 'https://script.google.com/macros/s/AKfycbxmdLCRPZwf6u7l8BnbtqbomFRcjplzJOKCeNWSTRNCKq8M9NtO2uWO7DjEP-xN7WBkkg/exec',
-  salvando: false,
-  pendente: false
-};
+const MN_API = { URL: API_MANUAL, salvando: false, pendente: false };
 function mnNuvemAtiva(){ return MN_API.URL.indexOf('COLE_A_URL') === -1; }
+
+/** POST autenticado ao Apps Script, no formato que evita preflight CORS. */
+async function mnPost(payload){
+  const r = await fetch(MN_API.URL, {
+    method:'POST', mode:'cors',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(Object.assign({token: RV.token}, payload))
+  });
+  const d = await r.json();
+  if(!d.success) throw new Error(d.error || 'resposta inválida');
+  return d;
+}
 
 // ── Estado editável (nuvem quando configurada; rascunho local como reserva) ──
 const MN_STORE_KEY = 'renova_manual_org_v1';
@@ -3591,17 +3814,12 @@ function mnAgendarSalvarNuvem(){
 }
 async function mnSalvarNaNuvem(){
   if(!mnNuvemAtiva()) return;
+  if(!rvPodeEditar()) return;   // consulta não grava
   if(MN_API.salvando){ MN_API.pendente = true; return; }
   MN_API.salvando = true;
   mnStatusNuvem('salvando');
   try{
-    const r = await fetch(MN_API.URL, {
-      method:'POST', mode:'cors',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({action:'organograma_set', linhas: mnAchatar()})
-    });
-    const d = await r.json();
-    if(!d.success) throw new Error(d.error||'resposta inválida');
+    await mnPost({action:'organograma_set', linhas: mnAchatar()});
     mnStatusNuvem('ok');
   }catch(e){
     console.warn('Manual: falha ao salvar na planilha', e);
@@ -3691,6 +3909,7 @@ function switchManualTab(tab){
   document.querySelectorAll('#screen-manual .mn-panel').forEach(p=>p.classList.toggle('active', p.id==='mn-panel-'+tab));
   document.querySelector('#screen-manual .mn-body').scrollIntoView({block:'start'});
   if(tab==='organograma') setTimeout(orgFit, 30);
+  if(tab==='config'){ mnAtualizarCartaoConta(); if(rvPodeEditar()) carregarUsuarios(); }
 }
 
 // ══ Motor de layout do organograma ══
@@ -3874,6 +4093,7 @@ function mnLigarPanZoom(){
 
 // ══ Editor ══
 function abrirEditor(uid){
+  if(!rvPodeEditar()) return;   // consulta não abre o editor
   const n = mnBuscarUid(MN_TREE, uid);
   if(!n) return;
   mnEdAtual = n; mnFotoTmp = n.foto||'';
@@ -3925,17 +4145,12 @@ async function mnEnviarFotoDrive(dataUrl){
   const textoAnterior = nota ? nota.innerHTML : '';
   if(nota) nota.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Enviando a foto para o Drive…';
   try{
-    const r = await fetch(MN_API.URL, {
-      method:'POST', mode:'cors',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({
-        action:'organograma_foto',
-        nome: (document.getElementById('mn-ed-nome').value||'foto').trim(),
-        base64: dataUrl, mime:'image/jpeg'
-      })
+    const d = await mnPost({
+      action:'organograma_foto',
+      nome: (document.getElementById('mn-ed-nome').value||'foto').trim(),
+      base64: dataUrl, mime:'image/jpeg'
     });
-    const d = await r.json();
-    if(!d.success || !d.url) throw new Error(d.error||'resposta inválida');
+    if(!d.url) throw new Error('o servidor não devolveu o link da foto');
     mnFotoTmp = d.url;
     mnPreviewAvatar();
     if(nota) nota.innerHTML = '<i class="fa-solid fa-check" style="color:#16a34a"></i> Foto enviada. Clique em Salvar para aplicar.';
@@ -4021,6 +4236,106 @@ function mnCopiarTSV(){
     ()=>alert('Não foi possível copiar automaticamente. Use o botão "Baixar backup (JSON)".')
   );
 }
+// ══ Acessos ══
+function mnAtualizarCartaoConta(){
+  const n=document.getElementById('cfg-eu-nome'), l=document.getElementById('cfg-eu-login'), p=document.getElementById('cfg-eu-papel');
+  if(n) n.textContent = RV.nome || '—';
+  if(l) l.textContent = RV.usuario || '—';
+  if(p) p.textContent = rvPodeEditar() ? 'Administrador' : 'Consulta';
+}
+
+async function carregarUsuarios(){
+  const alvo = document.getElementById('cfg-usuarios');
+  if(!alvo || !rvPodeEditar()) return;
+  alvo.innerHTML = '<p class="mn-ed-note">Carregando…</p>';
+  try{
+    const d = await mnPost({action:'usuarios_get'});
+    const lista = d.data || [];
+    alvo.innerHTML = lista.map(u=>{
+      const inativo = String(u.ativo).toLowerCase() !== 'sim';
+      const eu = u.login === RV.usuario;
+      return '<div class="cfg-user'+(inativo?' inativo':'')+'">'
+        +'<div class="ini">'+(mnIniciais(u.nome)||u.login.slice(0,2).toUpperCase())+'</div>'
+        +'<div class="dados"><b>'+kbEsc(u.nome||u.login)+(eu?' <span style="font-size:.66rem;color:#4f46e5;">(você)</span>':'')+'</b>'
+        +'<small>'+kbEsc(u.login)+' · '+(u.papel==='admin'?'Administrador':'Consulta')+(inativo?' · desativado':'')+'</small></div>'
+        +'<div class="acoes">'
+          +'<button class="cfg-mini" onclick=\'abrirUsuario('+JSON.stringify(u).replace(/'/g,"&#39;")+')\'>Editar</button>'
+          +(eu?'':'<button class="cfg-mini danger" onclick="removerUsuarioPortal(\''+kbEsc(u.login)+'\')">Remover</button>')
+        +'</div></div>';
+    }).join('') || '<p class="mn-ed-note">Nenhum acesso cadastrado.</p>';
+  }catch(e){
+    alvo.innerHTML = '<p class="mn-ed-note" style="color:var(--danger)">Não consegui carregar os acessos: '+kbEsc(e.message)+'</p>';
+  }
+}
+
+function abrirUsuario(u){
+  const novo = !u;
+  document.getElementById('mn-us-titulo').textContent = novo ? 'Novo acesso' : 'Editar acesso';
+  document.getElementById('mn-us-erro').style.display='none';
+  document.getElementById('mn-us-login').value = novo ? '' : u.login;
+  document.getElementById('mn-us-login').disabled = !novo;
+  document.getElementById('mn-us-nome').value = novo ? '' : (u.nome||'');
+  document.getElementById('mn-us-papel').value = novo ? 'comum' : (u.papel==='admin'?'admin':'comum');
+  document.getElementById('mn-us-ativo').value = novo ? 'sim' : (String(u.ativo).toLowerCase()==='sim'?'sim':'nao');
+  document.getElementById('mn-us-senha').value = '';
+  document.getElementById('mn-us-lbl-senha').textContent = novo ? 'Senha' : 'Nova senha (opcional)';
+  document.getElementById('mn-us-dica-senha').textContent = novo
+    ? 'Combine a senha com a pessoa. Ela pode trocá-la depois em Configurações.'
+    : 'Deixe em branco para manter a senha atual.';
+  document.getElementById('mn-modal-usuario').classList.add('open');
+}
+
+async function salvarUsuarioPortal(){
+  const erro = document.getElementById('mn-us-erro');
+  const dados = {
+    login: document.getElementById('mn-us-login').value.trim(),
+    nome:  document.getElementById('mn-us-nome').value.trim(),
+    papel: document.getElementById('mn-us-papel').value,
+    ativo: document.getElementById('mn-us-ativo').value === 'sim',
+    senha: document.getElementById('mn-us-senha').value
+  };
+  const mostrarErro = m => { erro.textContent = m; erro.style.display='block'; };
+  if(!dados.login){ mostrarErro('Informe o login.'); return; }
+  if(dados.senha && dados.senha.length < 6){ mostrarErro('A senha precisa ter ao menos 6 caracteres.'); return; }
+  try{
+    await mnPost({action:'usuario_salvar', usuario:dados});
+    document.getElementById('mn-modal-usuario').classList.remove('open');
+    carregarUsuarios();
+  }catch(e){ mostrarErro(e.message); }
+}
+
+async function removerUsuarioPortal(login){
+  if(!confirm('Remover o acesso de "'+login+'"? A pessoa deixa de conseguir entrar no sistema.')) return;
+  try{
+    await mnPost({action:'usuario_remover', login});
+    carregarUsuarios();
+  }catch(e){ alert('Não foi possível remover: '+e.message); }
+}
+
+function abrirTrocarSenha(inicial){
+  document.getElementById('mn-sn-erro').style.display='none';
+  document.getElementById('mn-sn-ok').style.display='none';
+  document.getElementById('mn-sn-aviso').style.display = inicial ? 'block' : 'none';
+  ['mn-sn-atual','mn-sn-nova','mn-sn-nova2'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('mn-modal-senha').classList.add('open');
+}
+
+async function salvarNovaSenha(){
+  const erro=document.getElementById('mn-sn-erro'), ok=document.getElementById('mn-sn-ok');
+  const atual=document.getElementById('mn-sn-atual').value;
+  const nova =document.getElementById('mn-sn-nova').value;
+  const nova2=document.getElementById('mn-sn-nova2').value;
+  const falhar = m => { erro.textContent=m; erro.style.display='block'; ok.style.display='none'; };
+  if(nova.length < 6){ falhar('A nova senha precisa ter ao menos 6 caracteres.'); return; }
+  if(nova !== nova2){ falhar('A confirmação não confere com a nova senha.'); return; }
+  try{
+    await mnPost({action:'trocar_senha', senhaAtual:atual, senhaNova:nova});
+    erro.style.display='none';
+    ok.textContent='Senha alterada com sucesso.'; ok.style.display='block';
+    setTimeout(()=>document.getElementById('mn-modal-senha').classList.remove('open'), 1300);
+  }catch(e){ falhar(e.message); }
+}
+
 function mnResetarEdicoes(){
   if(!confirm('Descartar todas as alterações locais e voltar ao organograma original?')) return;
   try{ localStorage.removeItem(MN_STORE_KEY); }catch(e){}
