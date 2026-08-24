@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f0f4f8;--surface:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;--primary:#1d4ed8;--primary-light:#dbeafe;--success:#16a34a;--success-bg:#dcfce7;--warning:#d97706;--warning-bg:#fef3c7;--danger:#ef4444;--renova:#16a34a;--renova-bg:#dcfce7;--vale:#d97706;--vale-bg:#fef3c7;}
@@ -36,7 +36,9 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);}
 .tool-nav{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:.6rem 1.2rem;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:40;box-shadow:0 2px 12px rgba(0,0,0,.2);}
 .back-btn{background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:background .2s;}
 .back-btn:hover{background:rgba(255,255,255,.22);}
-#screen-dashboard,#screen-prec,#screen-abc,#screen-kanban,#screen-historico,#screen-manual{display:none;}
+#screen-dashboard,#screen-prec,#screen-abc,#screen-kanban,#screen-historico,#screen-manual,#screen-contaspagar{display:none;}
+/* Botões de escrita do Contas a Pagar só aparecem para quem pode editar. */
+.rv-so-admin{display:none!important;}body.cp-admin .rv-so-admin{display:inline-flex!important;}
 #loading-screen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,.96);z-index:60;flex-direction:column;justify-content:center;align-items:center;gap:16px;}
 .spinner{width:44px;height:44px;border:4px solid #dbeafe;border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -300,29 +302,35 @@ textarea.inp{resize:vertical;min-height:64px;}
     <button onclick="doLogout()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:7px 13px;font-size:.76rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Sair</button>
   </div>
   <div class="home-body">
-    <div style="margin-bottom:2rem;"><h1 style="font-size:1.5rem;font-weight:900;">Bom dia 👋</h1><p style="color:var(--muted);font-size:.9rem;margin-top:.3rem;">Selecione um módulo.</p></div>
-    <div class="section-label"><i class="fa-solid fa-circle-check" style="color:var(--success);"></i>Fase 1 — Disponível Agora</div>
+    <div style="margin-bottom:2rem;">
+      <h1 id="home-saudacao" style="font-size:1.5rem;font-weight:900;">Olá 👋</h1>
+      <p style="color:var(--muted);font-size:.9rem;margin-top:.3rem;">Selecione um módulo.</p>
+    </div>
+    <div class="section-label"><i class="fa-solid fa-gears" style="color:#7c3aed;"></i>Módulo Operacional</div>
     <div class="module-grid">
       <div class="module-card" onclick="openModule('dashboard')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#dbeafe;color:#1d4ed8;"><i class="fa-solid fa-chart-line"></i></div><div><div class="module-name">Dashboard Gerencial</div><div class="module-desc">OSs em aberto, faturamento, ranking de clientes.</div></div></div>
-      <div class="module-card" onclick="openModule('prec')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#dcfce7;color:#16a34a;"><i class="fa-solid fa-calculator"></i></div><div><div class="module-name">Precificação</div><div class="module-desc">Estudo de viabilidade por serviço ou contrato.</div></div></div>
+      <div class="module-card" onclick="openModule('kanban')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#ede9fe;color:#7c3aed;"><i class="fa-solid fa-table-columns"></i></div><div><div class="module-name">Kanban Operacional</div><div class="module-desc">Pátio ao vivo. Aguardando → Execução → Finalizado.</div></div></div>
+      <div class="module-card" onclick="openModule('prec')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#dcfce7;color:#16a34a;"><i class="fa-solid fa-calculator"></i></div><div><div class="module-name">Calculadora de Precificação</div><div class="module-desc">Estudo de viabilidade por serviço ou contrato.</div></div></div>
+      <div class="module-card" onclick="openModule('historico')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#e0f2fe;color:#0284c7;"><i class="fa-solid fa-door-open"></i></div><div><div class="module-name">Controle de Portaria</div><div class="module-desc">Histórico de entrada e saída de veículos no pátio.</div></div></div>
+    </div>
+    <div class="section-label"><i class="fa-solid fa-sack-dollar" style="color:#0284c7;"></i>Módulo Financeiro</div>
+    <div class="module-grid">
+      <div class="module-card" onclick="openModule('contaspagar')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#e0f2fe;color:#0284c7;"><i class="fa-solid fa-file-invoice-dollar"></i></div><div><div class="module-name">Contas a Pagar</div><div class="module-desc">Títulos, baixas, plano de contas e sincronização com o Genesis.</div></div></div>
+      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-hand-holding-dollar"></i></div><div><div class="module-name">Contas a Receber</div><div class="module-desc">Títulos a receber e conciliação de recebimentos.</div></div></div>
+      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-money-bill-wave"></i></div><div><div class="module-name">Fluxo de Caixa</div><div class="module-desc">Projeção de entradas e saídas por período.</div></div></div>
+      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-file-invoice"></i></div><div><div class="module-name">DRE Gerencial</div><div class="module-desc">Resultado com budget vs realizado.</div></div></div>
+      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-landmark"></i></div><div><div class="module-name">Controle de Operações Financeiras</div><div class="module-desc">Antecipação de recebíveis e borderô.</div></div></div>
       <div class="module-card" onclick="openModule('abc')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#fef3c7;color:#d97706;"><i class="fa-solid fa-ranking-star"></i></div><div><div class="module-name">Curva ABC</div><div class="module-desc">Ranking de clientes. Consolidado Renova + Vale 2026.</div></div></div>
     </div>
-    <div class="section-label"><i class="fa-solid fa-hammer" style="color:var(--warning);"></i>Fase 2 — Em Desenvolvimento</div>
+    <div class="section-label"><i class="fa-solid fa-chart-simple" style="color:#16a34a;"></i>Módulo Comercial</div>
     <div class="module-grid">
-      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#fef3c7;color:#d97706;"><i class="fa-solid fa-money-bill-wave"></i></div><div><div class="module-name">Fluxo de Caixa</div><div class="module-desc">Projeção de recebimentos e fechamento diário.</div></div></div>
-      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#fae8ff;color:#a855f7;"><i class="fa-solid fa-file-invoice-dollar"></i></div><div><div class="module-name">DRE Gerencial</div><div class="module-desc">Resultado com budget vs realizado.</div></div></div>
-      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#e0f2fe;color:#0284c7;"><i class="fa-solid fa-landmark"></i></div><div><div class="module-name">Controle Financeiro</div><div class="module-desc">Antecipação de recebíveis e borderô.</div></div></div>
-      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#dcfce7;color:#16a34a;"><i class="fa-solid fa-chart-bar"></i></div><div><div class="module-name">Dashboard Comercial</div><div class="module-desc">Performance por vendedor e tipo de serviço.</div></div></div>
-      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#fff7ed;color:#ea580c;"><i class="fa-solid fa-people-group"></i></div><div><div class="module-name">Gestão de RH</div><div class="module-desc">Custos, encargos e centro de custo.</div></div></div>
+      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-chart-bar"></i></div><div><div class="module-name">Dashboard Comercial</div><div class="module-desc">Performance por vendedor e tipo de serviço.</div></div></div>
+      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-user-tie"></i></div><div><div class="module-name">CRM Comercial</div><div class="module-desc">Pipeline de vendas. Migração do Trello.</div></div></div>
     </div>
-    <div class="section-label"><i class="fa-solid fa-gears" style="color:var(--muted);"></i>Fase 3 — Plataforma Operacional</div>
+    <div class="section-label"><i class="fa-solid fa-building-user" style="color:#4f46e5;"></i>Módulo Gestão Empresarial</div>
     <div class="module-grid">
-      <div class="module-card" onclick="openModule('kanban')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#ede9fe;color:#7c3aed;"><i class="fa-solid fa-table-columns"></i></div><div><div class="module-name">Kanban Operacional</div><div class="module-desc">Pátio ao vivo. Aguardando → Execução → Finalizado.</div></div></div>
-      <div class="module-card" onclick="openModule('historico')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#e0f2fe;color:#0284c7;"><i class="fa-solid fa-clock-rotate-left"></i></div><div><div class="module-name">Histórico de Entrada/Saída</div><div class="module-desc">Consulta de veículos por período e placa.</div></div></div>
-      <div class="module-card soon"><span class="module-badge badge-breve">Planejado</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-clipboard-check"></i></div><div><div class="module-name">Fechamento Diário</div><div class="module-desc">M.O. por OS e indicadores operacionais.</div></div></div>
-      <div class="module-card soon"><span class="module-badge badge-breve">Planejado</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-user-tie"></i></div><div><div class="module-name">CRM Comercial</div><div class="module-desc">Pipeline de vendas. Migração do Trello.</div></div></div>
-      <div class="module-card soon"><span class="module-badge badge-breve">Planejado</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-door-open"></i></div><div><div class="module-name">Controle de Portaria</div><div class="module-desc">Entrada/saída com leitura de placa.</div></div></div>
-      <div class="module-card" onclick="openModule('manual')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#e0e7ff;color:#4f46e5;"><i class="fa-solid fa-book-open"></i></div><div><div class="module-name">Manual da Empresa</div><div class="module-desc">Organograma, cargos, processos e regras de conduta.</div></div></div>
+      <div class="module-card" onclick="openModule('manual')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#e0e7ff;color:#4f46e5;"><i class="fa-solid fa-book-open"></i></div><div><div class="module-name">Manual da Empresa e Processos</div><div class="module-desc">Organograma, cargos, processos e regras de conduta.</div></div></div>
+      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-people-group"></i></div><div><div class="module-name">Gestão de RH</div><div class="module-desc">Custos, encargos e centro de custo.</div></div></div>
     </div>
     <div style="text-align:center;color:var(--muted);font-size:.72rem;padding:1rem 0 2rem;">Sistema de Gestão Gerencial · Grupo Renova · Pedro Neto Business Consultant</div>
   </div>
@@ -1715,6 +1723,17 @@ function rvEntrar(){
   document.getElementById('screen-home').style.display='block';
   document.getElementById('pwd-err').style.display='none';
   rvAplicarPapel();
+  rvSaudacao();
+}
+
+// Bom dia até o meio-dia, boa tarde até as 18h, boa noite dali em diante.
+// Recalculada toda vez que a home aparece: quem deixa o portal aberto a manhã
+// inteira não fica com "Bom dia" na tela às três da tarde.
+function rvSaudacao(){
+  const el = document.getElementById('home-saudacao');
+  if(!el) return;
+  const h = new Date().getHours();
+  el.textContent = (h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite') + ' 👋';
 }
 
 function rvAplicarPapel(){
@@ -1776,8 +1795,8 @@ function doLogout(){
   sessionStorage.removeItem('rv_auth');
   location.reload();
 }
-function openModule(m){document.getElementById('screen-home').style.display='none';document.getElementById('screen-'+m).style.display='block';window.scrollTo(0,0);if(m==='dashboard'&&typeof fetchData==='function')fetchData();if(m==='prec'&&typeof calc==='function')calc();if(m==='abc'&&typeof loadABC==='function')loadABC();if(m==='kanban'&&typeof initKanban==='function')initKanban();if(m==='historico'&&typeof initHistorico==='function')initHistorico();if(m==='manual'&&typeof initManual==='function')initManual();}
-function goHome(){['dashboard','prec','abc','kanban','historico','manual'].forEach(s=>document.getElementById('screen-'+s).style.display='none');document.getElementById('screen-home').style.display='block';window.scrollTo(0,0);}
+function openModule(m){document.getElementById('screen-home').style.display='none';document.getElementById('screen-'+m).style.display='block';window.scrollTo(0,0);if(m==='dashboard'&&typeof fetchData==='function')fetchData();if(m==='prec'&&typeof calc==='function')calc();if(m==='abc'&&typeof loadABC==='function')loadABC();if(m==='kanban'&&typeof initKanban==='function')initKanban();if(m==='historico'&&typeof initHistorico==='function')initHistorico();if(m==='manual'&&typeof initManual==='function')initManual();if(m==='contaspagar'&&typeof initContasPagar==='function')initContasPagar();}
+function goHome(){['dashboard','prec','abc','kanban','historico','manual','contaspagar'].forEach(s=>document.getElementById('screen-'+s).style.display='none');document.getElementById('screen-home').style.display='block';window.scrollTo(0,0);if(typeof rvSaudacao==='function')rvSaudacao();}
 window.addEventListener('load',()=>{ if(rvRestaurarSessao()) rvEntrar(); });
 
 
@@ -4749,5 +4768,1513 @@ function selecionarRegra(id){
   document.getElementById('mn-regras-content').innerHTML = '<h3><span>'+(found._n||'')+'.</span> '+kbEsc(found.titulo)+'</h3>'+mnRegraBodyHTML(found.body);
 }
 </script>
+
+
+
+
+
+<!-- ══════════════════ CONTAS A PAGAR ══════════════════ -->
+<div id="screen-contaspagar">
+<style>
+  #screen-contaspagar{min-height:100vh;background:var(--bg);padding-bottom:3rem;font-family:"DM Sans",sans-serif;color:var(--text);}
+  #screen-contaspagar .cp-topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:25;}
+  #screen-contaspagar .cp-title{font-size:1.05rem;font-weight:900;color:#0284c7;display:flex;align-items:center;gap:8px;}
+  #screen-contaspagar .cp-spacer{flex:1;}
+  #screen-contaspagar .cp-btn{border:1.5px solid var(--border);background:#fff;color:var(--text);border-radius:9px;padding:7px 13px;font-size:.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s;font-family:"DM Sans",sans-serif;}
+  #screen-contaspagar .cp-btn:hover{border-color:#0284c7;color:#0284c7;}
+  #screen-contaspagar .cp-btn:disabled{opacity:.45;cursor:not-allowed;}
+  #screen-contaspagar .cp-btn-primary{background:#0284c7;border-color:#0284c7;color:#fff;}
+  #screen-contaspagar .cp-btn-primary:hover{background:#0369a1;border-color:#0369a1;color:#fff;}
+  #screen-contaspagar .cp-btn-sync{background:#7c3aed;border-color:#7c3aed;color:#fff;}
+  #screen-contaspagar .cp-btn-sync:hover{background:#6d28d9;border-color:#6d28d9;color:#fff;}
+  #screen-contaspagar .cp-mes{border:1.5px solid var(--border);border-radius:9px;padding:6px 10px;font-size:.82rem;font-weight:700;font-family:"DM Sans",sans-serif;outline:none;background:#fff;color:var(--text);}
+  #screen-contaspagar .cp-mes:focus{border-color:#0284c7;}
+
+  #screen-contaspagar .cp-notice{display:none;margin:12px 20px 0;padding:10px 14px;border-radius:10px;font-size:.8rem;font-weight:600;}
+  #screen-contaspagar .cp-notice.info{display:block;background:#e0f2fe;color:#075985;border:1px solid #bae6fd;}
+  #screen-contaspagar .cp-notice.erro{display:block;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;}
+  #screen-contaspagar .cp-notice.ok{display:block;background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;}
+
+  #screen-contaspagar .cp-tabs{display:flex;gap:2px;padding:0 20px;background:#fff;border-bottom:1px solid var(--border);overflow-x:auto;position:sticky;top:57px;z-index:24;}
+  #screen-contaspagar .cp-tab{padding:11px 16px;font-size:.82rem;font-weight:700;color:var(--muted);cursor:pointer;border:none;background:none;white-space:nowrap;border-bottom:3px solid transparent;font-family:"DM Sans",sans-serif;transition:all .15s;}
+  #screen-contaspagar .cp-tab:hover{color:#0284c7;}
+  #screen-contaspagar .cp-tab.active{border-bottom-color:#0284c7;color:#0284c7;}
+  #screen-contaspagar .cp-pane{display:none;padding:16px 20px;}
+  #screen-contaspagar .cp-pane.active{display:block;}
+
+  /* ── KPIs ── */
+  #screen-contaspagar .cp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px;}
+  #screen-contaspagar .cp-kpi{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05);border-left:4px solid var(--border);}
+  #screen-contaspagar .cp-kpi-lbl{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:flex;align-items:center;gap:6px;}
+  #screen-contaspagar .cp-kpi-val{font-size:1.5rem;font-weight:900;line-height:1.15;margin-top:7px;letter-spacing:-.02em;}
+  #screen-contaspagar .cp-kpi-sub{font-size:.7rem;color:var(--muted);margin-top:4px;font-weight:600;}
+  #screen-contaspagar .cp-kpi.previsto{border-left-color:#0284c7;} #screen-contaspagar .cp-kpi.previsto .cp-kpi-val{color:#0284c7;}
+  #screen-contaspagar .cp-kpi.realizado{border-left-color:#16a34a;} #screen-contaspagar .cp-kpi.realizado .cp-kpi-val{color:#16a34a;}
+  #screen-contaspagar .cp-kpi.aberto{border-left-color:#d97706;} #screen-contaspagar .cp-kpi.aberto .cp-kpi-val{color:#d97706;}
+  #screen-contaspagar .cp-kpi.atraso{border-left-color:#ef4444;} #screen-contaspagar .cp-kpi.atraso .cp-kpi-val{color:#ef4444;}
+
+  /* barra previsto x realizado */
+  #screen-contaspagar .cp-barra{height:7px;border-radius:20px;background:#e2e8f0;overflow:hidden;margin-top:9px;}
+  #screen-contaspagar .cp-barra span{display:block;height:100%;background:#16a34a;border-radius:20px;transition:width .4s;}
+
+  /* ── Cards de gráfico ── */
+  #screen-contaspagar .cp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  #screen-contaspagar .cp-grid-3{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;margin-bottom:14px;}
+  @media(max-width:1100px){#screen-contaspagar .cp-grid-3{grid-template-columns:1fr;}}
+  @media(max-width:820px){#screen-contaspagar .cp-grid{grid-template-columns:1fr;}}
+  /* min-width:0 é obrigatório aqui. Item de grid nasce com min-width:auto, que
+     resolve para o min-content do conteúdo — e o min-content de uma tabela com
+     células nowrap é a largura inteira dela. Sem isto a coluna 1fr estica até
+     ~700px, o overflow-x do .cp-tbl-wrap nunca entra em ação e a página ganha
+     rolagem horizontal. */
+  #screen-contaspagar .cp-card,
+  #screen-contaspagar .cp-kpi{min-width:0;}
+  #screen-contaspagar .cp-tbl-wrap{max-width:100%;}
+  #screen-contaspagar .cp-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;flex-direction:column;}
+  #screen-contaspagar .cp-card-h{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  #screen-contaspagar .cp-card-h i{color:#0284c7;margin-right:5px;}
+  #screen-contaspagar .cp-chart{position:relative;width:100%;height:230px;}
+
+  /* ── Régua de atraso ── */
+  #screen-contaspagar .cp-regua{display:flex;flex-direction:column;gap:11px;}
+  #screen-contaspagar .cp-faixa-top{display:flex;justify-content:space-between;align-items:baseline;font-size:.75rem;margin-bottom:4px;}
+  #screen-contaspagar .cp-faixa-nome{font-weight:800;}
+  #screen-contaspagar .cp-faixa-val{font-weight:900;}
+  #screen-contaspagar .cp-faixa-qtd{font-size:.68rem;color:var(--muted);font-weight:700;}
+  #screen-contaspagar .cp-faixa-bar{height:10px;border-radius:20px;background:#f1f5f9;overflow:hidden;}
+  #screen-contaspagar .cp-faixa-bar span{display:block;height:100%;border-radius:20px;transition:width .4s;}
+  #screen-contaspagar .cp-f1 .cp-faixa-nome,#screen-contaspagar .cp-f1 .cp-faixa-val{color:#d97706;}
+  #screen-contaspagar .cp-f1 .cp-faixa-bar span{background:#f59e0b;}
+  #screen-contaspagar .cp-f2 .cp-faixa-nome,#screen-contaspagar .cp-f2 .cp-faixa-val{color:#ea580c;}
+  #screen-contaspagar .cp-f2 .cp-faixa-bar span{background:#f97316;}
+  #screen-contaspagar .cp-f3 .cp-faixa-nome,#screen-contaspagar .cp-f3 .cp-faixa-val{color:#dc2626;}
+  #screen-contaspagar .cp-f3 .cp-faixa-bar span{background:#ef4444;}
+
+  /* ── Tabelas ── */
+  #screen-contaspagar .cp-tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:#fff;}
+  #screen-contaspagar table.cp-tbl{width:100%;border-collapse:collapse;font-size:.79rem;}
+  #screen-contaspagar .cp-tbl thead th{background:#f8fafc;color:var(--muted);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:9px 11px;text-align:left;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2;white-space:nowrap;}
+  #screen-contaspagar .cp-tbl tbody tr{border-bottom:1px solid #f1f5f9;}
+  #screen-contaspagar .cp-tbl tbody tr:hover{background:#f8fafc;}
+  #screen-contaspagar .cp-tbl td{padding:7px 11px;vertical-align:middle;}
+  #screen-contaspagar .cp-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  #screen-contaspagar .cp-forn{font-weight:700;max-width:270px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #screen-contaspagar .cp-vazio{padding:2rem;text-align:center;color:var(--muted);font-size:.82rem;}
+
+  #screen-contaspagar .cp-pill{font-size:.62rem;font-weight:800;padding:2px 8px;border-radius:20px;display:inline-block;white-space:nowrap;}
+  #screen-contaspagar .cp-pill-ABERTO{background:#e0f2fe;color:#0369a1;}
+  #screen-contaspagar .cp-pill-PAGO{background:#dcfce7;color:#15803d;}
+  #screen-contaspagar .cp-pill-PARCIAL{background:#fef3c7;color:#b45309;}
+  #screen-contaspagar .cp-pill-CANCELADO{background:#f1f5f9;color:#64748b;}
+  #screen-contaspagar .cp-pill-atraso{background:#fee2e2;color:#b91c1c;}
+  #screen-contaspagar .cp-pill-hoje{background:#fef3c7;color:#b45309;}
+  #screen-contaspagar .cp-pill-nova{background:#dcfce7;color:#15803d;}
+  #screen-contaspagar .cp-pill-existe{background:#f1f5f9;color:#64748b;}
+  #screen-contaspagar .cp-pill-suspeita{background:#fef3c7;color:#b45309;}
+  #screen-contaspagar .cp-tag-macro{font-size:.6rem;font-weight:800;padding:1px 7px;border-radius:5px;background:#f1f5f9;color:#475569;}
+
+  #screen-contaspagar .cp-acao{background:none;border:none;cursor:pointer;color:var(--muted);padding:4px 6px;border-radius:6px;font-size:.82rem;transition:all .15s;}
+  #screen-contaspagar .cp-acao:hover{background:#e0f2fe;color:#0284c7;}
+  #screen-contaspagar .cp-acao.baixar:hover{background:#dcfce7;color:#16a34a;}
+  #screen-contaspagar .cp-acao.excluir:hover{background:#fee2e2;color:#ef4444;}
+
+  /* ── Filtros ── */
+  #screen-contaspagar .cp-filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  #screen-contaspagar .cp-inp{border:1.5px solid var(--border);border-radius:9px;padding:7px 11px;font-size:.8rem;font-family:"DM Sans",sans-serif;outline:none;background:#fff;color:var(--text);transition:border-color .15s;}
+  #screen-contaspagar .cp-inp:focus{border-color:#0284c7;}
+  #screen-contaspagar .cp-inp.busca{min-width:230px;flex:1;max-width:380px;}
+
+  /* ── Árvore do plano de contas ── */
+  #screen-contaspagar .cp-arvore{background:#fff;border:1px solid var(--border);border-radius:14px;padding:8px;}
+  #screen-contaspagar .cp-no{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;transition:background .15s;}
+  #screen-contaspagar .cp-no:hover{background:#f8fafc;}
+  #screen-contaspagar .cp-no.raiz{font-weight:900;font-size:.9rem;background:#f8fafc;margin-top:6px;}
+  #screen-contaspagar .cp-no.filho{padding-left:34px;font-size:.83rem;}
+  #screen-contaspagar .cp-no-cod{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:var(--muted);font-weight:700;min-width:44px;flex-shrink:0;}
+  /* min-width:0 pelo mesmo motivo dos cartões: item flexível não encolhe abaixo
+     do próprio conteúdo, e o nome da conta empurrava os botões para fora da tela. */
+  #screen-contaspagar .cp-no-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #screen-contaspagar .cp-no-val{font-weight:800;font-size:.78rem;color:#0284c7;font-variant-numeric:tabular-nums;flex-shrink:0;}
+  #screen-contaspagar .cp-no-acoes{display:flex;gap:2px;opacity:0;transition:opacity .15s;flex-shrink:0;}
+  #screen-contaspagar .cp-no:hover .cp-no-acoes{opacity:1;}
+
+  /* ── Modais ── */
+  #screen-contaspagar .cp-overlay{display:none;position:fixed;inset:0;z-index:120;background:rgba(15,23,42,.55);justify-content:center;align-items:center;padding:1rem;}
+  #screen-contaspagar .cp-overlay.open{display:flex;}
+  #screen-contaspagar .cp-modal{background:#fff;border-radius:16px;width:100%;max-width:600px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.3);}
+  #screen-contaspagar .cp-modal.largo{max-width:1120px;}
+  #screen-contaspagar .cp-modal-h{padding:14px 20px;background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  #screen-contaspagar .cp-modal-h h3{font-size:.95rem;font-weight:900;display:flex;align-items:center;gap:8px;}
+  #screen-contaspagar .cp-modal-h .sub{font-size:.7rem;color:#94a3b8;font-weight:600;margin-top:2px;}
+  #screen-contaspagar .cp-fechar{background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  #screen-contaspagar .cp-fechar:hover{background:rgba(255,255,255,.3);}
+  #screen-contaspagar .cp-modal-b{padding:16px 20px;overflow-y:auto;flex:1;}
+  #screen-contaspagar .cp-modal-f{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8fafc;border-radius:0 0 16px 16px;flex-wrap:wrap;}
+
+  #screen-contaspagar .cp-campo{margin-bottom:11px;}
+  #screen-contaspagar .cp-lbl{display:block;font-size:.66rem;font-weight:800;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;}
+  #screen-contaspagar .cp-g2{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+  #screen-contaspagar .cp-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;}
+  @media(max-width:560px){#screen-contaspagar .cp-g2,#screen-contaspagar .cp-g3{grid-template-columns:1fr;}}
+  #screen-contaspagar .cp-campo .cp-inp{width:100%;}
+
+  /* ── Lista de sincronização ── */
+  #screen-contaspagar .cp-sync-resumo{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  #screen-contaspagar .cp-sync-chip{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 13px;font-size:.72rem;font-weight:700;color:var(--muted);}
+  #screen-contaspagar .cp-sync-chip b{display:block;font-size:1.05rem;color:var(--text);font-weight:900;margin-top:2px;}
+  #screen-contaspagar .cp-sync-linha.existe{opacity:.5;}
+  #screen-contaspagar .cp-sync-linha.suspeita{background:#fffbeb;}
+  #screen-contaspagar .cp-sel-nat{border:1px solid var(--border);border-radius:7px;padding:4px 6px;font-size:.72rem;font-family:"DM Sans",sans-serif;max-width:180px;outline:none;background:#fff;color:var(--text);}
+  #screen-contaspagar .cp-sel-nat:focus{border-color:#0284c7;}
+  #screen-contaspagar .cp-aviso-dup{font-size:.66rem;color:#b45309;font-weight:700;margin-top:2px;}
+
+  /* Rótulos que encurtam no celular. */
+  #screen-contaspagar .cp-rot-curto{display:none;}
+
+  /* ══ TABLET E CELULAR ══ */
+  @media(max-width:820px){
+    /* A topbar quebra em várias linhas no celular, então a altura dela deixa de
+       ser previsível. Duas barras grudadas com alturas variáveis se escondem uma
+       atrás da outra: aqui só as abas continuam grudadas, no topo. */
+    #screen-contaspagar .cp-topbar{position:static;padding:10px 14px;gap:8px;}
+    #screen-contaspagar .cp-tabs{top:0;padding:0 10px;}
+    #screen-contaspagar .cp-pane{padding:14px;}
+    #screen-contaspagar .cp-notice{margin:12px 14px 0;}
+
+    /* Dois KPIs por linha: 4 cartões empilhados empurram o gráfico para longe. */
+    #screen-contaspagar .cp-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+    #screen-contaspagar .cp-kpi{padding:12px;}
+    #screen-contaspagar .cp-kpi-val{font-size:1.15rem;}
+    #screen-contaspagar .cp-kpi-lbl{font-size:.6rem;}
+
+    #screen-contaspagar .cp-chart{height:210px;}
+    #screen-contaspagar .cp-card{padding:12px 13px;}
+
+    /* Filtros ocupam a linha inteira em vez de espremer. */
+    #screen-contaspagar .cp-filtros{gap:7px;}
+    #screen-contaspagar .cp-inp.busca{min-width:0;max-width:none;flex:1 1 100%;}
+    #screen-contaspagar .cp-filtros .cp-inp{flex:1 1 45%;}
+    #screen-contaspagar .cp-spacer{display:none;}
+
+    /* Modal vira folha de baixo para cima: aproveita a tela toda. */
+    #screen-contaspagar .cp-overlay{padding:0;align-items:flex-end;}
+    #screen-contaspagar .cp-modal,
+    #screen-contaspagar .cp-modal.largo{max-width:none;max-height:94vh;border-radius:16px 16px 0 0;}
+    #screen-contaspagar .cp-modal-h{border-radius:16px 16px 0 0;padding:13px 16px;}
+    #screen-contaspagar .cp-modal-b{padding:14px 16px;}
+    #screen-contaspagar .cp-modal-f{padding:11px 16px;border-radius:0;}
+    #screen-contaspagar .cp-modal-f button{flex:1;justify-content:center;}
+  }
+
+  @media(max-width:560px){
+    /* Barra de título: só o essencial. O logo e o texto longo dos botões saem. */
+    #screen-contaspagar .cp-topbar img{display:none;}
+    #screen-contaspagar .cp-rot-longo{display:none;}
+    #screen-contaspagar .cp-rot-curto{display:inline;}
+    #screen-contaspagar .cp-btn{padding:7px 11px;font-size:.76rem;}
+    /* O input de mês precisa caber "agosto de 2026" mais o ícone de calendário;
+       quem cede espaço é o título, que o usuário já sabe onde está. */
+    #screen-contaspagar .cp-mes{flex:0 0 auto;min-width:162px;}
+    #screen-contaspagar .cp-title{font-size:.95rem;min-width:0;overflow:hidden;
+      text-overflow:ellipsis;white-space:nowrap;}
+
+    #screen-contaspagar .cp-tab{padding:10px 11px;font-size:.76rem;}
+    #screen-contaspagar .cp-tbl{font-size:.74rem;}
+    #screen-contaspagar .cp-tbl thead th{padding:8px;font-size:.6rem;}
+    #screen-contaspagar .cp-tbl td{padding:7px 8px;}
+    #screen-contaspagar .cp-forn{max-width:150px;}
+
+    /* Colunas de apoio saem para a tabela caber sem virar rolagem lateral. */
+    #screen-contaspagar .cp-col-apoio{display:none;}
+
+    #screen-contaspagar .cp-no.filho{padding-left:20px;}
+    #screen-contaspagar .cp-no-cod{min-width:38px;font-size:.68rem;}
+    #screen-contaspagar .cp-no-acoes{opacity:1;}
+    #screen-contaspagar .cp-sel-nat{max-width:120px;}
+    #screen-contaspagar .cp-sync-chip{flex:1 1 45%;}
+  }
+</style>
+
+<div class="cp-topbar">
+  <button class="cp-btn" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i>Início</button>
+  <img src="assets/logo-renova.jpg" style="height:30px;filter:drop-shadow(0 1px 4px rgba(0,0,0,.25));" alt="Renova" />
+  <span class="cp-title"><i class="fa-solid fa-file-invoice-dollar"></i>Contas a Pagar</span>
+  <span class="cp-spacer"></span>
+  <input type="month" id="cp-competencia" class="cp-mes" onchange="cpTrocarMes()" />
+  <button class="cp-btn" onclick="cpCarregar(true)" title="Recarregar"><i class="fa-solid fa-rotate-right"></i></button>
+  <button class="cp-btn cp-btn-sync rv-so-admin" onclick="cpAbrirSync()"><i class="fa-solid fa-cloud-arrow-down"></i><span class="cp-rot-longo">Sincronizar Notas de Entrada</span><span class="cp-rot-curto">Sincronizar</span></button>
+  <button class="cp-btn cp-btn-primary rv-so-admin" onclick="cpAbrirTitulo()"><i class="fa-solid fa-plus"></i><span class="cp-rot-longo">Novo Título</span><span class="cp-rot-curto">Novo</span></button>
+</div>
+
+<div id="cp-notice" class="cp-notice"></div>
+
+<div class="cp-tabs">
+  <button class="cp-tab active" id="cp-tab-dash"   onclick="cpAba('dash')"><i class="fa-solid fa-chart-pie" style="margin-right:6px;"></i>Dashboard</button>
+  <button class="cp-tab"        id="cp-tab-titulos" onclick="cpAba('titulos')"><i class="fa-solid fa-list-ul" style="margin-right:6px;"></i>Títulos</button>
+  <button class="cp-tab"        id="cp-tab-plano"  onclick="cpAba('plano')"><i class="fa-solid fa-sitemap" style="margin-right:6px;"></i>Plano de Contas</button>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div class="cp-pane active" id="cp-pane-dash">
+  <div class="cp-kpis">
+    <div class="cp-kpi previsto">
+      <div class="cp-kpi-lbl"><i class="fa-solid fa-calendar-day"></i>Saídas previstas</div>
+      <div class="cp-kpi-val" id="cp-k-previsto">R$ 0</div>
+      <div class="cp-kpi-sub" id="cp-k-previsto-sub">— títulos no mês</div>
+    </div>
+    <div class="cp-kpi realizado">
+      <div class="cp-kpi-lbl"><i class="fa-solid fa-circle-check"></i>Saídas realizadas</div>
+      <div class="cp-kpi-val" id="cp-k-realizado">R$ 0</div>
+      <div class="cp-kpi-sub" id="cp-k-realizado-sub">— do previsto</div>
+      <div class="cp-barra"><span id="cp-k-barra" style="width:0%"></span></div>
+    </div>
+    <div class="cp-kpi aberto">
+      <div class="cp-kpi-lbl"><i class="fa-solid fa-hourglass-half"></i>Em aberto no mês</div>
+      <div class="cp-kpi-val" id="cp-k-aberto">R$ 0</div>
+      <div class="cp-kpi-sub" id="cp-k-aberto-sub">— títulos a pagar</div>
+    </div>
+    <div class="cp-kpi atraso">
+      <div class="cp-kpi-lbl"><i class="fa-solid fa-triangle-exclamation"></i>Vencido em aberto</div>
+      <div class="cp-kpi-val" id="cp-k-atraso">R$ 0</div>
+      <div class="cp-kpi-sub" id="cp-k-atraso-sub">— títulos vencidos</div>
+    </div>
+  </div>
+
+  <div class="cp-grid-3">
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-chart-pie"></i>Concentração por macro-natureza</span></div>
+      <div class="cp-chart"><canvas id="cp-c-macro"></canvas></div>
+    </div>
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-ranking-star"></i>Top 5 fornecedores</span><span class="cp-kpi-sub" id="cp-forn-conc">—</span></div>
+      <div class="cp-chart"><canvas id="cp-c-forn"></canvas></div>
+    </div>
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-fire"></i>Queima de caixa semanal</span></div>
+      <div class="cp-chart"><canvas id="cp-c-burn"></canvas></div>
+    </div>
+  </div>
+
+  <div class="cp-grid">
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-gauge-high"></i>Régua de inadimplência</span><span class="cp-kpi-sub" id="cp-regua-total">—</span></div>
+      <div class="cp-regua" id="cp-regua"></div>
+    </div>
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-calendar-check"></i>Vencendo hoje</span><span class="cp-kpi-sub" id="cp-hoje-total">—</span></div>
+      <div class="cp-tbl-wrap" style="max-height:260px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-hoje"></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="cp-grid">
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i>Contas atrasadas</span><span class="cp-kpi-sub" id="cp-atraso-total">—</span></div>
+      <div class="cp-tbl-wrap" style="max-height:330px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-atraso"></tbody></table></div>
+    </div>
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-calendar-days"></i>Próximos vencimentos (30 dias)</span><span class="cp-kpi-sub" id="cp-prox-total">—</span></div>
+      <div class="cp-tbl-wrap" style="max-height:330px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-prox"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TÍTULOS ══ -->
+<div class="cp-pane" id="cp-pane-titulos">
+  <div class="cp-filtros">
+    <input type="text" id="cp-f-busca" class="cp-inp busca" placeholder="Buscar fornecedor, NF, boleto ou descrição..." oninput="cpRenderTitulos()" />
+    <select id="cp-f-status" class="cp-inp" onchange="cpRenderTitulos()">
+      <option value="">Todos os status</option>
+      <option value="ABERTO">Em aberto</option>
+      <option value="VENCIDO">Vencidos</option>
+      <option value="PAGO">Pagos</option>
+      <option value="PARCIAL">Parciais</option>
+    </select>
+    <select id="cp-f-natureza" class="cp-inp" onchange="cpRenderTitulos()"><option value="">Todas as naturezas</option></select>
+    <select id="cp-f-periodo" class="cp-inp" onchange="cpRenderTitulos()">
+      <option value="mes">Mês selecionado</option>
+      <option value="tudo">Todo o período</option>
+      <option value="aberto">Só o que está em aberto</option>
+    </select>
+    <span class="cp-spacer"></span>
+    <button class="cp-btn" onclick="cpExportar()"><i class="fa-solid fa-file-arrow-down"></i>Exportar</button>
+  </div>
+  <div class="cp-tbl-wrap">
+    <table class="cp-tbl">
+      <thead><tr>
+        <th>Vencimento</th><th>Fornecedor</th><th class="cp-col-apoio">NF</th><th>Natureza</th>
+        <th class="cp-num">Valor</th><th class="cp-num cp-col-apoio">Pago</th><th>Status</th>
+        <th class="cp-col-apoio">Baixa</th><th></th>
+      </tr></thead>
+      <tbody id="cp-tb-titulos"></tbody>
+    </table>
+  </div>
+  <div style="margin-top:10px;font-size:.75rem;color:var(--muted);font-weight:600;" id="cp-titulos-resumo"></div>
+</div>
+
+<!-- ══ PLANO DE CONTAS ══ -->
+<div class="cp-pane" id="cp-pane-plano">
+  <div class="cp-filtros">
+    <span style="font-size:.78rem;color:var(--muted);font-weight:600;">
+      Os valores ao lado somam os títulos do mês selecionado.
+    </span>
+    <span class="cp-spacer"></span>
+    <button class="cp-btn rv-so-admin" onclick="cpAbrirConta('')"><i class="fa-solid fa-plus"></i>Nova conta</button>
+    <button class="cp-btn cp-btn-primary rv-so-admin" id="cp-btn-plano-salvar" onclick="cpSalvarPlano()" disabled><i class="fa-solid fa-floppy-disk"></i>Salvar alterações</button>
+  </div>
+  <div class="cp-arvore" id="cp-arvore"></div>
+</div>
+
+<!-- ══ MODAL: TÍTULO ══ -->
+<div class="cp-overlay" id="cp-modal-titulo">
+  <div class="cp-modal">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-file-invoice"></i><span id="cp-mt-titulo">Novo título</span></h3>
+      <div class="sub" id="cp-mt-sub">Lançamento manual</div></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-titulo')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-campo"><label class="cp-lbl">Fornecedor *</label>
+        <input type="text" id="cp-t-fornecedor" class="cp-inp" list="cp-lista-forn" placeholder="Nome do fornecedor" />
+        <datalist id="cp-lista-forn"></datalist>
+      </div>
+      <div class="cp-g3">
+        <div class="cp-campo"><label class="cp-lbl">Emissão</label><input type="date" id="cp-t-emissao" class="cp-inp" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Vencimento *</label><input type="date" id="cp-t-vencimento" class="cp-inp" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Empresa</label>
+          <select id="cp-t-empresa" class="cp-inp"><option value="RENOVA">Renova</option><option value="VALE">Vale</option></select>
+        </div>
+      </div>
+      <div class="cp-g3">
+        <div class="cp-campo"><label class="cp-lbl">Número NF</label><input type="text" id="cp-t-nf" class="cp-inp" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Número boleto</label><input type="text" id="cp-t-boleto" class="cp-inp" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Tipo docto</label>
+          <select id="cp-t-tipo" class="cp-inp">
+            <option value="Boleto">Boleto</option><option value="A vista">A vista</option>
+            <option value="Folha de pagamento">Folha de pagamento</option><option value="Custo fixo">Custo fixo</option>
+          </select>
+        </div>
+      </div>
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Parcela</label><input type="number" id="cp-t-parcela" class="cp-inp" min="1" value="1" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Total de parcelas</label><input type="number" id="cp-t-parcelas" class="cp-inp" min="1" value="1" /></div>
+      </div>
+      <div class="cp-campo"><label class="cp-lbl">Natureza *</label><select id="cp-t-natureza" class="cp-inp"></select></div>
+      <div class="cp-campo"><label class="cp-lbl">Descrição</label><input type="text" id="cp-t-descricao" class="cp-inp" placeholder="Ex.: PEÇAS, Custo fixo, REEMBOLSO" /></div>
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Observação 1</label><input type="text" id="cp-t-obs1" class="cp-inp" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Observação 2</label><input type="text" id="cp-t-obs2" class="cp-inp" /></div>
+      </div>
+      <div class="cp-g3">
+        <div class="cp-campo"><label class="cp-lbl">Forma de pagamento</label>
+          <select id="cp-t-forma" class="cp-inp"><option value="PIX">PIX</option><option value="Boleto">Boleto</option><option value="Transferência">Transferência</option><option value="Dinheiro">Dinheiro</option><option value="Cartão">Cartão</option></select>
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Valor total *</label><input type="text" id="cp-t-valor" class="cp-inp cp-num" placeholder="0,00" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Valor pago</label><input type="text" id="cp-t-pago" class="cp-inp cp-num" placeholder="0,00" /></div>
+      </div>
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Status</label>
+          <select id="cp-t-status" class="cp-inp"><option value="ABERTO">Em aberto</option><option value="PAGO">Pago</option><option value="PARCIAL">Parcial</option></select>
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Data da baixa</label><input type="date" id="cp-t-baixa" class="cp-inp" /></div>
+      </div>
+      <p style="font-size:.7rem;color:var(--muted);line-height:1.5;">
+        A data da baixa é preenchida sozinha quando o título é marcado como pago:
+        vale o que você informar aqui e, se ficar em branco, o vencimento.
+      </p>
+    </div>
+    <div class="cp-modal-f">
+      <button class="cp-btn cp-acao excluir" id="cp-t-excluir" onclick="cpCancelarTitulo()" style="display:none;"><i class="fa-solid fa-ban"></i>Cancelar título</button>
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-titulo')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" id="cp-t-salvar" onclick="cpSalvarTitulo()"><i class="fa-solid fa-floppy-disk"></i>Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: SINCRONIZAÇÃO ══ -->
+<div class="cp-overlay" id="cp-modal-sync">
+  <div class="cp-modal largo">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-cloud-arrow-down"></i>Sincronizar Notas de Entrada</h3>
+      <div class="sub" id="cp-sync-sub">Notas do Genesis aguardando sua aprovação</div></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-sync')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-sync-resumo" id="cp-sync-resumo"></div>
+      <div id="cp-sync-aviso"></div>
+      <div class="cp-tbl-wrap">
+        <table class="cp-tbl">
+          <thead><tr>
+            <th style="width:34px;"><input type="checkbox" id="cp-sync-todos" onchange="cpSyncMarcarTodos(this.checked)" /></th>
+            <th>Vencimento</th><th>Fornecedor</th><th>NF</th><th>Natureza</th>
+            <th class="cp-num">Valor</th><th>Situação</th>
+          </tr></thead>
+          <tbody id="cp-tb-sync"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="cp-modal-f">
+      <span style="font-size:.75rem;color:var(--muted);font-weight:700;" id="cp-sync-sel">Nenhuma nota selecionada</span>
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-sync')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" id="cp-sync-aprovar" onclick="cpSyncAprovar()" disabled><i class="fa-solid fa-check"></i>Aprovar selecionadas</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: BAIXA ══ -->
+<div class="cp-overlay" id="cp-modal-baixa">
+  <div class="cp-modal" style="max-width:430px;">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-money-check-dollar"></i>Dar baixa</h3><div class="sub" id="cp-b-sub">—</div></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-baixa')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Valor pago</label><input type="text" id="cp-b-valor" class="cp-inp cp-num" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Data da baixa</label><input type="date" id="cp-b-data" class="cp-inp" /></div>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);line-height:1.5;" id="cp-b-aviso"></p>
+    </div>
+    <div class="cp-modal-f">
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-baixa')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" onclick="cpConfirmarBaixa()"><i class="fa-solid fa-check"></i>Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: CONTA DO PLANO ══ -->
+<div class="cp-overlay" id="cp-modal-conta">
+  <div class="cp-modal" style="max-width:470px;">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-sitemap"></i><span id="cp-c-titulo">Nova conta</span></h3></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-conta')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Código *</label><input type="text" id="cp-c-codigo" class="cp-inp" placeholder="Ex.: 1.07" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Conta pai</label><select id="cp-c-pai" class="cp-inp"></select></div>
+      </div>
+      <div class="cp-campo"><label class="cp-lbl">Nome *</label><input type="text" id="cp-c-nome" class="cp-inp" /></div>
+      <div class="cp-campo"><label class="cp-lbl">Macro-natureza</label>
+        <select id="cp-c-macro" class="cp-inp">
+          <option value="OPERACIONAL">Operacional</option>
+          <option value="FIXO">Fixo / Administrativo</option>
+          <option value="FINANCEIRO">Financeiro</option>
+          <option value="CAPEX">CAPEX / Investimentos</option>
+          <option value="NAO_CLASSIFICADO">Não classificado</option>
+        </select>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);line-height:1.5;">
+        Contas de primeiro nível (sem pai) são sintéticas: servem para agrupar e
+        não recebem lançamento direto.
+      </p>
+    </div>
+    <div class="cp-modal-f">
+      <button class="cp-btn cp-acao excluir" id="cp-c-remover" onclick="cpRemoverConta()" style="display:none;"><i class="fa-solid fa-trash"></i>Remover</button>
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-conta')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" onclick="cpAplicarConta()"><i class="fa-solid fa-check"></i>Aplicar</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+
+<!-- ══════════════════ CONTAS A PAGAR — LÓGICA ══════════════════ -->
+<script>
+const CP = {
+  // Cole aqui a URL /exec do apps-script/contas-pagar.gs depois de publicar.
+  API: 'COLE_AQUI_A_URL_DO_CONTAS_PAGAR',
+
+  titulos: [], plano: [], fornecedores: [],
+  competencia: '',            // 'YYYY-MM'
+  hoje: '',                   // 'YYYY-MM-DD'
+  charts: {},
+  aba: 'dash',
+  editando: null,             // id do título aberto no modal
+  baixando: null,
+  planoRascunho: null,        // cópia do plano enquanto há edição pendente
+  contaEditando: null,
+  sync: { notas: [], marcadas: {}, existentes: {}, suspeitos: {}, naturezas: {} },
+  carregado: false
+};
+
+const CP_MACROS = {
+  OPERACIONAL:      { nome: 'Operacional',   cor: '#0284c7' },
+  FIXO:             { nome: 'Fixo/Adm.',     cor: '#7c3aed' },
+  FINANCEIRO:       { nome: 'Financeiro',    cor: '#d97706' },
+  CAPEX:            { nome: 'CAPEX',         cor: '#16a34a' },
+  NAO_CLASSIFICADO: { nome: 'A classificar', cor: '#94a3b8' }
+};
+
+// ── Utilitários ──────────────────────────────────────────────────────────────
+const cpEsc = s => String(s === null || s === undefined ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const cpBRL = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const cpBRLc = v => {
+  const n = Number(v) || 0;
+  if (Math.abs(n) >= 1000000) return 'R$ ' + (n / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'M';
+  if (Math.abs(n) >= 1000) return 'R$ ' + (n / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k';
+  return cpBRL(n);
+};
+
+/** 'YYYY-MM-DD' → 'DD/MM'. Sem new Date(): o fuso rouba um dia. */
+const cpData = s => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  return m ? m[3] + '/' + m[2] : '—';
+};
+const cpDataLonga = s => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  return m ? m[3] + '/' + m[2] + '/' + m[1] : '—';
+};
+
+/** Diferença em dias entre duas datas ISO, sem passar por Date/fuso. */
+function cpDias(de, ate) {
+  if (!de || !ate) return 0;
+  const a = Date.UTC(+de.slice(0, 4), +de.slice(5, 7) - 1, +de.slice(8, 10));
+  const b = Date.UTC(+ate.slice(0, 4), +ate.slice(5, 7) - 1, +ate.slice(8, 10));
+  return Math.round((b - a) / 86400000);
+}
+
+function cpHojeISO() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+/** Aceita "1.234,56" e "1234.56". */
+function cpNum(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  if (typeof v === 'number') return v;
+  let s = String(v).trim().replace(/[R$\s]/g, '');
+  if (!s) return 0;
+  const tv = s.includes(','), tp = s.includes('.');
+  if (tv && tp) s = s.replace(/\./g, '').replace(',', '.');
+  else if (tv) s = s.replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+function cpAviso(msg, tipo) {
+  const el = document.getElementById('cp-notice');
+  if (!msg) { el.className = 'cp-notice'; el.innerHTML = ''; return; }
+  el.className = 'cp-notice ' + (tipo || 'info');
+  el.innerHTML = msg;
+  if (tipo === 'ok') setTimeout(() => { if (el.className.includes('ok')) cpAviso(''); }, 5000);
+}
+
+function cpFechar(id) { document.getElementById(id).classList.remove('open'); }
+function cpAbrir(id) { document.getElementById(id).classList.add('open'); }
+
+const cpPodeEditar = () => typeof rvPodeEditar === 'function' ? rvPodeEditar() : true;
+
+// ── Comunicação com o Apps Script ────────────────────────────────────────────
+async function cpGet(action, params) {
+  const q = new URLSearchParams(Object.assign({ action: action }, params || {}));
+  const r = await fetch(CP.API + '?' + q.toString());
+  const d = await r.json();
+  if (!d.success) throw new Error(d.error || 'Falha ao consultar o servidor.');
+  return d.data;
+}
+
+async function cpPost(action, corpo) {
+  const r = await fetch(CP.API, {
+    method: 'POST', mode: 'cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ action: action, token: (typeof RV !== 'undefined' ? RV.token : null) }, corpo || {}))
+  });
+  const d = await r.json();
+  if (!d.success) throw new Error(d.error || 'Falha ao gravar.');
+  return d.data;
+}
+
+// ── Ponto de entrada ─────────────────────────────────────────────────────────
+function initContasPagar() {
+  document.body.classList.toggle('cp-admin', cpPodeEditar());
+  if (!CP.competencia) {
+    CP.hoje = cpHojeISO();
+    CP.competencia = CP.hoje.slice(0, 7);
+    document.getElementById('cp-competencia').value = CP.competencia;
+  }
+  if (!CP.carregado) cpCarregar();
+}
+
+async function cpCarregar(forcar) {
+  if (CP.API.startsWith('COLE_AQUI')) {
+    cpAviso('<b>Backend não conectado.</b> Publique o <code>apps-script/contas-pagar.gs</code> e cole a URL /exec em <code>CP.API</code>, aqui no index.html.', 'erro');
+    return;
+  }
+  cpAviso('Carregando contas a pagar…', 'info');
+  try {
+    const d = await cpGet('bootstrap');
+    CP.titulos = d.titulos || [];
+    CP.plano = d.plano || [];
+    CP.fornecedores = d.fornecedores || [];
+    CP.hoje = d.hoje || cpHojeISO();
+    CP.carregado = true;
+    CP.planoRascunho = null;
+    cpMarcarPlanoSujo(false);
+    cpPreencherSelects();
+    cpRender();
+    cpAviso(forcar ? 'Dados atualizados.' : '', forcar ? 'ok' : '');
+  } catch (e) {
+    cpAviso('<b>Não consegui carregar.</b> ' + cpEsc(e.message), 'erro');
+  }
+}
+
+function cpTrocarMes() {
+  CP.competencia = document.getElementById('cp-competencia').value || CP.hoje.slice(0, 7);
+  cpRender();
+}
+
+function cpAba(qual) {
+  CP.aba = qual;
+  ['dash', 'titulos', 'plano'].forEach(a => {
+    document.getElementById('cp-tab-' + a).classList.toggle('active', a === qual);
+    document.getElementById('cp-pane-' + a).classList.toggle('active', a === qual);
+  });
+  // Chart.js só mede o canvas depois que ele está visível.
+  if (qual === 'dash') setTimeout(cpRenderDash, 30);
+}
+
+function cpRender() {
+  cpRenderDash();
+  cpRenderTitulos();
+  cpRenderPlano();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SELEÇÃO E CLASSIFICAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════
+
+const cpMacroDe = cod => {
+  const c = CP.plano.find(x => x.codigo === String(cod));
+  return c ? c.macro : 'NAO_CLASSIFICADO';
+};
+const cpNomeConta = cod => {
+  const c = CP.plano.find(x => x.codigo === String(cod));
+  return c ? c.nome : 'A Classificar';
+};
+
+/** Vencido é calculado, nunca guardado: um título pago não fica atrasado. */
+const cpVencido = t => t.status !== 'PAGO' && t.status !== 'CANCELADO' &&
+                       t.data_vencimento && t.data_vencimento < CP.hoje;
+const cpSaldo = t => Math.max((Number(t.valor_total) || 0) - (Number(t.valor_pago) || 0), 0);
+
+const cpDoMes = t => (t.competencia || String(t.data_vencimento || '').slice(0, 7)) === CP.competencia;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════
+
+function cpRenderDash() {
+  const ativos = CP.titulos.filter(t => t.status !== 'CANCELADO');
+  const doMes = ativos.filter(cpDoMes);
+
+  const previsto = doMes.reduce((s, t) => s + (Number(t.valor_total) || 0), 0);
+  const realizado = doMes.reduce((s, t) => s + (Number(t.valor_pago) || 0), 0);
+  const aberto = doMes.filter(t => t.status !== 'PAGO').reduce((s, t) => s + cpSaldo(t), 0);
+  const abertoQtd = doMes.filter(t => t.status !== 'PAGO').length;
+
+  const vencidos = ativos.filter(cpVencido);
+  const vencidoTotal = vencidos.reduce((s, t) => s + cpSaldo(t), 0);
+
+  document.getElementById('cp-k-previsto').textContent = cpBRL(previsto);
+  document.getElementById('cp-k-previsto-sub').textContent = doMes.length + ' título(s) no mês';
+  document.getElementById('cp-k-realizado').textContent = cpBRL(realizado);
+  const pct = previsto > 0 ? Math.min(realizado / previsto * 100, 100) : 0;
+  document.getElementById('cp-k-realizado-sub').textContent = previsto > 0
+    ? pct.toFixed(0) + '% do previsto' : 'sem previsão no mês';
+  document.getElementById('cp-k-barra').style.width = pct + '%';
+  document.getElementById('cp-k-aberto').textContent = cpBRL(aberto);
+  document.getElementById('cp-k-aberto-sub').textContent = abertoQtd + ' título(s) a pagar';
+  document.getElementById('cp-k-atraso').textContent = cpBRL(vencidoTotal);
+  document.getElementById('cp-k-atraso-sub').textContent = vencidos.length + ' título(s) vencidos';
+
+  cpChartMacro(doMes);
+  cpChartFornecedores(doMes);
+  cpChartBurn(doMes);
+  cpRenderRegua(vencidos, vencidoTotal);
+  cpRenderTabelasDash(ativos, vencidos);
+}
+
+function cpDestruir(nome) {
+  if (CP.charts[nome]) { CP.charts[nome].destroy(); delete CP.charts[nome]; }
+}
+
+function cpChartMacro(titulos) {
+  const por = {};
+  titulos.forEach(t => {
+    const m = cpMacroDe(t.natureza_codigo);
+    por[m] = (por[m] || 0) + (Number(t.valor_total) || 0);
+  });
+  const chaves = Object.keys(CP_MACROS).filter(k => por[k] > 0);
+  cpDestruir('macro');
+  const ctx = document.getElementById('cp-c-macro');
+  if (!ctx || !chaves.length) { if (ctx) ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height); return; }
+
+  CP.charts.macro = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: chaves.map(k => CP_MACROS[k].nome),
+      datasets: [{ data: chaves.map(k => por[k]), backgroundColor: chaves.map(k => CP_MACROS[k].cor), borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '58%',
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11, family: 'DM Sans' }, padding: 10 } },
+        tooltip: {
+          callbacks: {
+            label: c => {
+              const total = c.dataset.data.reduce((s, v) => s + v, 0);
+              const p = total ? (c.parsed / total * 100).toFixed(1) : 0;
+              return ' ' + c.label + ': ' + cpBRL(c.parsed) + ' (' + p + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function cpChartFornecedores(titulos) {
+  const por = {};
+  titulos.forEach(t => {
+    const f = t.fornecedor || '(sem fornecedor)';
+    por[f] = (por[f] || 0) + (Number(t.valor_total) || 0);
+  });
+  const ranking = Object.entries(por).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const totalMes = titulos.reduce((s, t) => s + (Number(t.valor_total) || 0), 0);
+  const top5 = ranking.reduce((s, r) => s + r[1], 0);
+
+  // Concentração é o número que importa aqui: dependência de fornecedor é risco.
+  document.getElementById('cp-forn-conc').textContent = totalMes > 0
+    ? (top5 / totalMes * 100).toFixed(0) + '% do mês' : '—';
+
+  cpDestruir('forn');
+  const ctx = document.getElementById('cp-c-forn');
+  if (!ctx || !ranking.length) return;
+
+  CP.charts.forn = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ranking.map(r => r[0].length > 22 ? r[0].slice(0, 21) + '…' : r[0]),
+      datasets: [{ data: ranking.map(r => r[1]), backgroundColor: '#0284c7', borderRadius: 5, maxBarThickness: 22 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ' ' + cpBRL(c.parsed.x), title: c => ranking[c[0].dataIndex][0] } }
+      },
+      scales: {
+        x: { ticks: { callback: v => cpBRLc(v), font: { size: 10, family: 'DM Sans' } }, grid: { color: '#f1f5f9' } },
+        y: { ticks: { font: { size: 10, family: 'DM Sans' } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function cpChartBurn(titulos) {
+  // Acumulado por semana do mês — mostra em que ritmo o caixa é consumido.
+  const sem = [0, 0, 0, 0, 0];
+  titulos.forEach(t => {
+    const d = String(t.data_vencimento || '');
+    if (d.length < 10) return;
+    const dia = parseInt(d.slice(8, 10), 10);
+    const i = Math.min(Math.floor((dia - 1) / 7), 4);
+    sem[i] += (Number(t.valor_total) || 0);
+  });
+  let ac = 0;
+  const acumulado = sem.map(v => (ac += v));
+
+  cpDestruir('burn');
+  const ctx = document.getElementById('cp-c-burn');
+  if (!ctx) return;
+
+  CP.charts.burn = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['S1', 'S2', 'S3', 'S4', 'S5'],
+      datasets: [
+        { label: 'Acumulado', data: acumulado, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.10)',
+          fill: true, tension: .3, pointRadius: 3, pointBackgroundColor: '#ef4444', borderWidth: 2 },
+        { label: 'Na semana', data: sem, borderColor: '#94a3b8', borderDash: [5, 4], fill: false,
+          tension: .3, pointRadius: 2, borderWidth: 1.5 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, family: 'DM Sans' }, padding: 8 } },
+        tooltip: { callbacks: { label: c => ' ' + c.dataset.label + ': ' + cpBRL(c.parsed.y) } }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => cpBRLc(v), font: { size: 10, family: 'DM Sans' } }, grid: { color: '#f1f5f9' } },
+        x: { grid: { display: false }, ticks: { font: { size: 10, family: 'DM Sans' } } }
+      }
+    }
+  });
+}
+
+function cpRenderRegua(vencidos, total) {
+  const faixas = [
+    { classe: 'cp-f1', nome: '1 a 14 dias', min: 1, max: 14 },
+    { classe: 'cp-f2', nome: '15 a 30 dias', min: 15, max: 30 },
+    { classe: 'cp-f3', nome: 'Mais de 30 dias', min: 31, max: 1e9 }
+  ];
+  faixas.forEach(f => { f.qtd = 0; f.valor = 0; });
+  vencidos.forEach(t => {
+    const d = cpDias(t.data_vencimento, CP.hoje);
+    const f = faixas.find(x => d >= x.min && d <= x.max);
+    if (f) { f.qtd++; f.valor += cpSaldo(t); }
+  });
+  const maior = Math.max.apply(null, faixas.map(f => f.valor).concat([1]));
+
+  document.getElementById('cp-regua-total').textContent = total > 0
+    ? cpBRL(total) + ' vencidos' : 'nada vencido';
+
+  document.getElementById('cp-regua').innerHTML = faixas.map(f => `
+    <div class="${f.classe}">
+      <div class="cp-faixa-top">
+        <span class="cp-faixa-nome">${f.nome}</span>
+        <span><span class="cp-faixa-val">${cpBRL(f.valor)}</span> <span class="cp-faixa-qtd">· ${f.qtd} título(s)</span></span>
+      </div>
+      <div class="cp-faixa-bar"><span style="width:${(f.valor / maior * 100).toFixed(1)}%"></span></div>
+    </div>`).join('') ||
+    '<div class="cp-vazio">Nenhuma conta vencida. 🎉</div>';
+}
+
+function cpLinhaMini(t, mostrarDias) {
+  const dias = mostrarDias ? cpDias(t.data_vencimento, CP.hoje) : 0;
+  const selo = mostrarDias
+    ? `<span class="cp-pill cp-pill-atraso">${dias}d</span>`
+    : `<span class="cp-pill cp-pill-${t.status}">${t.status}</span>`;
+  return `<tr>
+    <td style="white-space:nowrap;font-weight:700;">${cpData(t.data_vencimento)}</td>
+    <td class="cp-forn" title="${cpEsc(t.fornecedor)}">${cpEsc(t.fornecedor)}</td>
+    <td class="cp-col-apoio" style="font-size:.7rem;color:var(--muted);">${cpEsc(cpNomeConta(t.natureza_codigo))}</td>
+    <td class="cp-num" style="font-weight:800;">${cpBRL(cpSaldo(t))}</td>
+    <td>${selo}</td>
+    <td style="text-align:right;">${cpPodeEditar()
+      ? `<button class="cp-acao baixar" onclick="cpAbrirBaixa('${t.id}')" title="Dar baixa"><i class="fa-solid fa-money-check-dollar"></i></button>` : ''}</td>
+  </tr>`;
+}
+
+function cpRenderTabelasDash(ativos, vencidos) {
+  // Vencendo hoje
+  const hoje = ativos.filter(t => t.status !== 'PAGO' && t.data_vencimento === CP.hoje);
+  document.getElementById('cp-tb-hoje').innerHTML = hoje.length
+    ? hoje.sort((a, b) => cpSaldo(b) - cpSaldo(a)).map(t => cpLinhaMini(t, false)).join('')
+    : '<tr><td colspan="6" class="cp-vazio">Nada vencendo hoje.</td></tr>';
+  document.getElementById('cp-hoje-total').textContent = hoje.length
+    ? cpBRL(hoje.reduce((s, t) => s + cpSaldo(t), 0)) : '—';
+
+  // Atrasadas — as mais velhas primeiro, que são as que cobram juros
+  const atr = vencidos.slice().sort((a, b) => (a.data_vencimento || '').localeCompare(b.data_vencimento || ''));
+  document.getElementById('cp-tb-atraso').innerHTML = atr.length
+    ? atr.map(t => cpLinhaMini(t, true)).join('')
+    : '<tr><td colspan="6" class="cp-vazio">Nenhuma conta atrasada.</td></tr>';
+  document.getElementById('cp-atraso-total').textContent = atr.length
+    ? atr.length + ' título(s)' : '—';
+
+  // Próximos 30 dias
+  const prox = ativos.filter(t => t.status !== 'PAGO' && t.data_vencimento > CP.hoje &&
+                                  cpDias(CP.hoje, t.data_vencimento) <= 30)
+    .sort((a, b) => (a.data_vencimento || '').localeCompare(b.data_vencimento || ''));
+  document.getElementById('cp-tb-prox').innerHTML = prox.length
+    ? prox.map(t => cpLinhaMini(t, false)).join('')
+    : '<tr><td colspan="6" class="cp-vazio">Nada nos próximos 30 dias.</td></tr>';
+  document.getElementById('cp-prox-total').textContent = prox.length
+    ? cpBRL(prox.reduce((s, t) => s + cpSaldo(t), 0)) : '—';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TÍTULOS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function cpFiltrar() {
+  const busca = (document.getElementById('cp-f-busca').value || '').toLowerCase().trim();
+  const status = document.getElementById('cp-f-status').value;
+  const nat = document.getElementById('cp-f-natureza').value;
+  const periodo = document.getElementById('cp-f-periodo').value;
+
+  return CP.titulos.filter(t => {
+    if (t.status === 'CANCELADO') return false;
+    if (periodo === 'mes' && !cpDoMes(t)) return false;
+    if (periodo === 'aberto' && t.status === 'PAGO') return false;
+
+    if (status === 'VENCIDO') { if (!cpVencido(t)) return false; }
+    else if (status && t.status !== status) return false;
+
+    if (nat && String(t.natureza_codigo) !== nat) return false;
+
+    if (busca) {
+      const alvo = [t.fornecedor, t.numero_nf, t.numero_boleto, t.descricao,
+                    t.observacao_1, t.observacao_2].join(' ').toLowerCase();
+      if (!alvo.includes(busca)) return false;
+    }
+    return true;
+  }).sort((a, b) => (a.data_vencimento || '').localeCompare(b.data_vencimento || ''));
+}
+
+function cpRenderTitulos() {
+  const lista = cpFiltrar();
+  const tb = document.getElementById('cp-tb-titulos');
+
+  tb.innerHTML = lista.length ? lista.map(t => {
+    const vencido = cpVencido(t);
+    const dias = vencido ? cpDias(t.data_vencimento, CP.hoje) : 0;
+    const rotuloNF = t.numero_nf || t.numero_boleto || '—';
+    const parc = Number(t.total_parcelas) > 1
+      ? ` <span class="cp-tag-macro">${t.parcela}/${t.total_parcelas}</span>` : '';
+    return `<tr>
+      <td style="white-space:nowrap;font-weight:700;">
+        ${cpDataLonga(t.data_vencimento)}
+        ${vencido ? `<span class="cp-pill cp-pill-atraso" style="margin-left:5px;">${dias}d</span>` : ''}
+      </td>
+      <td class="cp-forn" title="${cpEsc(t.fornecedor)}">${cpEsc(t.fornecedor)}</td>
+      <td class="cp-col-apoio" style="font-size:.73rem;">${cpEsc(rotuloNF)}${parc}</td>
+      <td style="font-size:.73rem;">
+        <span class="cp-tag-macro">${cpEsc((CP_MACROS[cpMacroDe(t.natureza_codigo)] || {}).nome || '—')}</span>
+        <div style="color:var(--muted);margin-top:2px;">${cpEsc(cpNomeConta(t.natureza_codigo))}</div>
+      </td>
+      <td class="cp-num" style="font-weight:800;">${cpBRL(t.valor_total)}</td>
+      <td class="cp-num cp-col-apoio" style="color:${Number(t.valor_pago) > 0 ? '#16a34a' : 'var(--muted)'};">${cpBRL(t.valor_pago)}</td>
+      <td><span class="cp-pill cp-pill-${t.status}">${t.status}</span></td>
+      <td class="cp-col-apoio" style="font-size:.73rem;color:var(--muted);">${t.data_baixa ? cpDataLonga(t.data_baixa) : '—'}</td>
+      <td style="text-align:right;white-space:nowrap;">
+        ${cpPodeEditar() ? `
+          ${t.status !== 'PAGO' ? `<button class="cp-acao baixar" onclick="cpAbrirBaixa('${t.id}')" title="Dar baixa"><i class="fa-solid fa-money-check-dollar"></i></button>` : ''}
+          <button class="cp-acao" onclick="cpAbrirTitulo('${t.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>` : ''}
+      </td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="9" class="cp-vazio">Nenhum título com esses filtros.</td></tr>';
+
+  const soma = lista.reduce((s, t) => s + (Number(t.valor_total) || 0), 0);
+  const pago = lista.reduce((s, t) => s + (Number(t.valor_pago) || 0), 0);
+  document.getElementById('cp-titulos-resumo').textContent =
+    `${lista.length} título(s) · Total ${cpBRL(soma)} · Pago ${cpBRL(pago)} · Saldo ${cpBRL(soma - pago)}`;
+}
+
+function cpExportar() {
+  const lista = cpFiltrar();
+  if (!lista.length) { cpAviso('Nada para exportar com esses filtros.', 'info'); return; }
+  const cab = ['Vencimento', 'Emissão', 'Fornecedor', 'NF', 'Boleto', 'Tipo', 'Descrição',
+               'Natureza', 'Macro', 'Forma', 'Valor Total', 'Valor Pago', 'Status', 'Data Baixa', 'Parcela'];
+  const linhas = lista.map(t => [
+    cpDataLonga(t.data_vencimento), cpDataLonga(t.data_emissao), t.fornecedor, t.numero_nf,
+    t.numero_boleto, t.tipo_docto, t.descricao, cpNomeConta(t.natureza_codigo),
+    (CP_MACROS[cpMacroDe(t.natureza_codigo)] || {}).nome || '', t.forma_pagamento,
+    (Number(t.valor_total) || 0).toFixed(2).replace('.', ','),
+    (Number(t.valor_pago) || 0).toFixed(2).replace('.', ','),
+    t.status, t.data_baixa ? cpDataLonga(t.data_baixa) : '', t.parcela + '/' + t.total_parcelas
+  ]);
+  const csv = [cab].concat(linhas)
+    .map(l => l.map(c => '"' + String(c === null || c === undefined ? '' : c).replace(/"/g, '""') + '"').join(';'))
+    .join('\r\n');
+  // BOM para o Excel abrir os acentos direito.
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'contas-a-pagar-' + CP.competencia + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODAL DE TÍTULO
+// ═══════════════════════════════════════════════════════════════════════════
+
+function cpPreencherSelects() {
+  const analiticas = CP.plano.filter(c => c.tipo === 'ANALITICA' && c.ativo);
+  const opcoes = analiticas.map(c =>
+    `<option value="${cpEsc(c.codigo)}">${cpEsc(c.codigo)} — ${cpEsc(c.nome)}</option>`).join('');
+
+  document.getElementById('cp-t-natureza').innerHTML = opcoes;
+  document.getElementById('cp-f-natureza').innerHTML =
+    '<option value="">Todas as naturezas</option>' + opcoes;
+
+  // Fornecedores já usados viram sugestão de digitação.
+  const nomes = Array.from(new Set(CP.titulos.map(t => t.fornecedor).filter(Boolean))).sort();
+  document.getElementById('cp-lista-forn').innerHTML =
+    nomes.map(n => `<option value="${cpEsc(n)}"></option>`).join('');
+}
+
+function cpAbrirTitulo(id) {
+  if (!cpPodeEditar()) { cpAviso('Seu acesso é de consulta.', 'info'); return; }
+  CP.editando = id || null;
+  const t = id ? CP.titulos.find(x => x.id === id) : null;
+
+  document.getElementById('cp-mt-titulo').textContent = t ? 'Editar título' : 'Novo título';
+  document.getElementById('cp-mt-sub').textContent = t
+    ? `${t.id} · origem ${t.origem || 'MANUAL'}` : 'Lançamento manual';
+  document.getElementById('cp-t-excluir').style.display = t ? 'inline-flex' : 'none';
+
+  const v = (campo, valor) => { document.getElementById('cp-t-' + campo).value = valor === undefined || valor === null ? '' : valor; };
+  v('fornecedor', t ? t.fornecedor : '');
+  v('emissao', t ? t.data_emissao : '');
+  v('vencimento', t ? t.data_vencimento : CP.competencia + '-' + String(new Date().getDate()).padStart(2, '0'));
+  v('empresa', t ? (t.empresa || 'RENOVA') : 'RENOVA');
+  v('nf', t ? t.numero_nf : '');
+  v('boleto', t ? t.numero_boleto : '');
+  v('tipo', t ? (t.tipo_docto || 'Boleto') : 'Boleto');
+  v('parcela', t ? (t.parcela || 1) : 1);
+  v('parcelas', t ? (t.total_parcelas || 1) : 1);
+  v('natureza', t ? t.natureza_codigo : '9.99');
+  v('descricao', t ? t.descricao : '');
+  v('obs1', t ? t.observacao_1 : '');
+  v('obs2', t ? t.observacao_2 : '');
+  v('forma', t ? (t.forma_pagamento || 'PIX') : 'PIX');
+  v('valor', t ? (Number(t.valor_total) || 0).toFixed(2).replace('.', ',') : '');
+  v('pago', t ? (Number(t.valor_pago) || 0).toFixed(2).replace('.', ',') : '');
+  v('status', t ? t.status : 'ABERTO');
+  v('baixa', t ? t.data_baixa : '');
+
+  cpAbrir('cp-modal-titulo');
+  setTimeout(() => document.getElementById('cp-t-fornecedor').focus(), 60);
+}
+
+async function cpSalvarTitulo() {
+  const g = campo => document.getElementById('cp-t-' + campo).value;
+  const btn = document.getElementById('cp-t-salvar');
+
+  if (!g('fornecedor').trim()) { cpAviso('Informe o fornecedor.', 'erro'); return; }
+  if (!g('vencimento')) { cpAviso('Informe o vencimento.', 'erro'); return; }
+  if (cpNum(g('valor')) <= 0) { cpAviso('Informe um valor maior que zero.', 'erro'); return; }
+
+  const codNat = g('natureza');
+  const titulo = {
+    id: CP.editando || '',
+    fornecedor: g('fornecedor').trim(),
+    data_emissao: g('emissao'), data_vencimento: g('vencimento'),
+    empresa: g('empresa'), numero_nf: g('nf').trim(), numero_boleto: g('boleto').trim(),
+    tipo_docto: g('tipo'), descricao: g('descricao').trim(),
+    natureza_codigo: codNat, natureza: cpNomeConta(codNat),
+    observacao_1: g('obs1').trim(), observacao_2: g('obs2').trim(),
+    forma_pagamento: g('forma'),
+    valor_total: cpNum(g('valor')), valor_pago: cpNum(g('pago')),
+    status: g('status'), data_baixa: g('baixa'),
+    parcela: parseInt(g('parcela'), 10) || 1,
+    total_parcelas: parseInt(g('parcelas'), 10) || 1
+  };
+  if (CP.editando) {
+    const antigo = CP.titulos.find(x => x.id === CP.editando);
+    if (antigo) { titulo.fornecedor_cod = antigo.fornecedor_cod; titulo.origem = antigo.origem; }
+  }
+
+  btn.disabled = true;
+  try {
+    await cpPost('titulo_salvar', { titulo: titulo });
+    cpFechar('cp-modal-titulo');
+    cpAviso('Título salvo.', 'ok');
+    await cpCarregar();
+  } catch (e) {
+    cpAviso('<b>Não deu para salvar.</b> ' + cpEsc(e.message), 'erro');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function cpCancelarTitulo() {
+  if (!CP.editando) return;
+  const t = CP.titulos.find(x => x.id === CP.editando);
+  if (!confirm(`Cancelar o título de ${t ? t.fornecedor : ''} no valor de ${cpBRL(t ? t.valor_total : 0)}?\n\nEle sai das listas mas continua guardado no histórico.`)) return;
+  try {
+    await cpPost('titulo_remover', { id: CP.editando });
+    cpFechar('cp-modal-titulo');
+    cpAviso('Título cancelado.', 'ok');
+    await cpCarregar();
+  } catch (e) {
+    cpAviso('<b>Não deu para cancelar.</b> ' + cpEsc(e.message), 'erro');
+  }
+}
+
+// ── Baixa ────────────────────────────────────────────────────────────────────
+function cpAbrirBaixa(id) {
+  if (!cpPodeEditar()) { cpAviso('Seu acesso é de consulta.', 'info'); return; }
+  const t = CP.titulos.find(x => x.id === id);
+  if (!t) return;
+  CP.baixando = id;
+  document.getElementById('cp-b-sub').textContent = t.fornecedor + ' · vence ' + cpDataLonga(t.data_vencimento);
+  document.getElementById('cp-b-valor').value = cpSaldo(t).toFixed(2).replace('.', ',');
+  document.getElementById('cp-b-data').value = CP.hoje;
+  document.getElementById('cp-b-aviso').textContent =
+    'Saldo em aberto: ' + cpBRL(cpSaldo(t)) + '. Pagando menos que o saldo o título fica como parcial.';
+  cpAbrir('cp-modal-baixa');
+}
+
+async function cpConfirmarBaixa() {
+  if (!CP.baixando) return;
+  const t = CP.titulos.find(x => x.id === CP.baixando);
+  const valor = cpNum(document.getElementById('cp-b-valor').value);
+  if (valor <= 0) { cpAviso('Informe o valor pago.', 'erro'); return; }
+  try {
+    // O que vai para o servidor é o total pago acumulado, não a parcela desta baixa.
+    await cpPost('titulo_baixar', {
+      baixas: [{ id: CP.baixando, valor_pago: (Number(t.valor_pago) || 0) + valor,
+                 data_baixa: document.getElementById('cp-b-data').value }]
+    });
+    cpFechar('cp-modal-baixa');
+    cpAviso('Baixa registrada.', 'ok');
+    await cpCarregar();
+  } catch (e) {
+    cpAviso('<b>Não deu para dar baixa.</b> ' + cpEsc(e.message), 'erro');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PLANO DE CONTAS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function cpPlanoAtual() { return CP.planoRascunho || CP.plano; }
+
+function cpMarcarPlanoSujo(sujo) {
+  const b = document.getElementById('cp-btn-plano-salvar');
+  if (b) b.disabled = !sujo;
+}
+
+function cpRenderPlano() {
+  const plano = cpPlanoAtual();
+  const doMes = CP.titulos.filter(t => t.status !== 'CANCELADO' && cpDoMes(t));
+
+  const porConta = {};
+  doMes.forEach(t => {
+    const c = String(t.natureza_codigo);
+    porConta[c] = (porConta[c] || 0) + (Number(t.valor_total) || 0);
+  });
+
+  const raizes = plano.filter(c => !c.codigo_pai).sort((a, b) => a.ordem - b.ordem);
+  const html = raizes.map(r => {
+    const filhos = plano.filter(c => c.codigo_pai === r.codigo).sort((a, b) => a.ordem - b.ordem);
+    const totalRamo = filhos.reduce((s, f) => s + (porConta[f.codigo] || 0), 0) + (porConta[r.codigo] || 0);
+    const cor = (CP_MACROS[r.macro] || {}).cor || '#64748b';
+
+    return `<div class="cp-no raiz" style="border-left:4px solid ${cor};">
+        <span class="cp-no-cod">${cpEsc(r.codigo)}</span>
+        <span class="cp-no-nome">${cpEsc(r.nome)}</span>
+        <span class="cp-no-val">${cpBRL(totalRamo)}</span>
+        <span class="cp-no-acoes">${cpPodeEditar()
+          ? `<button class="cp-acao" onclick="cpAbrirConta('${cpEsc(r.codigo)}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+             <button class="cp-acao" onclick="cpAbrirConta('','${cpEsc(r.codigo)}')" title="Nova subconta"><i class="fa-solid fa-plus"></i></button>` : ''}</span>
+      </div>` +
+      (filhos.length ? filhos.map(f => `
+        <div class="cp-no filho">
+          <span class="cp-no-cod">${cpEsc(f.codigo)}</span>
+          <span class="cp-no-nome">${cpEsc(f.nome)}${f.ativo ? '' : ' <span class="cp-tag-macro">inativa</span>'}</span>
+          <span class="cp-no-val">${porConta[f.codigo] ? cpBRL(porConta[f.codigo]) : '<span style="color:#cbd5e1;">—</span>'}</span>
+          <span class="cp-no-acoes">${cpPodeEditar()
+            ? `<button class="cp-acao" onclick="cpAbrirConta('${cpEsc(f.codigo)}')" title="Editar"><i class="fa-solid fa-pen"></i></button>` : ''}</span>
+        </div>`).join('')
+        : '<div class="cp-no filho" style="color:var(--muted);font-size:.76rem;">Sem subcontas.</div>');
+  }).join('');
+
+  document.getElementById('cp-arvore').innerHTML = html ||
+    '<div class="cp-vazio">Plano de contas vazio. Rode a função <code>instalar()</code> no Apps Script.</div>';
+}
+
+function cpAbrirConta(codigo, paiSugerido) {
+  if (!cpPodeEditar()) { cpAviso('Seu acesso é de consulta.', 'info'); return; }
+  const plano = cpPlanoAtual();
+  const c = codigo ? plano.find(x => x.codigo === codigo) : null;
+  CP.contaEditando = codigo || null;
+
+  document.getElementById('cp-c-titulo').textContent = c ? 'Editar conta' : 'Nova conta';
+  document.getElementById('cp-c-codigo').value = c ? c.codigo : '';
+  document.getElementById('cp-c-codigo').disabled = !!c;
+  document.getElementById('cp-c-nome').value = c ? c.nome : '';
+  document.getElementById('cp-c-macro').value = c ? c.macro : 'OPERACIONAL';
+  document.getElementById('cp-c-remover').style.display = c ? 'inline-flex' : 'none';
+
+  const raizes = plano.filter(x => !x.codigo_pai && x.codigo !== codigo);
+  document.getElementById('cp-c-pai').innerHTML =
+    '<option value="">(conta de topo)</option>' +
+    raizes.map(r => `<option value="${cpEsc(r.codigo)}">${cpEsc(r.codigo)} — ${cpEsc(r.nome)}</option>`).join('');
+  document.getElementById('cp-c-pai').value = c ? (c.codigo_pai || '') : (paiSugerido || '');
+
+  cpAbrir('cp-modal-conta');
+}
+
+function cpAplicarConta() {
+  const codigo = document.getElementById('cp-c-codigo').value.trim();
+  const nome = document.getElementById('cp-c-nome').value.trim();
+  const pai = document.getElementById('cp-c-pai').value;
+  const macro = document.getElementById('cp-c-macro').value;
+
+  if (!codigo) { cpAviso('Informe o código da conta.', 'erro'); return; }
+  if (!nome) { cpAviso('Informe o nome da conta.', 'erro'); return; }
+  if (!/^\d+(\.\d+)*$/.test(codigo)) { cpAviso('O código deve ser numérico, como 1.07 ou 2.12.', 'erro'); return; }
+
+  CP.planoRascunho = cpPlanoAtual().map(c => Object.assign({}, c));
+  const existente = CP.planoRascunho.find(c => c.codigo === codigo);
+
+  if (!CP.contaEditando && existente) { cpAviso('Já existe uma conta com o código ' + codigo + '.', 'erro'); return; }
+  if (pai && pai === codigo) { cpAviso('Uma conta não pode ser pai dela mesma.', 'erro'); return; }
+
+  if (existente) {
+    existente.nome = nome; existente.codigo_pai = pai; existente.macro = macro;
+    existente.nivel = codigo.split('.').length;
+    existente.tipo = pai ? 'ANALITICA' : 'SINTETICA';
+  } else {
+    const irmaos = CP.planoRascunho.filter(c => c.codigo_pai === pai);
+    const base = pai ? (CP.planoRascunho.find(c => c.codigo === pai) || { ordem: 0 }).ordem : 0;
+    CP.planoRascunho.push({
+      codigo: codigo, nome: nome, codigo_pai: pai, nivel: codigo.split('.').length,
+      tipo: pai ? 'ANALITICA' : 'SINTETICA', macro: macro, ativo: true,
+      ordem: base + irmaos.length + 1
+    });
+  }
+
+  CP.planoRascunho.sort((a, b) => a.codigo.localeCompare(b.codigo, undefined, { numeric: true }));
+  CP.planoRascunho.forEach((c, i) => { c.ordem = (i + 1) * 10; });
+
+  cpFechar('cp-modal-conta');
+  cpMarcarPlanoSujo(true);
+  cpRenderPlano();
+  cpAviso('Alteração pendente. Clique em <b>Salvar alterações</b> para gravar.', 'info');
+}
+
+function cpRemoverConta() {
+  if (!CP.contaEditando) return;
+  const plano = cpPlanoAtual();
+  const filhos = plano.filter(c => c.codigo_pai === CP.contaEditando);
+  if (filhos.length) { cpAviso(`A conta ${CP.contaEditando} tem ${filhos.length} subconta(s). Remova-as antes.`, 'erro'); return; }
+  const usos = CP.titulos.filter(t => String(t.natureza_codigo) === CP.contaEditando && t.status !== 'CANCELADO').length;
+  if (usos) { cpAviso(`A conta ${CP.contaEditando} está em ${usos} título(s). Reclassifique-os antes.`, 'erro'); return; }
+
+  CP.planoRascunho = plano.filter(c => c.codigo !== CP.contaEditando).map(c => Object.assign({}, c));
+  cpFechar('cp-modal-conta');
+  cpMarcarPlanoSujo(true);
+  cpRenderPlano();
+  cpAviso('Remoção pendente. Clique em <b>Salvar alterações</b> para gravar.', 'info');
+}
+
+async function cpSalvarPlano() {
+  if (!CP.planoRascunho) return;
+  const btn = document.getElementById('cp-btn-plano-salvar');
+  btn.disabled = true;
+  try {
+    await cpPost('plano_salvar', { contas: CP.planoRascunho });
+    cpAviso('Plano de contas salvo.', 'ok');
+    await cpCarregar();
+  } catch (e) {
+    cpAviso('<b>Não deu para salvar o plano.</b> ' + cpEsc(e.message), 'erro');
+    btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SINCRONIZAÇÃO DE NOTAS DE ENTRADA
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function cpAbrirSync() {
+  if (!cpPodeEditar()) { cpAviso('Seu acesso é de consulta.', 'info'); return; }
+  cpAbrir('cp-modal-sync');
+  document.getElementById('cp-tb-sync').innerHTML =
+    '<tr><td colspan="7" class="cp-vazio">Buscando notas do Genesis…</td></tr>';
+  document.getElementById('cp-sync-resumo').innerHTML = '';
+  document.getElementById('cp-sync-aviso').innerHTML = '';
+  CP.sync = { notas: [], marcadas: {}, existentes: {}, suspeitos: {}, naturezas: {} };
+  cpSyncAtualizarRodape();
+
+  try {
+    // Vem pela API autenticada, não por arquivo publicado: o repositório do
+    // portal é público e esses dados (fornecedor, CNPJ, NF, valor) não podem
+    // ficar legíveis para qualquer um.
+    const p = await cpPost('sync_ler', {});
+    CP.sync.notas = p.notas || [];
+
+    if (!CP.sync.notas.length) {
+      document.getElementById('cp-tb-sync').innerHTML =
+        `<tr><td colspan="7" class="cp-vazio">A fila de aprovação está vazia.<br><br>
+         Rode na máquina do escritório:<br>
+         <code>node integracao/extrair-contas-pagar.js --enviar --api &lt;url&gt; --token &lt;token&gt;</code></td></tr>`;
+      return;
+    }
+
+    // Antes de mostrar, pergunta ao servidor o que já está lançado.
+    const dup = await cpPost('checar_duplicidade', {
+      chaves: CP.sync.notas.map(n => ({
+        chave: n.chave_origem, numero_nf: n.numero_nf,
+        parcela: n.parcela, valor_total: n.valor_total, fornecedor: n.fornecedor
+      }))
+    });
+    CP.sync.existentes = dup.existentes || {};
+    CP.sync.suspeitos = dup.suspeitos || {};
+
+    // Já vem marcado só o que é novo — o operador tira o que não quiser.
+    CP.sync.notas.forEach(n => {
+      CP.sync.naturezas[n.chave_origem] = n.natureza_codigo || '9.99';
+      if (!CP.sync.existentes[n.chave_origem] && !CP.sync.suspeitos[n.chave_origem]) {
+        CP.sync.marcadas[n.chave_origem] = true;
+      }
+    });
+
+    const geradoEm = p.gerado_em ? new Date(p.gerado_em).toLocaleString('pt-BR') : '—';
+    document.getElementById('cp-sync-sub').textContent =
+      `Extraído do Genesis em ${geradoEm} · janela ${p.janela ? cpDataLonga(p.janela.desde) + ' a ' + cpDataLonga(p.janela.ate) : '—'}`;
+
+    cpSyncRenderResumo(p);
+    cpSyncRender();
+  } catch (e) {
+    document.getElementById('cp-tb-sync').innerHTML =
+      `<tr><td colspan="7" class="cp-vazio">Não consegui ler a fila de aprovação.<br><br>
+       <b>${cpEsc(e.message)}</b></td></tr>`;
+  }
+}
+
+function cpSyncRenderResumo(p) {
+  const novas = CP.sync.notas.filter(n => !CP.sync.existentes[n.chave_origem]).length;
+  const jaExistem = Object.keys(CP.sync.existentes).length;
+  const suspeitas = Object.keys(CP.sync.suspeitos).length;
+  const valorNovas = CP.sync.notas
+    .filter(n => !CP.sync.existentes[n.chave_origem])
+    .reduce((s, n) => s + (Number(n.valor_total) || 0), 0);
+
+  document.getElementById('cp-sync-resumo').innerHTML = `
+    <div class="cp-sync-chip">No arquivo<b>${CP.sync.notas.length}</b></div>
+    <div class="cp-sync-chip">Novas<b style="color:#16a34a;">${novas}</b></div>
+    <div class="cp-sync-chip">Já lançadas<b style="color:#64748b;">${jaExistem}</b></div>
+    <div class="cp-sync-chip">Possíveis duplicatas<b style="color:#b45309;">${suspeitas}</b></div>
+    <div class="cp-sync-chip">Valor das novas<b style="color:#0284c7;">${cpBRL(valorNovas)}</b></div>`;
+
+  if (suspeitas) {
+    document.getElementById('cp-sync-aviso').innerHTML = `
+      <div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:10px 13px;font-size:.76rem;margin-bottom:12px;line-height:1.5;">
+        <b>${suspeitas} nota(s) parecem já estar na base com outro fornecedor.</b>
+        Acontece com o que foi migrado da planilha antiga, que não guardava o código do
+        fornecedor. Elas vêm desmarcadas — confira antes de aprovar.
+      </div>`;
+  }
+}
+
+function cpSyncRender() {
+  const analiticas = CP.plano.filter(c => c.tipo === 'ANALITICA' && c.ativo);
+
+  document.getElementById('cp-tb-sync').innerHTML = CP.sync.notas.map(n => {
+    const k = n.chave_origem;
+    const existe = CP.sync.existentes[k];
+    const suspeita = CP.sync.suspeitos[k];
+    const classe = existe ? 'existe' : (suspeita ? 'suspeita' : '');
+
+    let situacao;
+    if (existe) situacao = `<span class="cp-pill cp-pill-existe">Já lançada · ${cpEsc(existe)}</span>`;
+    else if (suspeita) {
+      situacao = `<span class="cp-pill cp-pill-suspeita">Possível duplicata</span>` +
+        suspeita.slice(0, 3).map(a => `<div class="cp-aviso-dup">${cpEsc(a.id)} · ${cpEsc(a.fornecedor)} ·
+          ${a.total_parcelas > 1 ? 'parc. ' + a.parcela + '/' + a.total_parcelas + ' · ' : ''}
+          venc. ${cpDataLonga(a.data_vencimento)} · ${cpBRL(a.valor_total)}</div>`).join('') +
+        (suspeita.length > 3 ? `<div class="cp-aviso-dup">e mais ${suspeita.length - 3}…</div>` : '');
+    } else situacao = `<span class="cp-pill cp-pill-nova">Nova</span>`;
+
+    const parc = Number(n.total_parcelas) > 1
+      ? ` <span class="cp-tag-macro">${n.parcela}/${n.total_parcelas}</span>` : '';
+
+    return `<tr class="cp-sync-linha ${classe}">
+      <td><input type="checkbox" ${existe ? 'disabled' : ''} ${CP.sync.marcadas[k] ? 'checked' : ''}
+                 onchange="cpSyncMarcar('${cpEsc(k)}', this.checked)" /></td>
+      <td style="white-space:nowrap;font-weight:700;">${cpDataLonga(n.data_vencimento)}</td>
+      <td class="cp-forn" title="${cpEsc(n.fornecedor)}">${cpEsc(n.fornecedor)}
+        <div style="font-size:.66rem;color:var(--muted);font-weight:600;">cód. ${cpEsc(n.fornecedor_cod || '—')}</div></td>
+      <td style="font-size:.73rem;">${cpEsc(n.numero_nf || '—')}${parc}</td>
+      <td>
+        <select class="cp-sel-nat" ${existe ? 'disabled' : ''} onchange="cpSyncNatureza('${cpEsc(k)}', this.value)">
+          ${analiticas.map(c => `<option value="${cpEsc(c.codigo)}" ${CP.sync.naturezas[k] === c.codigo ? 'selected' : ''}>${cpEsc(c.nome)}</option>`).join('')}
+        </select>
+      </td>
+      <td class="cp-num" style="font-weight:800;">${cpBRL(n.valor_total)}</td>
+      <td>${situacao}</td>
+    </tr>`;
+  }).join('');
+
+  cpSyncAtualizarRodape();
+}
+
+function cpSyncMarcar(chave, marcado) {
+  if (marcado) CP.sync.marcadas[chave] = true; else delete CP.sync.marcadas[chave];
+  cpSyncAtualizarRodape();
+}
+
+function cpSyncNatureza(chave, codigo) { CP.sync.naturezas[chave] = codigo; }
+
+function cpSyncMarcarTodos(marcado) {
+  CP.sync.notas.forEach(n => {
+    if (CP.sync.existentes[n.chave_origem]) return;
+    if (marcado) CP.sync.marcadas[n.chave_origem] = true;
+    else delete CP.sync.marcadas[n.chave_origem];
+  });
+  cpSyncRender();
+}
+
+function cpSyncAtualizarRodape() {
+  const n = Object.keys(CP.sync.marcadas).length;
+  const valor = CP.sync.notas
+    .filter(x => CP.sync.marcadas[x.chave_origem])
+    .reduce((s, x) => s + (Number(x.valor_total) || 0), 0);
+  document.getElementById('cp-sync-sel').textContent = n
+    ? `${n} nota(s) selecionada(s) · ${cpBRL(valor)}` : 'Nenhuma nota selecionada';
+  document.getElementById('cp-sync-aprovar').disabled = !n;
+}
+
+async function cpSyncAprovar() {
+  const escolhidas = CP.sync.notas.filter(n => CP.sync.marcadas[n.chave_origem]);
+  if (!escolhidas.length) return;
+
+  const suspeitas = escolhidas.filter(n => CP.sync.suspeitos[n.chave_origem]).length;
+  const aviso = suspeitas
+    ? `\n\nATENÇÃO: ${suspeitas} dela(s) parecem já estar na base com outro fornecedor.`
+    : '';
+  if (!confirm(`Lançar ${escolhidas.length} título(s), somando ${cpBRL(escolhidas.reduce((s, n) => s + n.valor_total, 0))}?${aviso}`)) return;
+
+  const btn = document.getElementById('cp-sync-aprovar');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Lançando…';
+
+  const titulos = escolhidas.map(n => {
+    const cod = CP.sync.naturezas[n.chave_origem] || '9.99';
+    return {
+      origem: 'GENESIS', empresa: n.empresa || 'RENOVA',
+      data_emissao: n.data_emissao, data_vencimento: n.data_vencimento,
+      fornecedor: n.fornecedor, fornecedor_cod: n.fornecedor_cod,
+      numero_nf: n.numero_nf, numero_boleto: n.numero_boleto,
+      tipo_docto: n.tipo_docto, descricao: n.descricao,
+      natureza_codigo: cod, natureza: cpNomeConta(cod),
+      observacao_1: n.observacao_1, observacao_2: n.observacao_2,
+      forma_pagamento: n.forma_pagamento,
+      valor_total: n.valor_total, valor_pago: n.valor_pago,
+      status: n.status, data_baixa: n.data_baixa,
+      parcela: n.parcela, total_parcelas: n.total_parcelas
+    };
+  });
+
+  try {
+    // Blocos de 200: o Apps Script tem 6 minutos por execução.
+    let inseridos = 0, ignorados = 0, erros = [];
+    for (let i = 0; i < titulos.length; i += 200) {
+      const r = await cpPost('importar', { titulos: titulos.slice(i, i + 200), origem: 'GENESIS' });
+      inseridos += r.inseridos;
+      ignorados += r.ignorados.length;
+      erros = erros.concat(r.erros);
+    }
+    cpFechar('cp-modal-sync');
+    let msg = `<b>${inseridos} título(s) lançado(s).</b>`;
+    if (ignorados) msg += ` ${ignorados} já estavam na base e foram ignorados.`;
+    if (erros.length) msg += ` ${erros.length} com erro: ` + cpEsc(erros.slice(0, 3).map(e => e.motivo).join('; '));
+    cpAviso(msg, erros.length ? 'erro' : 'ok');
+    await cpCarregar();
+  } catch (e) {
+    cpAviso('<b>Não deu para lançar.</b> ' + cpEsc(e.message), 'erro');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i>Aprovar selecionadas';
+  }
+}
+</script>
+
+<!-- FIM CONTAS A PAGAR -->
 </body>
 </html>

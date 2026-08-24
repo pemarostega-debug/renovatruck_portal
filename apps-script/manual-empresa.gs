@@ -49,6 +49,16 @@ function doPost(e) {
     // ── Público ──
     if (action === 'login') return json(autenticar(body.usuario, body.senha));
 
+    // Validação de sessão para os OUTROS backends do portal (Contas a Pagar,
+    // etc.). Cada projeto Apps Script tem PropertiesService próprio, então quem
+    // precisa conferir um token tem de perguntar aqui, que é onde ele nasceu.
+    // Só confirma um token que o chamador já possui — não lista nada.
+    if (action === 'sessao_validar') {
+      const s = lerSessao(body.token);
+      if (!s) return json({ success: false, error: 'Sessão inválida ou expirada.' });
+      return json({ success: true, usuario: s.usuario, nome: s.nome, papel: s.papel, expira: s.expira });
+    }
+
     // ── Exige sessão válida ──
     if (action === 'organograma_set') {
       exigirAdmin(body.token);
