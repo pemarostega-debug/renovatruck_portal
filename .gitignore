@@ -3,3 +3,11 @@ teste-conexao.js
 config.local.json
 exportar.log
 Credenciais_renova_db.txt
+
+# Dados financeiros: NUNCA versionar. O repositório é público (é o que faz o
+# GitHub Pages servir o site), então qualquer coisa commitada aqui fica
+# legível na internet. As notas do Genesis trafegam pela API autenticada.
+integracao/config.local.json
+integracao/contas-pagar-sync.json
+integracao/migracao-contas-pagar.json
+contas-pagar-sync.json
