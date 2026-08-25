@@ -5057,18 +5057,18 @@ function selecionarRegra(id){
       <div class="cp-chart"><canvas id="cp-c-burn"></canvas></div>
     </div>
     <div class="cp-card">
-      <div class="cp-card-h">
-        <span><i class="fa-solid fa-magnifying-glass-chart"></i><span id="cp-detalhe-titulo">Detalhe da seleção</span></span>
-        <button class="cp-acao" id="cp-detalhe-limpar" onclick="cpLimparSelecaoBI()" title="Limpar seleção" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="cp-tbl-wrap" style="max-height:230px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-detalhe"></tbody></table></div>
+      <div class="cp-card-h"><span><i class="fa-solid fa-gauge-high"></i>Régua de inadimplência</span><span class="cp-kpi-sub" id="cp-regua-total">—</span></div>
+      <div class="cp-regua" id="cp-regua"></div>
     </div>
   </div>
 
   <div class="cp-grid">
     <div class="cp-card">
-      <div class="cp-card-h"><span><i class="fa-solid fa-gauge-high"></i>Régua de inadimplência</span><span class="cp-kpi-sub" id="cp-regua-total">—</span></div>
-      <div class="cp-regua" id="cp-regua"></div>
+      <div class="cp-card-h">
+        <span><i class="fa-solid fa-magnifying-glass-chart"></i><span id="cp-detalhe-titulo">Detalhe da seleção</span></span>
+        <button class="cp-acao" id="cp-detalhe-limpar" onclick="cpLimparSelecaoBI()" title="Limpar seleção" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="cp-tbl-wrap" style="max-height:230px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-detalhe"></tbody></table></div>
     </div>
     <div class="cp-card">
       <div class="cp-card-h"><span><i class="fa-solid fa-calendar-check"></i>Vencendo hoje</span><span class="cp-kpi-sub" id="cp-hoje-total">—</span></div>
@@ -5598,16 +5598,23 @@ function cpChartFornecedores(titulos) {
 
 function cpChartBurn(titulos) {
   // Acumulado por semana do mês — mostra em que ritmo o caixa é consumido.
+  // "Baixado" usa o mesmo balde de semana (por vencimento) que os outros dois,
+  // só que somando valor_pago em vez de valor_total — assim dá pra comparar,
+  // semana a semana, o que estava previsto contra o que já saiu de verdade.
   const sem = [0, 0, 0, 0, 0];
+  const semPago = [0, 0, 0, 0, 0];
   titulos.forEach(t => {
     const d = String(t.data_vencimento || '');
     if (d.length < 10) return;
     const dia = parseInt(d.slice(8, 10), 10);
     const i = Math.min(Math.floor((dia - 1) / 7), 4);
     sem[i] += (Number(t.valor_total) || 0);
+    semPago[i] += (Number(t.valor_pago) || 0);
   });
   let ac = 0;
   const acumulado = sem.map(v => (ac += v));
+  let acPago = 0;
+  const acumuladoPago = semPago.map(v => (acPago += v));
 
   cpDestruir('burn');
   const ctx = document.getElementById('cp-c-burn');
@@ -5618,9 +5625,11 @@ function cpChartBurn(titulos) {
     data: {
       labels: ['S1', 'S2', 'S3', 'S4', 'S5'],
       datasets: [
-        { label: 'Acumulado', data: acumulado, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.10)',
+        { label: 'Previsto (acumulado)', data: acumulado, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.10)',
           fill: true, tension: .3, pointRadius: 3, pointBackgroundColor: '#ef4444', borderWidth: 2 },
-        { label: 'Na semana', data: sem, borderColor: '#94a3b8', borderDash: [5, 4], fill: false,
+        { label: 'Baixado (acumulado)', data: acumuladoPago, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,.10)',
+          fill: true, tension: .3, pointRadius: 3, pointBackgroundColor: '#16a34a', borderWidth: 2 },
+        { label: 'Previsto na semana', data: sem, borderColor: '#94a3b8', borderDash: [5, 4], fill: false,
           tension: .3, pointRadius: 2, borderWidth: 1.5 }
       ]
     },
