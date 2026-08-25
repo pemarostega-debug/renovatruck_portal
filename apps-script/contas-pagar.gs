@@ -88,6 +88,21 @@ const COLUNAS_DATA = ['data_emissao', 'data_vencimento', 'data_baixa'];
 // converte "1,2" em 1.2 silenciosamente.
 const COLUNAS_NUM = ['valor_total', 'valor_pago', 'parcela', 'total_parcelas'];
 
+/**
+ * Colunas que precisam de formato "Texto simples" forçado na planilha.
+ *
+ * Sem isso o Sheets tenta adivinhar o tipo do que está sendo escrito. Um
+ * código de natureza como "1.01" é lido como DD.MM e vira a data 01/jan; a
+ * competência "2026-08" é lida como agosto/2026 e também vira Date. O bug foi
+ * pego em produção: bootstrap() devolvia "Thu Jan 01 2026 00:00:00 GMT-0300…"
+ * no lugar do código toda vez que o dia.mês formava uma data válida — só
+ * "9.99" sobreviveu, porque não existe dia 99.
+ *
+ * setNumberFormat('@') faz a planilha guardar o texto exatamente como veio,
+ * sem tentar interpretar.
+ */
+const COLUNAS_TEXTO_FORCADO = ['natureza_codigo', 'competencia', 'numero_nf', 'numero_boleto'];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PLANO DE CONTAS INICIAL
 // Quatro macro-naturezas exigidas pela Diretoria + um ramo de escape para
@@ -190,8 +205,11 @@ function instalar() {
   garantirAba(ss, ABA_CONFIG,  ['chave', 'valor']);
   garantirAba(ss, ABA_SYNC,    CAB_SYNC);
 
-  semearPlano(ss);
+  // Formata ANTES de semear: a coluna já nasce em texto simples, então o
+  // Sheets nunca chega a tentar interpretar "1.01" como data.
+  formatarPlano(ss);
   formatarTitulos(ss);
+  semearPlano(ss);
 
   // A planilha nova vem com uma "Página1" vazia que só atrapalha.
   const sobra = ss.getSheetByName('Página1') || ss.getSheetByName('Sheet1');
@@ -231,9 +249,26 @@ function formatarTitulos(ss) {
   ['valor_total', 'valor_pago'].forEach(function (c) {
     sh.getRange(2, COL[c] + 1, linhas, 1).setNumberFormat('#,##0.00');
   });
+  // Ver COLUNAS_TEXTO_FORCADO: sem isto "1.01" vira data e "2026-08" também.
+  // O formato fica gravado na coluna inteira, então cada título novo (appendRow
+  // ou setValues em bloco) já nasce protegido, sem precisar reaplicar.
+  COLUNAS_TEXTO_FORCADO.forEach(function (c) {
+    sh.getRange(2, COL[c] + 1, linhas, 1).setNumberFormat('@');
+  });
   sh.setColumnWidth(COL.fornecedor + 1, 260);
   sh.setColumnWidth(COL.descricao + 1, 200);
   sh.setColumnWidth(COL.natureza + 1, 200);
+}
+
+/**
+ * Mesma proteção da linha acima, para a coluna 'codigo' e 'codigo_pai' do
+ * plano de contas. É onde o bug apareceu primeiro: "1.01" virando 01/jan.
+ */
+function formatarPlano(ss) {
+  const sh = ss.getSheetByName(ABA_PLANO);
+  const linhas = Math.max(sh.getMaxRows() - 1, 1);
+  sh.getRange(2, 1, linhas, 1).setNumberFormat('@');   // codigo
+  sh.getRange(2, 3, linhas, 1).setNumberFormat('@');   // codigo_pai
 }
 
 function semearPlano(ss) {
