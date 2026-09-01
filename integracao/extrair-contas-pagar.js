@@ -264,14 +264,17 @@ async function extrair() {
   const cfg = JSON.parse(fs.readFileSync(CONFIG, 'utf8'));
 
   // Para o cron: se --token / --api não vieram na linha de comando, usa o que
-  // estiver no config.local.json (fora do git).
-  if (!TOKEN && cfg.syncToken) TOKEN = String(cfg.syncToken);
-  if (!API && cfg.api) API = String(cfg.api);
+  // estiver no config.local.json (fora do git). Essas duas chaves NÃO são do
+  // banco — separa antes de passar o resto para o mysql2, senão ele avisa
+  // "Ignoring invalid configuration option".
+  const { api: cfgApi, syncToken: cfgToken, ...dbCfg } = cfg;
+  if (!TOKEN && cfgToken) TOKEN = String(cfgToken);
+  if (!API && cfgApi) API = String(cfgApi);
 
   console.log(`Janela: ${DESDE} → ${ATE}`);
   let cn;
   try {
-    cn = await mysql.createConnection(Object.assign({}, cfg, { connectTimeout: 15000, dateStrings: false }));
+    cn = await mysql.createConnection(Object.assign({}, dbCfg, { connectTimeout: 15000, dateStrings: false }));
     console.log('Conectado ao Genesis.');
   } catch (e) {
     console.error('Falha ao conectar: ' + e.message + ' (' + e.code + ')');
