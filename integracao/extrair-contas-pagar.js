@@ -75,8 +75,12 @@ function padraoDesde() {
 
 const DESDE = opt('desde', padraoDesde());
 const ATE = opt('ate', '2099-12-31');
-const API = opt('api', '');
-const TOKEN = opt('token', '');
+// --api / --token na linha de comando (sessão RV.token do portal) ou, para o
+// cron, "api" + "syncToken" (a CHAVE_SERVICO) dentro de
+// integracao/config.local.json. Assim o segredo não aparece no crontab nem no
+// cron.log. Resolvidos contra o config em extrair().
+let API = opt('api', '');
+let TOKEN = opt('token', '');
 
 // Datas-lixo: o Genesis preenche colunas Venc não usadas com sentinelas antigas
 // (2002-04-05 aparece em centenas de notas). Nada anterior a isto é vencimento.
@@ -258,6 +262,11 @@ async function extrair() {
     return;
   }
   const cfg = JSON.parse(fs.readFileSync(CONFIG, 'utf8'));
+
+  // Para o cron: se --token / --api não vieram na linha de comando, usa o que
+  // estiver no config.local.json (fora do git).
+  if (!TOKEN && cfg.syncToken) TOKEN = String(cfg.syncToken);
+  if (!API && cfg.api) API = String(cfg.api);
 
   console.log(`Janela: ${DESDE} → ${ATE}`);
   let cn;

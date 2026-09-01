@@ -91,6 +91,42 @@ Notas de Entrada**, confira e aprove. Nada vira título sem aprovação.
 Sem `--enviar` o script só grava `integracao/contas-pagar-sync.json` para você
 conferir.
 
+> O botão do portal **não** consulta o Genesis — ele só lê a aba `SyncStaging`.
+> Enquanto o extrator não roda, o portal mostra a fila da última execução.
+
+### 5.1 Automatizar (cron na VPS)
+
+O extrator roda sozinho na VPS Locaweb (`200.234.212.214`), a mesma que já roda
+o `exportar-dados.js` por cron e alcança o MySQL do Genesis.
+
+**Chave de serviço** — o `--token` de sessão do navegador expira; o cron usa uma
+chave fixa no lugar:
+
+1. Apps Script do Contas a Pagar → ⚙ *Configurações do projeto* → *Propriedades
+   do script* → adicionar `CHAVE_SERVICO` = uma string longa e aleatória.
+2. Colar o `contas-pagar.gs` atualizado e *Implantar → Gerenciar implantações →
+   Nova versão* (o `validarToken()` passou a aceitar essa chave, e o `doPost()`
+   a restringe às ações `sync_*`).
+
+**Na VPS**, em `/root/renovatruck_portal`:
+
+1. `git pull`
+2. Criar `integracao/config.local.json` (cópia da raiz + a chave e a URL):
+   ```json
+   {"host":"192.91.254.14","port":3311,"user":"root","password":"...","database":"sas0003",
+    "api":"https://script.google.com/macros/s/AKfyc.../exec",
+    "syncToken":"<a mesma CHAVE_SERVICO>"}
+   ```
+   Com `api` e `syncToken` no config, o comando dispensa `--api`/`--token`.
+3. Testar: `node integracao/extrair-contas-pagar.js --enviar`
+4. `crontab -e` — uma vez por dia, de manhã:
+   ```
+   30 6 * * * cd /root/renovatruck_portal && /usr/bin/node integracao/extrair-contas-pagar.js --enviar >> /root/cron-contas-pagar.log 2>&1
+   ```
+
+Janela padrão = 1º dia de dois meses atrás. Nota antiga lançada com atraso além
+disso: rode uma vez na mão com `--desde AAAA-MM-DD`.
+
 ---
 
 ## Decisões que valem conhecer
