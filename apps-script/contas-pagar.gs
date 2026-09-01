@@ -174,6 +174,13 @@ function doPost(e) {
     const action = body.action || '';
     const sessao = validarToken(body.token);
 
+    // A chave de serviço (cron) só mexe na fila de sincronização. Se vazar, o
+    // pior que dá para fazer é reescrever/ler a fila de aprovação — nada vira
+    // título sem alguém clicar "aprovar" no portal.
+    if (sessao.servico && ['sync_gravar', 'sync_acrescentar', 'sync_ler'].indexOf(action) < 0) {
+      return json({ success: false, error: 'Chave de serviço só pode sincronizar notas de entrada.' });
+    }
+
     if (action === 'titulo_salvar')   return json({ success: true, data: salvarTitulo(body.titulo, sessao) });
     if (action === 'titulo_remover')  return json({ success: true, data: removerTitulo(body.id, sessao) });
     if (action === 'titulo_baixar')   return json({ success: true, data: baixarTitulos(body.baixas || [], sessao) });
@@ -979,6 +986,17 @@ const PAPEIS_COM_ESCRITA = ['admin', 'financeiro'];
 
 function validarToken(token) {
   if (!token) throw new Error('Sessão expirada. Entre no sistema novamente.');
+
+  // Chave de serviço: deixa um robô (o cron do extrator de notas do Genesis)
+  // autenticar sem uma sessão de navegador, que expira. Vive só no
+  // PropertiesService deste projeto — NUNCA no repositório, que é público.
+  // Configure em: Apps Script → ⚙ Configurações do projeto → Propriedades do
+  // script → adicionar  CHAVE_SERVICO = <string longa e aleatória>.
+  // A checagem em doPost() limita essa chave às ações sync_*.
+  const chaveServico = PropertiesService.getScriptProperties().getProperty('CHAVE_SERVICO');
+  if (chaveServico && token === chaveServico) {
+    return { usuario: 'servico', nome: 'Serviço (cron)', papel: 'financeiro', servico: true };
+  }
 
   const cache = CacheService.getScriptCache();
   const chave = 'sess_' + token;
