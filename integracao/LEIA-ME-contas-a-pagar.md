@@ -147,6 +147,53 @@ cadastros. A chave é `IdFornecedor`, que é o que aparece como
 com sentinelas antigas (`2002-04-05` aparece em centenas de notas). O extrator
 descarta qualquer vencimento anterior a 2015.
 
+**`appendRow` corrompe coluna de texto — nunca use para título.** Ele interpreta
+o valor antes de encostar na célula, então `"2.04"` virava 02/abr e `"2026-08"`
+virava agosto/2026 mesmo com a coluna formatada em `@`. `setValues()` respeita o
+formato — é por isso que a importação em lote nunca corrompeu e só o cadastro
+manual quebrou. Toda escrita de título agora é `forcarFormatoTexto()` seguido de
+`setValues()`. Pego em produção: 53 títulos com `natureza_codigo` virado Date
+(apareciam como "A Classificar") e 55 com `competencia` quebrada — estes últimos
+sumiam do total do mês, porque `cpMesDe()` usa esse campo.
+
+### Consertar títulos já corrompidos
+
+No editor do Apps Script, rode **`corrigirTitulosCorrompidos()`** sem argumento:
+é simulação, escreve o relatório no log e não grava nada. Confira e só então rode
+**`corrigirTitulosCorrompidos(true)`**.
+
+A natureza volta por dois caminhos independentes — pela data (`2.04` foi lido
+como dia 2 de abril, então é `dia + '.' + mês`) e pelo nome, que ficou intacto na
+coluna `natureza`. Só grava quando os dois concordam e o código existe no plano;
+divergência entra como REVISAR, sem chute. A `competencia` é recalculada do
+vencimento. `numero_nf`/`numero_boleto` virados data não são recuperáveis
+automaticamente — saem no relatório para conserto na mão.
+
+**O eixo de data é do frontend, não do backend.** O painel analisa por
+*vencimento* (padrão, eixo do caixa) ou por *emissão* (eixo da competência),
+num seletor na topbar. A `competencia` gravada na planilha continua derivada do
+vencimento (`contas-pagar.gs`); o mês por emissão é recortado de `data_emissao`
+no `index.html`, em `cpMesDe()`. Não há mudança no Apps Script — nada a
+republicar. A escolha fica no `localStorage` (`cp_eixo`).
+
+**Nem tudo obedece ao eixo, de propósito.** Atraso é vencimento contra hoje,
+por definição: "régua de inadimplência por emissão" seria um número sem
+significado. Ficam SEMPRE no vencimento o KPI "Vencido em aberto", a régua, as
+contas atrasadas, o "vencendo hoje" e os "próximos 30 dias" — e cada um exibe o
+selo `venc.` quando o eixo está em emissão. Obedecem ao eixo os KPIs do mês, os
+três gráficos, o drill-down, o filtro "mês selecionado", o Plano de Contas e o
+export.
+
+**A emissão não cobre o histórico — e isso é dito na tela.** Só 8% dos 281
+títulos migrados da planilha antiga têm `data_emissao` (as notas do Genesis têm
+100%). Em agosto/2026 a base medida sai de R$ 285.728,28 por vencimento para
+R$ 41.650,50 por emissão, com **258 títulos / R$ 735.674,32 fora da conta**.
+Por isso o modo emissão mostra uma tarja amarela com essa contagem e um botão
+que lista os títulos: sumir calado faria o usuário concluir que a base
+encolheu. Cair de volta no vencimento para quem não tem emissão foi
+descartado — misturaria os dois eixos e produziria número errado com cara de
+certo. Pelo mesmo motivo o modal não preenche a emissão sozinho; só avisa.
+
 **"atraso" não é um status guardado.** Um título vencido continua `ABERTO`; o
 atraso é calculado comparando vencimento com hoje. Guardar "atraso" faria o
 título continuar atrasado para sempre depois de pago.

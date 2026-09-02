@@ -4790,6 +4790,45 @@ function selecionarRegra(id){
   #screen-contaspagar .cp-mes{border:1.5px solid var(--border);border-radius:9px;padding:6px 10px;font-size:.82rem;font-weight:700;font-family:"DM Sans",sans-serif;outline:none;background:#fff;color:var(--text);}
   #screen-contaspagar .cp-mes:focus{border-color:#0284c7;}
 
+  /* ── Eixo de data (segmented control) ──
+     Os dois rótulos ficam sempre legíveis: um toggle mudo obrigaria o usuário
+     a lembrar em que base está olhando o número — e é justamente isso que não
+     pode acontecer num painel financeiro. */
+  #screen-contaspagar .cp-eixo{display:inline-flex;align-items:center;gap:3px;background:#f1f5f9;
+    border:1.5px solid var(--border);border-radius:10px;padding:3px;}
+  #screen-contaspagar .cp-eixo-lbl{font-size:.6rem;font-weight:800;text-transform:uppercase;
+    letter-spacing:.05em;color:var(--muted);padding:0 7px 0 5px;white-space:nowrap;}
+  #screen-contaspagar .cp-eixo-op{border:none;background:none;color:var(--muted);border-radius:7px;
+    padding:6px 11px;font-size:.76rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;
+    gap:6px;white-space:nowrap;font-family:"DM Sans",sans-serif;transition:all .15s;}
+  #screen-contaspagar .cp-eixo-op:hover{color:#0284c7;}
+  #screen-contaspagar .cp-eixo-op.active{background:#fff;color:#0284c7;box-shadow:0 1px 3px rgba(0,0,0,.10);}
+  #screen-contaspagar .cp-eixo-op i{font-size:.72rem;}
+
+  /* Selo dos cards que NÃO obedecem ao eixo. Só aparece em modo emissão —
+     em vencimento seria ruído, porque ali tudo já está na mesma base. */
+  #screen-contaspagar .cp-selo-venc{display:none;align-items:center;font-size:.55rem;font-weight:800;
+    text-transform:uppercase;letter-spacing:.04em;background:#e0f2fe;color:#0369a1;
+    padding:2px 6px;border-radius:5px;margin-left:6px;cursor:help;}
+
+  /* Aviso dos títulos que o eixo da emissão não consegue posicionar. */
+  #screen-contaspagar .cp-sem-eixo{display:none;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:12px;
+    padding:11px 14px;margin-bottom:14px;font-size:.78rem;font-weight:600;line-height:1.45;}
+  #screen-contaspagar .cp-sem-eixo > i{color:#d97706;font-size:1rem;flex:0 0 auto;}
+  #screen-contaspagar .cp-sem-eixo > span{flex:1 1 240px;}
+  #screen-contaspagar .cp-btn-sem-eixo{border-color:#fbbf24;background:#fff;color:#92400e;
+    padding:5px 11px;font-size:.74rem;flex:0 0 auto;}
+  #screen-contaspagar .cp-btn-sem-eixo:hover{border-color:#d97706;color:#b45309;}
+
+  /* Data secundária na tabela de títulos: presente, mas sem competir. */
+  #screen-contaspagar .cp-data-2{font-size:.62rem;font-weight:600;color:var(--muted);
+    margin-top:2px;letter-spacing:.01em;}
+
+  /* Aviso no ponto de entrada: é onde o buraco de cadastro deixa de crescer. */
+  #screen-contaspagar .cp-dica-emissao{display:none;font-size:.64rem;font-weight:600;
+    color:#b45309;margin-top:4px;line-height:1.35;}
+
   #screen-contaspagar .cp-notice{display:none;margin:12px 20px 0;padding:10px 14px;border-radius:10px;font-size:.8rem;font-weight:600;}
   #screen-contaspagar .cp-notice.info{display:block;background:#e0f2fe;color:#075985;border:1px solid #bae6fd;}
   #screen-contaspagar .cp-notice.erro{display:block;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;}
@@ -4975,6 +5014,15 @@ function selecionarRegra(id){
     /* O input de mês precisa caber "agosto de 2026" mais o ícone de calendário;
        quem cede espaço é o título, que o usuário já sabe onde está. */
     #screen-contaspagar .cp-mes{flex:0 0 auto;min-width:162px;}
+
+    /* O eixo continua inteiro no celular: os dois rótulos são o que impede o
+       usuário de ler o número na base errada. Quem cede é o "Analisar por",
+       que o ícone e a posição já sugerem. */
+    #screen-contaspagar .cp-eixo{flex:0 0 auto;padding:2px;}
+    #screen-contaspagar .cp-eixo-lbl{display:none;}
+    #screen-contaspagar .cp-eixo-op{padding:6px 9px;font-size:.72rem;gap:5px;}
+
+    #screen-contaspagar .cp-sem-eixo{font-size:.74rem;padding:10px 12px;gap:8px;}
     #screen-contaspagar .cp-title{font-size:.95rem;min-width:0;overflow:hidden;
       text-overflow:ellipsis;white-space:nowrap;}
 
@@ -5000,6 +5048,18 @@ function selecionarRegra(id){
   <img src="assets/logo-renova.jpg" style="height:30px;filter:drop-shadow(0 1px 4px rgba(0,0,0,.25));" alt="Renova" />
   <span class="cp-title"><i class="fa-solid fa-file-invoice-dollar"></i>Contas a Pagar</span>
   <span class="cp-spacer"></span>
+  <!-- Lê-se como frase junto do seletor de mês: "por emissão · setembro de 2026". -->
+  <div class="cp-eixo" role="group" aria-label="Base de data das análises">
+    <span class="cp-eixo-lbl">Analisar por</span>
+    <button type="button" class="cp-eixo-op active" id="cp-eixo-vencimento" aria-pressed="true"
+            onclick="cpTrocarEixo('vencimento')" title="Analisar pela data de vencimento — o eixo do caixa">
+      <i class="fa-solid fa-calendar-check"></i><span>Vencimento</span>
+    </button>
+    <button type="button" class="cp-eixo-op" id="cp-eixo-emissao" aria-pressed="false"
+            onclick="cpTrocarEixo('emissao')" title="Analisar pela data de emissão — o eixo da competência">
+      <i class="fa-solid fa-file-pen"></i><span>Emissão</span>
+    </button>
+  </div>
   <input type="month" id="cp-competencia" class="cp-mes" onchange="cpTrocarMes()" />
   <button class="cp-btn" onclick="cpCarregar(true)" title="Recarregar"><i class="fa-solid fa-rotate-right"></i></button>
   <button class="cp-btn cp-btn-sync rv-so-admin" onclick="cpAbrirSync()"><i class="fa-solid fa-cloud-arrow-down"></i><span class="cp-rot-longo">Sincronizar Notas de Entrada</span><span class="cp-rot-curto">Sincronizar</span></button>
@@ -5016,9 +5076,12 @@ function selecionarRegra(id){
 
 <!-- ══ DASHBOARD ══ -->
 <div class="cp-pane active" id="cp-pane-dash">
+  <!-- Preenchido por cpRenderSemEixo(): só existe no eixo da emissão. -->
+  <div class="cp-sem-eixo" id="cp-sem-eixo" style="display:none;"></div>
+
   <div class="cp-kpis">
     <div class="cp-kpi previsto">
-      <div class="cp-kpi-lbl"><i class="fa-solid fa-calendar-day"></i>Saídas previstas</div>
+      <div class="cp-kpi-lbl"><i class="fa-solid fa-calendar-day"></i><span id="cp-k-previsto-lbl">Saídas previstas</span></div>
       <div class="cp-kpi-val" id="cp-k-previsto">R$ 0</div>
       <div class="cp-kpi-sub" id="cp-k-previsto-sub">— títulos no mês</div>
     </div>
@@ -5029,12 +5092,14 @@ function selecionarRegra(id){
       <div class="cp-barra"><span id="cp-k-barra" style="width:0%"></span></div>
     </div>
     <div class="cp-kpi aberto">
-      <div class="cp-kpi-lbl"><i class="fa-solid fa-hourglass-half"></i>Em aberto no mês</div>
+      <div class="cp-kpi-lbl"><i class="fa-solid fa-hourglass-half"></i><span id="cp-k-aberto-lbl">Em aberto no mês</span></div>
       <div class="cp-kpi-val" id="cp-k-aberto">R$ 0</div>
       <div class="cp-kpi-sub" id="cp-k-aberto-sub">— títulos a pagar</div>
     </div>
     <div class="cp-kpi atraso">
-      <div class="cp-kpi-lbl"><i class="fa-solid fa-triangle-exclamation"></i>Vencido em aberto</div>
+      <div class="cp-kpi-lbl"><i class="fa-solid fa-triangle-exclamation"></i>Vencido em aberto
+        <span class="cp-selo-venc" title="Atraso é sempre vencimento contra hoje, independente do eixo escolhido">venc.</span>
+      </div>
       <div class="cp-kpi-val" id="cp-k-atraso">R$ 0</div>
       <div class="cp-kpi-sub" id="cp-k-atraso-sub">— títulos vencidos</div>
     </div>
@@ -5053,11 +5118,12 @@ function selecionarRegra(id){
 
   <div class="cp-grid">
     <div class="cp-card">
-      <div class="cp-card-h"><span><i class="fa-solid fa-fire"></i>Queima de caixa semanal</span></div>
+      <div class="cp-card-h" id="cp-burn-ajuda"><span><i class="fa-solid fa-fire"></i><span id="cp-burn-titulo">Queima de caixa semanal</span></span></div>
       <div class="cp-chart"><canvas id="cp-c-burn"></canvas></div>
     </div>
     <div class="cp-card">
-      <div class="cp-card-h"><span><i class="fa-solid fa-gauge-high"></i>Régua de inadimplência</span><span class="cp-kpi-sub" id="cp-regua-total">—</span></div>
+      <div class="cp-card-h"><span><i class="fa-solid fa-gauge-high"></i>Régua de inadimplência
+        <span class="cp-selo-venc" title="Sempre por vencimento: atraso não depende do eixo escolhido">venc.</span></span><span class="cp-kpi-sub" id="cp-regua-total">—</span></div>
       <div class="cp-regua" id="cp-regua"></div>
     </div>
   </div>
@@ -5071,18 +5137,21 @@ function selecionarRegra(id){
       <div class="cp-tbl-wrap" style="max-height:230px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-detalhe"></tbody></table></div>
     </div>
     <div class="cp-card">
-      <div class="cp-card-h"><span><i class="fa-solid fa-calendar-check"></i>Vencendo hoje</span><span class="cp-kpi-sub" id="cp-hoje-total">—</span></div>
+      <div class="cp-card-h"><span><i class="fa-solid fa-calendar-check"></i>Vencendo hoje
+        <span class="cp-selo-venc" title="Sempre por vencimento: é a data em que o dinheiro sai">venc.</span></span><span class="cp-kpi-sub" id="cp-hoje-total">—</span></div>
       <div class="cp-tbl-wrap" style="max-height:260px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-hoje"></tbody></table></div>
     </div>
   </div>
 
   <div class="cp-grid">
     <div class="cp-card">
-      <div class="cp-card-h"><span><i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i>Contas atrasadas</span><span class="cp-kpi-sub" id="cp-atraso-total">—</span></div>
+      <div class="cp-card-h"><span><i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i>Contas atrasadas
+        <span class="cp-selo-venc" title="Sempre por vencimento: atraso não depende do eixo escolhido">venc.</span></span><span class="cp-kpi-sub" id="cp-atraso-total">—</span></div>
       <div class="cp-tbl-wrap" style="max-height:330px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-atraso"></tbody></table></div>
     </div>
     <div class="cp-card">
-      <div class="cp-card-h"><span><i class="fa-solid fa-calendar-days"></i>Próximos vencimentos (30 dias)</span><span class="cp-kpi-sub" id="cp-prox-total">—</span></div>
+      <div class="cp-card-h"><span><i class="fa-solid fa-calendar-days"></i>Próximos vencimentos (30 dias)
+        <span class="cp-selo-venc" title="Sempre por vencimento: é a data em que o dinheiro sai">venc.</span></span><span class="cp-kpi-sub" id="cp-prox-total">—</span></div>
       <div class="cp-tbl-wrap" style="max-height:330px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-prox"></tbody></table></div>
     </div>
   </div>
@@ -5112,7 +5181,7 @@ function selecionarRegra(id){
   <div class="cp-tbl-wrap">
     <table class="cp-tbl">
       <thead><tr>
-        <th>Vencimento</th><th>Fornecedor</th><th class="cp-col-apoio">NF</th><th>Natureza</th>
+        <th id="cp-th-data">Vencimento</th><th>Fornecedor</th><th class="cp-col-apoio">NF</th><th>Natureza</th>
         <th class="cp-num">Valor</th><th class="cp-num cp-col-apoio">Pago</th><th>Status</th>
         <th class="cp-col-apoio">Baixa</th><th></th>
       </tr></thead>
@@ -5125,8 +5194,8 @@ function selecionarRegra(id){
 <!-- ══ PLANO DE CONTAS ══ -->
 <div class="cp-pane" id="cp-pane-plano">
   <div class="cp-filtros">
-    <span style="font-size:.78rem;color:var(--muted);font-weight:600;">
-      Os valores ao lado somam os títulos do mês selecionado.
+    <span style="font-size:.78rem;color:var(--muted);font-weight:600;" id="cp-plano-ajuda">
+      Os valores ao lado somam os títulos que vencem no mês selecionado.
     </span>
     <span class="cp-spacer"></span>
     <button class="cp-btn rv-so-admin" onclick="cpAbrirConta('')"><i class="fa-solid fa-plus"></i>Nova conta</button>
@@ -5149,7 +5218,10 @@ function selecionarRegra(id){
         <datalist id="cp-lista-forn"></datalist>
       </div>
       <div class="cp-g3">
-        <div class="cp-campo"><label class="cp-lbl">Emissão</label><input type="date" id="cp-t-emissao" class="cp-inp" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Emissão</label>
+          <input type="date" id="cp-t-emissao" class="cp-inp" oninput="cpDicaEmissao()" />
+          <div class="cp-dica-emissao" id="cp-t-emissao-dica">Sem emissão, o título fica fora das análises por emissão.</div>
+        </div>
         <div class="cp-campo"><label class="cp-lbl">Vencimento *</label><input type="date" id="cp-t-vencimento" class="cp-inp" /></div>
         <div class="cp-campo"><label class="cp-lbl">Empresa</label>
           <select id="cp-t-empresa" class="cp-inp"><option value="RENOVA">Renova</option><option value="VALE">Vale</option></select>
@@ -5302,8 +5374,10 @@ const CP = {
 
   titulos: [], plano: [], fornecedores: [],
   competencia: '',            // 'YYYY-MM'
+  eixo: 'vencimento',         // 'vencimento' | 'emissao' — ver CP_EIXOS
   hoje: '',                   // 'YYYY-MM-DD'
   charts: {},
+  macroIdx: null,             // Map codigo→conta, índice de cpMacroDe/cpNomeConta
   aba: 'dash',
   editando: null,             // id do título aberto no modal
   baixando: null,
@@ -5313,6 +5387,44 @@ const CP = {
   selecaoBI: null,            // { tipo: 'macro'|'fornecedor'|'semana'|'atraso', valor, rotulo }
   carregado: false
 };
+
+/**
+ * Eixo de data das análises.
+ *
+ * "vencimento" responde *quando o dinheiro sai* — é o eixo do caixa, e continua
+ * sendo o padrão. "emissao" responde *quando a despesa foi gerada* — é o eixo
+ * de competência, o que serve para comparar consumo mês a mês sem a distorção
+ * de um boleto que venceu no mês seguinte.
+ *
+ * Nem tudo obedece ao eixo: atraso é, por definição, vencimento contra hoje.
+ * Régua de inadimplência, atrasadas, vencendo hoje e próximos 30 dias ficam
+ * SEMPRE no vencimento — e se declaram quando o eixo está em emissão, porque
+ * card que mente sobre a própria base é pior do que card que não existe.
+ */
+const CP_EIXOS = {
+  vencimento: {
+    nome: 'Vencimento', curto: 'Vencimento', icone: 'fa-calendar-check',
+    kpiPrevisto: 'Saídas previstas', kpiPrevistoSub: 'título(s) vencendo no mês',
+    kpiRealizadoSub: 'do previsto', kpiAberto: 'Em aberto no mês',
+    colData: 'Vencimento', colOutra: 'emis.',
+    burnTitulo: 'Queima de caixa semanal',
+    burnAcum: 'Previsto (acumulado)', burnSemana: 'Previsto na semana',
+    burnAjuda: 'Semana pelo vencimento — o ritmo em que o caixa é consumido.',
+    planoAjuda: 'Os valores ao lado somam os títulos que vencem no mês selecionado.'
+  },
+  emissao: {
+    nome: 'Emissão', curto: 'Emissão', icone: 'fa-file-pen',
+    kpiPrevisto: 'Total emitido', kpiPrevistoSub: 'título(s) emitidos no mês',
+    kpiRealizadoSub: 'do emitido', kpiAberto: 'Emitido em aberto',
+    colData: 'Emissão', colOutra: 'venc.',
+    burnTitulo: 'Volume lançado por semana',
+    burnAcum: 'Lançado (acumulado)', burnSemana: 'Lançado na semana',
+    burnAjuda: 'Semana pela emissão — o ritmo em que a despesa foi gerada.',
+    planoAjuda: 'Os valores ao lado somam os títulos emitidos no mês selecionado.'
+  }
+};
+
+const CP_EIXO_LS = 'cp_eixo';
 
 const CP_MACROS = {
   OPERACIONAL:      { nome: 'Operacional',   cor: '#0284c7' },
@@ -5411,7 +5523,9 @@ function initContasPagar() {
     CP.hoje = cpHojeISO();
     CP.competencia = CP.hoje.slice(0, 7);
     document.getElementById('cp-competencia').value = CP.competencia;
+    cpCarregarEixo();
   }
+  cpAplicarEixoNaUI();
   if (!CP.carregado) cpCarregar();
 }
 
@@ -5425,6 +5539,7 @@ async function cpCarregar(forcar) {
     const d = await cpGet('bootstrap');
     CP.titulos = d.titulos || [];
     CP.plano = d.plano || [];
+    CP.macroIdx = null;          // o plano mudou: o índice tem que ser remontado
     CP.fornecedores = d.fornecedores || [];
     CP.hoje = d.hoje || cpHojeISO();
     CP.carregado = true;
@@ -5441,6 +5556,53 @@ async function cpCarregar(forcar) {
 function cpTrocarMes() {
   CP.competencia = document.getElementById('cp-competencia').value || CP.hoje.slice(0, 7);
   cpRender();
+}
+
+/**
+ * Troca o eixo das análises. A seleção de BI é limpa junto: um recorte feito
+ * por vencimento ("semana 3") não quer dizer a mesma coisa depois da troca, e
+ * mantê-lo na tela seria mostrar um detalhe que não corresponde mais ao gráfico.
+ */
+function cpTrocarEixo(qual) {
+  if (qual !== 'emissao' && qual !== 'vencimento') return;
+  if (CP.eixo === qual) return;
+  CP.eixo = qual;
+  CP.selecaoBI = null;
+  try { localStorage.setItem(CP_EIXO_LS, qual); } catch (e) {}
+  cpAplicarEixoNaUI();
+  cpRender();
+}
+
+function cpCarregarEixo() {
+  let v = null;
+  try { v = localStorage.getItem(CP_EIXO_LS); } catch (e) {}
+  CP.eixo = v === 'emissao' ? 'emissao' : 'vencimento';
+}
+
+/** Rótulos que mudam de significado com o eixo — tudo o que é estático na UI. */
+function cpAplicarEixoNaUI() {
+  const e = cpEixo();
+  const emissao = cpPorEmissao();
+
+  ['vencimento', 'emissao'].forEach(k => {
+    const b = document.getElementById('cp-eixo-' + k);
+    if (b) { b.classList.toggle('active', CP.eixo === k); b.setAttribute('aria-pressed', String(CP.eixo === k)); }
+  });
+
+  const txt = (id, s) => { const el = document.getElementById(id); if (el) el.textContent = s; };
+  txt('cp-k-previsto-lbl', e.kpiPrevisto);
+  txt('cp-k-aberto-lbl', e.kpiAberto);
+  txt('cp-burn-titulo', e.burnTitulo);
+  txt('cp-plano-ajuda', e.planoAjuda);
+  txt('cp-th-data', e.colData);
+
+  const bh = document.getElementById('cp-burn-ajuda');
+  if (bh) bh.title = e.burnAjuda;
+
+  // Os cards de caixa não obedecem ao eixo; o selo só aparece quando isso
+  // pode confundir, ou seja, quando o eixo saiu do vencimento.
+  document.querySelectorAll('#screen-contaspagar .cp-selo-venc')
+    .forEach(el => { el.style.display = emissao ? 'inline-flex' : 'none'; });
 }
 
 function cpAba(qual) {
@@ -5463,12 +5625,26 @@ function cpRender() {
 // SELEÇÃO E CLASSIFICAÇÃO
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * Índice código→conta. Antes isto era um `CP.plano.find()` por título, dentro
+ * de laços que rodam por título (gráfico de macro, filtro, tabela): com 4.000
+ * títulos e ~40 contas dava ~480k comparações de string por render. O Map é
+ * montado uma vez por carga do plano e consultado em O(1).
+ */
+function cpIndiceMacro() {
+  if (!CP.macroIdx) {
+    CP.macroIdx = new Map();
+    CP.plano.forEach(c => CP.macroIdx.set(String(c.codigo), c));
+  }
+  return CP.macroIdx;
+}
+
 const cpMacroDe = cod => {
-  const c = CP.plano.find(x => x.codigo === String(cod));
+  const c = cpIndiceMacro().get(String(cod));
   return c ? c.macro : 'NAO_CLASSIFICADO';
 };
 const cpNomeConta = cod => {
-  const c = CP.plano.find(x => x.codigo === String(cod));
+  const c = cpIndiceMacro().get(String(cod));
   return c ? c.nome : 'A Classificar';
 };
 
@@ -5477,13 +5653,44 @@ const cpVencido = t => t.status !== 'PAGO' && t.status !== 'CANCELADO' &&
                        t.data_vencimento && t.data_vencimento < CP.hoje;
 const cpSaldo = t => Math.max((Number(t.valor_total) || 0) - (Number(t.valor_pago) || 0), 0);
 
-const cpDoMes = t => (t.competencia || String(t.data_vencimento || '').slice(0, 7)) === CP.competencia;
+// ── Eixo de data ─────────────────────────────────────────────────────────────
+
+const cpEixo = () => CP_EIXOS[CP.eixo] || CP_EIXOS.vencimento;
+const cpPorEmissao = () => CP.eixo === 'emissao';
+
+/** A data que manda na análise, conforme o eixo. '' quando o título não a tem. */
+const cpDataEixo = t => cpPorEmissao()
+  ? String(t.data_emissao || '')
+  : String(t.data_vencimento || '');
+
+const cpDataISOok = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ''));
+
+/**
+ * Título que o eixo atual não consegue posicionar no tempo. Só existe em modo
+ * emissão: 92% do histórico migrado da planilha antiga veio sem data de
+ * emissão. Estes NÃO entram em nenhum mês — e não podem cair de volta no
+ * vencimento, que misturaria os dois eixos e daria número errado com cara de
+ * certo. Ficam de fora e são declarados em cpRenderSemEixo().
+ */
+const cpSemEixo = t => cpPorEmissao() && !cpDataISOok(t.data_emissao);
+
+/**
+ * Mês do título no eixo atual. No vencimento usa a `competencia` gravada pelo
+ * backend (que é derivada do vencimento), preservando exatamente o
+ * comportamento anterior; só recorta a data quando a competência falta.
+ */
+const cpMesDe = t => cpPorEmissao()
+  ? String(t.data_emissao || '').slice(0, 7)
+  : (t.competencia || String(t.data_vencimento || '').slice(0, 7));
+
+const cpDoMes = t => cpMesDe(t) === CP.competencia;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════
 
 function cpRenderDash() {
+  const e = cpEixo();
   const ativos = CP.titulos.filter(t => t.status !== 'CANCELADO');
   const doMes = ativos.filter(cpDoMes);
 
@@ -5492,27 +5699,68 @@ function cpRenderDash() {
   const aberto = doMes.filter(t => t.status !== 'PAGO').reduce((s, t) => s + cpSaldo(t), 0);
   const abertoQtd = doMes.filter(t => t.status !== 'PAGO').length;
 
+  // Atraso NUNCA segue o eixo: vencido é vencimento contra hoje, por definição.
   const vencidos = ativos.filter(cpVencido);
   const vencidoTotal = vencidos.reduce((s, t) => s + cpSaldo(t), 0);
 
   document.getElementById('cp-k-previsto').textContent = cpBRL(previsto);
-  document.getElementById('cp-k-previsto-sub').textContent = doMes.length + ' título(s) no mês';
+  document.getElementById('cp-k-previsto-sub').textContent = doMes.length + ' ' + e.kpiPrevistoSub;
   document.getElementById('cp-k-realizado').textContent = cpBRL(realizado);
   const pct = previsto > 0 ? Math.min(realizado / previsto * 100, 100) : 0;
   document.getElementById('cp-k-realizado-sub').textContent = previsto > 0
-    ? pct.toFixed(0) + '% do previsto' : 'sem previsão no mês';
+    ? pct.toFixed(0) + '% ' + e.kpiRealizadoSub : 'nada lançado no mês';
   document.getElementById('cp-k-barra').style.width = pct + '%';
   document.getElementById('cp-k-aberto').textContent = cpBRL(aberto);
   document.getElementById('cp-k-aberto-sub').textContent = abertoQtd + ' título(s) a pagar';
   document.getElementById('cp-k-atraso').textContent = cpBRL(vencidoTotal);
   document.getElementById('cp-k-atraso-sub').textContent = vencidos.length + ' título(s) vencidos';
 
+  cpRenderSemEixo(ativos);
   cpChartMacro(doMes);
   cpChartFornecedores(doMes);
   cpChartBurn(doMes);
   cpRenderRegua(vencidos, vencidoTotal);
   cpRenderTabelasDash(ativos, vencidos);
   cpRenderDetalheBI();
+}
+
+/**
+ * O aviso que impede o número mentiroso.
+ *
+ * Em modo emissão, título sem `data_emissao` não pertence a mês nenhum e sai
+ * de toda a análise. Some calado seria o pior dos mundos: o total do mês
+ * despencaria sem explicação e ninguém saberia que faltam 258 títulos. Então
+ * ele é contado, somado e mostrado — com clique para a lista, que transforma
+ * o buraco de cadastro numa fila de trabalho.
+ */
+function cpRenderSemEixo(ativos) {
+  const box = document.getElementById('cp-sem-eixo');
+  if (!box) return;
+
+  if (!cpPorEmissao()) { box.style.display = 'none'; return; }
+
+  const sem = ativos.filter(cpSemEixo);
+  if (!sem.length) { box.style.display = 'none'; return; }
+
+  const valor = sem.reduce((s, t) => s + (Number(t.valor_total) || 0), 0);
+  const pct = ativos.length ? (sem.length / ativos.length * 100) : 0;
+  box.style.display = 'flex';
+  box.innerHTML = `
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <span><b>${sem.length} título(s)</b> sem data de emissão — ${cpBRL(valor)},
+      ${pct.toFixed(0)}% da base — ficam <b>fora</b> de toda análise por emissão.</span>
+    <button class="cp-btn cp-btn-sem-eixo" onclick="cpVerSemEmissao()">
+      <i class="fa-solid fa-list-ul"></i>Ver títulos
+    </button>`;
+}
+
+/** O aviso fica no topo e o detalhe lá embaixo: sem rolar, o clique parece morto. */
+function cpVerSemEmissao() {
+  cpSelecionarBI('sem_emissao', '1', 'Sem data de emissão');
+  const card = document.getElementById('cp-tb-detalhe');
+  if (card && card.closest('.cp-card')) {
+    card.closest('.cp-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 }
 
 function cpDestruir(nome) {
@@ -5597,14 +5845,16 @@ function cpChartFornecedores(titulos) {
 }
 
 function cpChartBurn(titulos) {
-  // Acumulado por semana do mês — mostra em que ritmo o caixa é consumido.
-  // "Baixado" usa o mesmo balde de semana (por vencimento) que os outros dois,
-  // só que somando valor_pago em vez de valor_total — assim dá pra comparar,
-  // semana a semana, o que estava previsto contra o que já saiu de verdade.
+  // Acumulado por semana do mês. No eixo do vencimento mostra em que ritmo o
+  // caixa é consumido; no da emissão, em que ritmo a despesa foi gerada.
+  // "Baixado" usa o mesmo balde de semana que os outros dois, só que somando
+  // valor_pago em vez de valor_total — assim dá pra comparar, semana a semana,
+  // o que estava lançado contra o que já saiu de verdade.
+  const e = cpEixo();
   const sem = [0, 0, 0, 0, 0];
   const semPago = [0, 0, 0, 0, 0];
   titulos.forEach(t => {
-    const d = String(t.data_vencimento || '');
+    const d = cpDataEixo(t);
     if (d.length < 10) return;
     const dia = parseInt(d.slice(8, 10), 10);
     const i = Math.min(Math.floor((dia - 1) / 7), 4);
@@ -5625,11 +5875,11 @@ function cpChartBurn(titulos) {
     data: {
       labels: ['S1', 'S2', 'S3', 'S4', 'S5'],
       datasets: [
-        { label: 'Previsto (acumulado)', data: acumulado, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.10)',
+        { label: e.burnAcum, data: acumulado, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.10)',
           fill: true, tension: .3, pointRadius: 3, pointBackgroundColor: '#ef4444', borderWidth: 2 },
         { label: 'Baixado (acumulado)', data: acumuladoPago, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,.10)',
           fill: true, tension: .3, pointRadius: 3, pointBackgroundColor: '#16a34a', borderWidth: 2 },
-        { label: 'Previsto na semana', data: sem, borderColor: '#94a3b8', borderDash: [5, 4], fill: false,
+        { label: e.burnSemana, data: sem, borderColor: '#94a3b8', borderDash: [5, 4], fill: false,
           tension: .3, pointRadius: 2, borderWidth: 1.5 }
       ]
     },
@@ -5679,13 +5929,19 @@ function cpRenderRegua(vencidos, total) {
     '<div class="cp-vazio">Nenhuma conta vencida. 🎉</div>';
 }
 
-function cpLinhaMini(t, mostrarDias) {
+/**
+ * `dataEixo` mostra a data de emissão no lugar do vencimento — usado só no card
+ * de detalhe quando ele explica um gráfico que está no eixo da emissão. Nos
+ * cards de caixa (hoje, atrasadas, próximos) a data continua sendo o
+ * vencimento, que é a acionável.
+ */
+function cpLinhaMini(t, mostrarDias, dataEixo) {
   const dias = mostrarDias ? cpDias(t.data_vencimento, CP.hoje) : 0;
   const selo = mostrarDias
     ? `<span class="cp-pill cp-pill-atraso">${dias}d</span>`
     : `<span class="cp-pill cp-pill-${t.status}">${t.status}</span>`;
   return `<tr>
-    <td style="white-space:nowrap;font-weight:700;">${cpData(t.data_vencimento)}</td>
+    <td style="white-space:nowrap;font-weight:700;">${cpData(dataEixo ? t.data_emissao : t.data_vencimento)}</td>
     <td class="cp-forn" title="${cpEsc(t.fornecedor)}">${cpEsc(t.fornecedor)}</td>
     <td class="cp-col-apoio" style="font-size:.7rem;color:var(--muted);">${cpEsc(cpNomeConta(t.natureza_codigo))}</td>
     <td class="cp-num" style="font-weight:800;">${cpBRL(cpSaldo(t))}</td>
@@ -5762,12 +6018,15 @@ function cpTitulosDaSelecaoBI() {
     });
   }
 
+  // Os sem emissão não são de mês nenhum: a lista é a base inteira, não o mês.
+  if (sel.tipo === 'sem_emissao') return ativos.filter(cpSemEixo);
+
   const doMes = ativos.filter(cpDoMes);
   if (sel.tipo === 'macro') return doMes.filter(t => cpMacroDe(t.natureza_codigo) === sel.valor);
   if (sel.tipo === 'fornecedor') return doMes.filter(t => (t.fornecedor || '(sem fornecedor)') === sel.valor);
   if (sel.tipo === 'semana') {
     return doMes.filter(t => {
-      const d = String(t.data_vencimento || '');
+      const d = cpDataEixo(t);
       if (d.length < 10) return false;
       const dia = parseInt(d.slice(8, 10), 10);
       return Math.min(Math.floor((dia - 1) / 7), 4) + 1 === sel.valor;
@@ -5792,9 +6051,14 @@ function cpRenderDetalheBI() {
   titulo.textContent = 'Detalhe: ' + sel.rotulo;
   btnLimpar.style.display = 'inline-flex';
 
+  // Recortes que vêm dos gráficos do mês mostram a data do eixo; os de caixa
+  // (atraso) e os sem emissão continuam mostrando o vencimento.
+  const porEixo = cpPorEmissao() &&
+    (sel.tipo === 'macro' || sel.tipo === 'fornecedor' || sel.tipo === 'semana');
+
   const lista = cpTitulosDaSelecaoBI().sort((a, b) => cpSaldo(b) - cpSaldo(a));
   tb.innerHTML = lista.length
-    ? lista.map(t => cpLinhaMini(t, sel.tipo === 'atraso')).join('')
+    ? lista.map(t => cpLinhaMini(t, sel.tipo === 'atraso', porEixo)).join('')
     : '<tr><td colspan="6" class="cp-vazio">Nenhum título nesse recorte.</td></tr>';
 }
 
@@ -5826,12 +6090,22 @@ function cpFiltrar() {
       if (!alvo.includes(busca)) return false;
     }
     return true;
-  }).sort((a, b) => (a.data_vencimento || '').localeCompare(b.data_vencimento || ''));
+  // Ordena pela data do eixo: listar por vencimento uma análise de emissão
+  // deixaria a tabela fora de ordem em relação ao que está sendo estudado.
+  // Título sem a data do eixo vai para o fim, nunca some.
+  }).sort((a, b) => {
+    const da = cpDataEixo(a) || '9999-99-99';
+    const db = cpDataEixo(b) || '9999-99-99';
+    return da.localeCompare(db);
+  });
 }
 
 function cpRenderTitulos() {
   const lista = cpFiltrar();
   const tb = document.getElementById('cp-tb-titulos');
+
+  const emissao = cpPorEmissao();
+  const outraLbl = cpEixo().colOutra;
 
   tb.innerHTML = lista.length ? lista.map(t => {
     const vencido = cpVencido(t);
@@ -5839,10 +6113,19 @@ function cpRenderTitulos() {
     const rotuloNF = t.numero_nf || t.numero_boleto || '—';
     const parc = Number(t.total_parcelas) > 1
       ? ` <span class="cp-tag-macro">${t.parcela}/${t.total_parcelas}</span>` : '';
+    // A data do eixo em destaque; a outra logo abaixo, apagada — quem analisa
+    // por emissão ainda precisa enxergar o vencimento para agir.
+    const principal = emissao ? t.data_emissao : t.data_vencimento;
+    const secundaria = emissao ? t.data_vencimento : t.data_emissao;
+    // Só sai quando existe: 64% da base não tem emissão, e uma coluna de
+    // "emis. —" sob cada linha sujaria justamente a tela do dia a dia.
+    const linha2 = cpDataISOok(secundaria)
+      ? `<div class="cp-data-2">${outraLbl} ${cpDataLonga(secundaria)}</div>` : '';
     return `<tr>
       <td style="white-space:nowrap;font-weight:700;">
-        ${cpDataLonga(t.data_vencimento)}
+        ${cpDataLonga(principal)}
         ${vencido ? `<span class="cp-pill cp-pill-atraso" style="margin-left:5px;">${dias}d</span>` : ''}
+        ${linha2}
       </td>
       <td class="cp-forn" title="${cpEsc(t.fornecedor)}">${cpEsc(t.fornecedor)}</td>
       <td class="cp-col-apoio" style="font-size:.73rem;">${cpEsc(rotuloNF)}${parc}</td>
@@ -5864,8 +6147,17 @@ function cpRenderTitulos() {
 
   const soma = lista.reduce((s, t) => s + (Number(t.valor_total) || 0), 0);
   const pago = lista.reduce((s, t) => s + (Number(t.valor_pago) || 0), 0);
+
+  // Mesma honestidade do dashboard: no eixo da emissão, filtrar por mês esconde
+  // quem não tem emissão. Dizer quantos são evita a conclusão errada de que a
+  // base encolheu.
+  let nota = '';
+  if (emissao && document.getElementById('cp-f-periodo').value === 'mes') {
+    const fora = CP.titulos.filter(t => t.status !== 'CANCELADO' && cpSemEixo(t)).length;
+    if (fora) nota = ` · ${fora} sem data de emissão fora deste recorte`;
+  }
   document.getElementById('cp-titulos-resumo').textContent =
-    `${lista.length} título(s) · Total ${cpBRL(soma)} · Pago ${cpBRL(pago)} · Saldo ${cpBRL(soma - pago)}`;
+    `${lista.length} título(s) · Total ${cpBRL(soma)} · Pago ${cpBRL(pago)} · Saldo ${cpBRL(soma - pago)}${nota}`;
 }
 
 function cpExportar() {
@@ -5888,7 +6180,9 @@ function cpExportar() {
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'contas-a-pagar-' + CP.competencia + '.csv';
+  // O eixo entra no nome: dois CSVs do mesmo mês em eixos diferentes têm
+  // totais diferentes, e o arquivo precisa dizer qual é qual.
+  a.download = 'contas-a-pagar-' + CP.eixo + '-' + CP.competencia + '.csv';
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -5896,6 +6190,17 @@ function cpExportar() {
 // ═══════════════════════════════════════════════════════════════════════════
 // MODAL DE TÍTULO
 // ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * A dica só aparece com o campo vazio. Não preenchemos a emissão sozinhos: uma
+ * data chutada distorce a competência calada, e isso é pior do que o campo em
+ * branco — que ao menos é declarado no aviso do dashboard.
+ */
+function cpDicaEmissao() {
+  const inp = document.getElementById('cp-t-emissao');
+  const dica = document.getElementById('cp-t-emissao-dica');
+  if (inp && dica) dica.style.display = inp.value ? 'none' : 'block';
+}
 
 function cpPreencherSelects() {
   const analiticas = CP.plano.filter(c => c.tipo === 'ANALITICA' && c.ativo);
@@ -5930,6 +6235,7 @@ function cpAbrirTitulo(id) {
   const v = (campo, valor) => { document.getElementById('cp-t-' + campo).value = valor === undefined || valor === null ? '' : valor; };
   v('fornecedor', t ? t.fornecedor : '');
   v('emissao', t ? t.data_emissao : '');
+  cpDicaEmissao();
   v('vencimento', t ? t.data_vencimento : CP.competencia + '-' + String(new Date().getDate()).padStart(2, '0'));
   v('empresa', t ? (t.empresa || 'RENOVA') : 'RENOVA');
   v('nf', t ? t.numero_nf : '');
