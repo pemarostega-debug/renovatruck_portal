@@ -257,8 +257,12 @@ function formatarTitulos(ss) {
     sh.getRange(2, COL[c] + 1, linhas, 1).setNumberFormat('#,##0.00');
   });
   // Ver COLUNAS_TEXTO_FORCADO: sem isto "1.01" vira data e "2026-08" também.
-  // O formato fica gravado na coluna inteira, então cada título novo (appendRow
-  // ou setValues em bloco) já nasce protegido, sem precisar reaplicar.
+  //
+  // ATENÇÃO — este carimbo NÃO basta sozinho, e acreditar que bastava custou
+  // 53 naturezas e 55 competências perdidas em produção. Ele cobre só as linhas
+  // que existiam quando instalar() rodou, e appendRow() interpreta o valor
+  // ANTES de encostar na célula, ignorando o formato. Toda escrita de título
+  // usa setValues() precedido de forcarFormatoTexto().
   COLUNAS_TEXTO_FORCADO.forEach(function (c) {
     sh.getRange(2, COL[c] + 1, linhas, 1).setNumberFormat('@');
   });
@@ -540,6 +544,8 @@ function salvarTitulo(t, sessao) {
       const i = acharLinha(linhas, t.id);
       if (i < 0) throw new Error('Título ' + t.id + ' não encontrado.');
       const nova = montarLinha(t, linhas[i], quem);
+      // Também na edição: conserta a linha que nasceu torta pelo appendRow.
+      forcarFormatoTexto(sh, i + 2);
       sh.getRange(i + 2, 1, 1, CAB_TITULOS.length).setValues([nova]);
       registrar(quem, 'EDITAR', t.id, t.fornecedor + ' — ' + numero(t.valor_total).toFixed(2));
       return { id: t.id, atualizado: true };
@@ -556,12 +562,147 @@ function salvarTitulo(t, sessao) {
     const gerar = proximoId(linhas);
     t.id = gerar();
     const nova = montarLinha(t, null, quem);
-    sh.appendRow(nova);
+    // NUNCA use appendRow aqui: ele interpreta "2.04" como data antes de
+    // gravar, e o título nasce com a natureza perdida. setValues respeita o
+    // formato '@' que forcarFormatoTexto acabou de aplicar.
+    const linhaNova = sh.getLastRow() + 1;
+    forcarFormatoTexto(sh, linhaNova);
+    sh.getRange(linhaNova, 1, 1, CAB_TITULOS.length).setValues([nova]);
     registrar(quem, 'CRIAR', t.id, t.fornecedor + ' — ' + numero(t.valor_total).toFixed(2));
     return { id: t.id, criado: true };
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Conserta os títulos que o appendRow corrompeu (ver forcarFormatoTexto).
+ *
+ * RODE PRIMEIRO SEM ARGUMENTO — `corrigirTitulosCorrompidos()` só simula e
+ * escreve o relatório no log. Só depois de conferir rode
+ * `corrigirTitulosCorrompidos(true)`, que grava.
+ *
+ * O que cada coluna recupera:
+ *
+ * - `natureza_codigo`: "2.04" tinha virado 02/abr. O código volta por DOIS
+ *   caminhos independentes — pela data (dia + '.' + mês com 2 dígitos) e pelo
+ *   nome, que ficou intacto na coluna `natureza`. Só grava quando os dois
+ *   concordam e o código existe no plano; discordância vira linha de REVISAR,
+ *   porque chutar natureza em dado financeiro é pior do que deixar quebrado.
+ *
+ * - `competencia`: recalculada do vencimento, a mesma regra de montarLinha().
+ *   Determinística, sem adivinhação.
+ *
+ * - `numero_nf` / `numero_boleto`: não dá para recuperar o texto original a
+ *   partir da data com segurança. Só entram no relatório, para conserto na mão.
+ */
+/**
+ * Atalho para o editor do Apps Script, que só roda função sem argumento — o
+ * botão ▶ chamaria corrigirTitulosCorrompidos() no modo simulação para sempre.
+ * Selecione ESTA no seletor de funções quando for gravar de verdade.
+ */
+function repararAgora() {
+  return corrigirTitulosCorrompidos(true);
+}
+
+function corrigirTitulosCorrompidos(aplicar) {
+  const sh = abaTitulos();
+  const linhas = lerTitulosBrutos();
+  const plano = lerPlano();
+
+  const porNome = {};
+  plano.forEach(function (c) { porNome[String(c.nome).trim().toLowerCase()] = String(c.codigo); });
+  const existe = {};
+  plano.forEach(function (c) { existe[String(c.codigo)] = true; });
+
+  const p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+  const rel = { natureza: [], competencia: [], revisar: [], texto_perdido: [] };
+
+  for (let i = 0; i < linhas.length; i++) {
+    const l = linhas[i];
+    if (!l[COL.id]) continue;
+    const linhaSh = i + 2;
+    const id = String(l[COL.id]);
+
+    // ── natureza_codigo ──
+    const nat = l[COL.natureza_codigo];
+    if (nat instanceof Date) {
+      const porData = nat.getDate() + '.' + p2(nat.getMonth() + 1);
+      const nome = String(l[COL.natureza] || '').trim().toLowerCase();
+      const porNomeCod = porNome[nome] || '';
+
+      if (porData === porNomeCod && existe[porData]) {
+        rel.natureza.push({ id: id, linha: linhaSh, para: porData, nome: l[COL.natureza] });
+        if (aplicar) {
+          sh.getRange(linhaSh, COL.natureza_codigo + 1).setNumberFormat('@').setValue(porData);
+        }
+      } else {
+        rel.revisar.push({ id: id, linha: linhaSh, por_data: porData,
+                           por_nome: porNomeCod || '(nome não achado no plano)',
+                           nome: String(l[COL.natureza] || '') });
+      }
+    }
+
+    // ── competencia ──
+    const comp = l[COL.competencia];
+    const venc = l[COL.data_vencimento];
+    const compOk = /^\d{4}-\d{2}$/.test(String(comp));
+    if (!compOk && venc instanceof Date) {
+      const novo = Utilities.formatDate(venc, 'GMT-3', 'yyyy-MM');
+      rel.competencia.push({ id: id, linha: linhaSh, para: novo });
+      if (aplicar) {
+        sh.getRange(linhaSh, COL.competencia + 1).setNumberFormat('@').setValue(novo);
+      }
+    }
+
+    // ── nf / boleto: só denuncia ──
+    ['numero_nf', 'numero_boleto'].forEach(function (c) {
+      if (l[COL[c]] instanceof Date) {
+        rel.texto_perdido.push({ id: id, linha: linhaSh, coluna: c,
+                                 virou: Utilities.formatDate(l[COL[c]], 'GMT-3', 'dd/MM/yyyy') });
+      }
+    });
+  }
+
+  const modo = aplicar ? 'APLICADO' : 'SIMULAÇÃO (nada foi gravado)';
+  Logger.log('═══ corrigirTitulosCorrompidos — ' + modo + ' ═══');
+  Logger.log('natureza_codigo recuperada : ' + rel.natureza.length);
+  Logger.log('competencia recalculada    : ' + rel.competencia.length);
+  Logger.log('precisam de revisão humana : ' + rel.revisar.length);
+  Logger.log('nf/boleto perdidos         : ' + rel.texto_perdido.length);
+
+  rel.natureza.slice(0, 60).forEach(function (r) {
+    Logger.log('  ok  ' + r.id + ' (linha ' + r.linha + ') → ' + r.para + '  [' + r.nome + ']');
+  });
+  rel.revisar.forEach(function (r) {
+    Logger.log('  ??  ' + r.id + ' (linha ' + r.linha + ') data=' + r.por_data +
+               ' nome=' + r.por_nome + '  [' + r.nome + ']');
+  });
+  rel.texto_perdido.forEach(function (r) {
+    Logger.log('  !!  ' + r.id + ' (linha ' + r.linha + ') ' + r.coluna + ' virou ' + r.virou);
+  });
+
+  if (aplicar) registrar('MANUTENCAO', 'CORRIGIR', '', 'naturezas: ' + rel.natureza.length +
+                         ', competencias: ' + rel.competencia.length + ', revisar: ' + rel.revisar.length);
+  return rel;
+}
+
+/**
+ * Garante o formato de texto de uma linha ANTES de escrever nela.
+ *
+ * formatarTitulos() carimba a coluna inteira, mas isso não basta para toda
+ * forma de escrita: appendRow() interpreta o valor antes de encostar na
+ * célula, então "2.04" vira 02/abr e "2026-08" vira agosto/2026 mesmo com a
+ * coluna em '@'. setValues() respeita o formato — por isso a importação em
+ * lote nunca corrompeu e o cadastro manual sempre corrompeu.
+ *
+ * Esta função + setValues é o par que fecha o buraco. Ver corrigirNaturezas()
+ * para o conserto do que já foi gravado errado.
+ */
+function forcarFormatoTexto(sh, linha) {
+  COLUNAS_TEXTO_FORCADO.forEach(function (c) {
+    sh.getRange(linha, COL[c] + 1).setNumberFormat('@');
+  });
 }
 
 function acharLinha(linhas, id) {
@@ -758,7 +899,14 @@ function importar(titulos, origem, sessao) {
     });
 
     if (novas.length) {
-      sh.getRange(sh.getLastRow() + 1, 1, novas.length, CAB_TITULOS.length).setValues(novas);
+      // Este caminho nunca corrompeu (setValues respeita o formato), mas as
+      // linhas podem cair além do intervalo que formatarTitulos() carimbou.
+      // Carimbar o bloco antes custa uma chamada e fecha a porta de vez.
+      const primeiraNova = sh.getLastRow() + 1;
+      COLUNAS_TEXTO_FORCADO.forEach(function (c) {
+        sh.getRange(primeiraNova, COL[c] + 1, novas.length, 1).setNumberFormat('@');
+      });
+      sh.getRange(primeiraNova, 1, novas.length, CAB_TITULOS.length).setValues(novas);
     }
     registrar(quem, 'IMPORTAR', '', origem + ': ' + novas.length + ' incluído(s), ' +
               ignorados.length + ' ignorado(s), ' + erros.length + ' com erro');
