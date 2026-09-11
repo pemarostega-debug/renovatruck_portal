@@ -138,6 +138,11 @@ const PLANO_INICIAL = [
   ['3.04', 'Acordos e Parcelamentos',          '3', 2, 'ANALITICA', 'FINANCEIRO',       'SIM', 304],
   ['3.05', 'Protestos e Cartório',             '3', 2, 'ANALITICA', 'FINANCEIRO',       'SIM', 305],
   ['3.06', 'Sócios, Aportes e Acertos',        '3', 2, 'ANALITICA', 'FINANCEIRO',       'SIM', 306],
+  // Recebe o deságio das antecipações de recebível. Quem lança é o módulo
+  // Contas a Receber, na liquidação da operação — ver liquidarOperacao() em
+  // contas-receber.gs. Já entra baixado: o dinheiro não vai sair depois, ele
+  // saiu descontado no crédito do parceiro.
+  ['3.07', 'Juros de Operações Financeiras',   '3', 2, 'ANALITICA', 'FINANCEIRO',       'SIM', 307],
 
   ['4',    'CAPEX/Investimentos',              '',  1, 'SINTETICA', 'CAPEX',            'SIM', 400],
   ['4.01', 'Máquinas e Equipamentos',          '4', 2, 'ANALITICA', 'CAPEX',            'SIM', 401],
@@ -217,6 +222,9 @@ function instalar() {
   formatarPlano(ss);
   formatarTitulos(ss);
   semearPlano(ss);
+  // Base já semeada numa versão anterior não recebe contas novas por
+  // semearPlano(); esta linha é o que faz o 3.07 chegar em produção.
+  garantirContasNovas();
 
   // A planilha nova vem com uma "Página1" vazia que só atrapalha.
   const sobra = ss.getSheetByName('Página1') || ss.getSheetByName('Sheet1');
@@ -286,6 +294,42 @@ function semearPlano(ss) {
   const sh = ss.getSheetByName(ABA_PLANO);
   if (sh.getLastRow() > 1) return; // já semeado, não mexe
   sh.getRange(2, 1, PLANO_INICIAL.length, CAB_PLANO.length).setValues(PLANO_INICIAL);
+}
+
+/**
+ * Acrescenta as contas do PLANO_INICIAL que ainda não existem na planilha.
+ *
+ * semearPlano() só age na instalação zerada, então uma conta nova acrescentada
+ * numa versão posterior do script nunca chegaria a uma base já em produção.
+ * Esta função fecha essa porta: é idempotente, só INSERE (nunca reescreve nem
+ * remove o que o usuário editou à mão) e roda dentro de instalar().
+ *
+ * Foi escrita para o 3.07 Juros de Operações Financeiras, que o módulo Contas
+ * a Receber precisa existir para lançar o deságio das antecipações. Se rodar
+ * sem ela, a liquidação da operação falha com "natureza não encontrada".
+ *
+ * Rode na mão pelo editor do Apps Script depois de colar uma versão nova.
+ */
+function garantirContasNovas() {
+  const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  const sh = ss.getSheetByName(ABA_PLANO) || garantirAba(ss, ABA_PLANO, CAB_PLANO);
+  formatarPlano(ss);
+
+  const existe = {};
+  if (sh.getLastRow() > 1) {
+    sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues()
+      .forEach(function (l) { existe[String(l[0]).trim()] = true; });
+  }
+
+  const faltando = PLANO_INICIAL.filter(function (c) { return !existe[String(c[0])]; });
+  if (!faltando.length) { Logger.log('Plano de contas já completo.'); return { acrescentadas: 0 }; }
+
+  const inicio = sh.getLastRow() + 1;
+  sh.getRange(inicio, 1, faltando.length, 1).setNumberFormat('@');
+  sh.getRange(inicio, 3, faltando.length, 1).setNumberFormat('@');
+  sh.getRange(inicio, 1, faltando.length, CAB_PLANO.length).setValues(faltando);
+  Logger.log('Acrescentadas: ' + faltando.map(function (c) { return c[0] + ' ' + c[1]; }).join(', '));
+  return { acrescentadas: faltando.length };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
