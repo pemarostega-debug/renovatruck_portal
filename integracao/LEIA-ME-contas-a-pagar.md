@@ -129,6 +129,25 @@ disso: rode uma vez na mão com `--desde AAAA-MM-DD`.
 
 ---
 
+## Conta 3.07 — exigida pelo Contas a Receber
+
+O módulo **Contas a Receber & Operações Financeiras** lança aqui o deságio das
+antecipações de recebível, na conta **3.07 Juros de Operações Financeiras**, já
+baixada (o dinheiro não sai depois: saiu descontado no crédito do parceiro).
+
+Essa conta não existia no plano semeado. Duas mudanças no `contas-pagar.gs`:
+
+- `PLANO_INICIAL` ganhou a linha do 3.07;
+- entrou **`garantirContasNovas()`**, idempotente, que só INSERE as contas do
+  `PLANO_INICIAL` ausentes na planilha — nunca reescreve nem remove o que foi
+  editado à mão. Existe porque `semearPlano()` só age em planilha vazia e jamais
+  alcançaria uma base em produção.
+
+**Ao colar esta versão:** rode `garantirContasNovas()` uma vez no editor e
+publique **Nova versão**. Sem isso a liquidação de operação falha ao lançar a
+despesa — sem perder o crédito já gravado, que é recuperável pelo botão
+*relançar despesa* no Contas a Receber.
+
 ## Decisões que valem conhecer
 
 **As notas de entrada vêm de duas views, não de uma.** `vw_contas_a_pagar` é a
