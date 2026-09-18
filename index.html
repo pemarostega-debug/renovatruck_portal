@@ -322,10 +322,10 @@ textarea.inp{resize:vertical;min-height:64px;}
     <div class="section-label"><i class="fa-solid fa-sack-dollar" style="color:#0284c7;"></i>Módulo Financeiro</div>
     <div class="module-grid">
       <div class="module-card" onclick="openModule('contaspagar')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#e0f2fe;color:#0284c7;"><i class="fa-solid fa-file-invoice-dollar"></i></div><div><div class="module-name">Contas a Pagar</div><div class="module-desc">Títulos, baixas, plano de contas e sincronização com o Genesis.</div></div></div>
-      <div class="module-card" onclick="openModule('contasreceber')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#dcfce7;color:#059669;"><i class="fa-solid fa-hand-holding-dollar"></i></div><div><div class="module-name">Contas a Receber</div><div class="module-desc">Títulos, recebimentos, inadimplência e BI da carteira.</div></div></div>
+      <div class="module-card" onclick="openModule('contasreceber')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#dcfce7;color:#059669;"><i class="fa-solid fa-hand-holding-dollar"></i></div><div><div class="module-name">Contas a Receber</div><div class="module-desc">Títulos, recebimentos, inadimplência e BI da carteira. Inclui o <b>Controle de Operações Financeiras</b>: antecipação de recebíveis, borderô e parceiros.</div></div></div><div class="module-card rs-card-admin" onclick="openModule('resultado')"><span class="module-badge" style="background:#e0e7ff;color:#4f46e5;">Diretoria</span><div class="module-icon" style="background:#e0e7ff;color:#1e3a5f;"><i class="fa-solid fa-scale-balanced"></i></div><div><div class="module-name">Resultado Semanal</div><div class="module-desc">Faturamento por cliente e rentabilidade de peças e serviços, com simulação "E se".</div></div></div>
       <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-money-bill-wave"></i></div><div><div class="module-name">Fluxo de Caixa</div><div class="module-desc">Projeção de entradas e saídas por período.</div></div></div>
       <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-file-invoice"></i></div><div><div class="module-name">DRE Gerencial</div><div class="module-desc">Resultado com budget vs realizado.</div></div></div>
-      <div class="module-card" onclick="crIrPara('operacoes')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#ede9fe;color:#7c3aed;"><i class="fa-solid fa-landmark"></i></div><div><div class="module-name">Controle de Operações Financeiras</div><div class="module-desc">Antecipação de recebíveis, borderô e parceiros. Vive dentro do Contas a Receber.</div></div></div>
+      
       <div class="module-card" onclick="openModule('abc')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#fef3c7;color:#d97706;"><i class="fa-solid fa-ranking-star"></i></div><div><div class="module-name">Curva ABC</div><div class="module-desc">Ranking de clientes. Consolidado Renova + Vale 2026.</div></div></div>
     </div>
     <div class="section-label"><i class="fa-solid fa-chart-simple" style="color:#16a34a;"></i>Módulo Comercial</div>
@@ -335,7 +335,7 @@ textarea.inp{resize:vertical;min-height:64px;}
     </div>
     <div class="section-label"><i class="fa-solid fa-building-user" style="color:#4f46e5;"></i>Módulo Gestão Empresarial</div>
     <div class="module-grid">
-      <div class="module-card rs-card-admin" onclick="openModule('resultado')"><span class="module-badge" style="background:#e0e7ff;color:#4f46e5;">Diretoria</span><div class="module-icon" style="background:#e0e7ff;color:#1e3a5f;"><i class="fa-solid fa-scale-balanced"></i></div><div><div class="module-name">Resultado Semanal</div><div class="module-desc">Faturamento por cliente e rentabilidade de peças e serviços, com simulação "E se".</div></div></div>
+      
       <div class="module-card" onclick="openModule('manual')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#e0e7ff;color:#4f46e5;"><i class="fa-solid fa-book-open"></i></div><div><div class="module-name">Manual da Empresa e Processos</div><div class="module-desc">Organograma, cargos, processos e regras de conduta.</div></div></div>
       <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-people-group"></i></div><div><div class="module-name">Gestão de RH</div><div class="module-desc">Custos, encargos e centro de custo.</div></div></div>
     </div>
@@ -1816,6 +1816,10 @@ const CONFIG = {
   // Planilha de OSs Finalizadas (fonte das datas de finalização)
   SHEET_FINALIZADAS_ID: '13yPY1Jxz7ocnD9RA3siVyAfj6k64WzzKDZjFbdABzeA',
   SHEET_FINALIZADAS_ABA: 'Serviços Finalizados',
+  // /exec do apps-script/resultado-semanal.gs — é por aqui que chegam as linhas
+  // da vw_os_produto_serviço (peças e serviços de cada OS). Guia de publicação
+  // em integracao/LEIA-ME-resultado-semanal.md.
+  RESULTADO_SEMANAL_API: 'https://script.google.com/macros/s/AKfycbzOshhgNVKEh_8dDrx0bfA-kcrkpvV3LpCPmWCwm11-v9IAQzeLkyy5-GdyRy3FfpPo_w/exec',
 };
 const csvURL = s => `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(s)}`;
 const csvURLExt = (id, s) => `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(s)}`;
@@ -5078,6 +5082,7 @@ function selecionarRegra(id){
 <div class="cp-tabs">
   <button class="cp-tab active" id="cp-tab-dash"   onclick="cpAba('dash')"><i class="fa-solid fa-chart-pie" style="margin-right:6px;"></i>Dashboard</button>
   <button class="cp-tab"        id="cp-tab-titulos" onclick="cpAba('titulos')"><i class="fa-solid fa-list-ul" style="margin-right:6px;"></i>Títulos</button>
+  <button class="cp-tab"        id="cp-tab-fixas"  onclick="cpAba('fixas')"><i class="fa-solid fa-repeat" style="margin-right:6px;"></i>Contas Fixas</button>
   <button class="cp-tab"        id="cp-tab-plano"  onclick="cpAba('plano')"><i class="fa-solid fa-sitemap" style="margin-right:6px;"></i>Plano de Contas</button>
 </div>
 
@@ -5209,6 +5214,149 @@ function selecionarRegra(id){
     <button class="cp-btn cp-btn-primary rv-so-admin" id="cp-btn-plano-salvar" onclick="cpSalvarPlano()" disabled><i class="fa-solid fa-floppy-disk"></i>Salvar alterações</button>
   </div>
   <div class="cp-arvore" id="cp-arvore"></div>
+</div>
+
+<style>
+  #cp-pane-fixas .cp-fixas-resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;}
+  #cp-pane-fixas .cp-fx-card{border:1px solid var(--border);border-radius:10px;padding:11px 13px;background:#fff;}
+  #cp-pane-fixas .cp-fx-card b{display:block;font-size:1.15rem;font-weight:900;color:#0f172a;}
+  #cp-pane-fixas .cp-fx-card span{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+  #cp-pane-fixas tr.pausada{opacity:.55;}
+  #cp-pane-fixas tr.pausada td{text-decoration:line-through;text-decoration-color:rgba(0,0,0,.25);}
+</style>
+<!-- ══ CONTAS FIXAS ══ -->
+<div class="cp-pane" id="cp-pane-fixas">
+  <div class="cp-filtros">
+    <span style="font-size:.78rem;color:var(--muted);font-weight:600;">
+      O que se repete todo mês. O sistema gera os títulos da competência a partir daqui.
+    </span>
+    <span class="cp-spacer"></span>
+    <button class="cp-btn rv-so-admin" onclick="cpAbrirFixa('')"><i class="fa-solid fa-plus"></i>Nova conta fixa</button>
+    <button class="cp-btn cp-btn-primary rv-so-admin" onclick="cpAbrirGerarFixas()"><i class="fa-solid fa-calendar-plus"></i>Gerar títulos do mês</button>
+  </div>
+
+  <div class="cp-fixas-resumo" id="cp-fixas-resumo"></div>
+
+  <div class="cp-tbl-wrap">
+    <table class="cp-tbl">
+      <thead><tr>
+        <th>Conta</th><th>Fornecedor</th><th>Natureza</th>
+        <th class="cp-num">Dia</th><th class="cp-num">Valor previsto</th>
+        <th>Vigência</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody id="cp-tb-fixas"></tbody>
+    </table>
+  </div>
+
+  <p style="font-size:.76rem;color:var(--muted);margin-top:12px;line-height:1.55;">
+    <b>Como funciona.</b> Cada linha é um molde, não um título. Ao gerar a competência,
+    o sistema cria um título comum para cada conta vigente — que se edita, baixa e
+    cancela como qualquer outro. Gerar o mesmo mês de novo <b>não duplica nada</b>:
+    conta já gerada é pulada.
+    <br><b>Mudou o valor?</b> Edite o molde: vale do próximo mês gerado em diante, e o
+    que já foi pago continua como está. Para corrigir um mês já gerado, edite o título.
+    <br><b>Dia 31</b> em mês de 30 cai no último dia do mês — nunca escorrega para o mês seguinte.
+  </p>
+</div>
+
+<!-- ══ MODAL: CONTA FIXA ══ -->
+<div class="cp-overlay" id="cp-modal-fixa">
+  <div class="cp-modal">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-repeat"></i><span id="cp-fx-titulo">Nova conta fixa</span></h3>
+      <div class="sub">Molde do que se repete mês a mês</div></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-fixa')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-campo"><label class="cp-lbl">Descrição *</label>
+        <input type="text" id="cp-fx-descricao" class="cp-inp" placeholder="Ex.: Aluguel do galpão" />
+      </div>
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Fornecedor</label>
+          <input type="text" id="cp-fx-fornecedor" class="cp-inp" list="cp-lista-forn" />
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Natureza *</label>
+          <select id="cp-fx-natureza" class="cp-inp"></select>
+        </div>
+      </div>
+      <div class="cp-g3">
+        <div class="cp-campo"><label class="cp-lbl">Valor previsto *</label>
+          <input type="text" id="cp-fx-valor" class="cp-inp cp-num" placeholder="0,00" />
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Dia do vencimento *</label>
+          <input type="number" id="cp-fx-dia" class="cp-inp" min="1" max="31" value="10" />
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Empresa</label>
+          <select id="cp-fx-empresa" class="cp-inp"><option value="RENOVA">Renova</option><option value="VALE">Vale</option></select>
+        </div>
+      </div>
+      <div class="cp-g3">
+        <div class="cp-campo"><label class="cp-lbl">Começa em *</label>
+          <input type="month" id="cp-fx-inicio" class="cp-inp" />
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Termina em</label>
+          <input type="month" id="cp-fx-fim" class="cp-inp" />
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Forma de pagamento</label>
+          <select id="cp-fx-forma" class="cp-inp">
+            <option value="Boleto">Boleto</option><option value="Débito automático">Débito automático</option>
+            <option value="PIX">PIX</option><option value="Transferência">Transferência</option>
+            <option value="Dinheiro">Dinheiro</option><option value="Cartão">Cartão</option>
+          </select>
+        </div>
+      </div>
+      <div class="cp-campo"><label class="cp-lbl">Observação</label>
+        <input type="text" id="cp-fx-obs" class="cp-inp" placeholder="Ex.: contrato reajusta pelo IGP-M em janeiro" />
+      </div>
+      <div class="cp-campo"><label class="cp-lbl">Situação</label>
+        <select id="cp-fx-ativo" class="cp-inp">
+          <option value="1">Ativa — gera título todo mês</option>
+          <option value="0">Pausada — não gera</option>
+        </select>
+      </div>
+      <p style="font-size:.76rem;color:var(--muted);line-height:1.5;margin-top:6px;">
+        <b>Termina em</b> vazio = contrato sem prazo. Preencher é o que faz a conta parar
+        sozinha no fim do contrato, em vez de virar cobrança fantasma no mês seguinte.
+      </p>
+    </div>
+    <div class="cp-modal-f">
+      <button class="cp-btn cp-acao" id="cp-fx-remover" onclick="cpRemoverFixa()" style="display:none;"><i class="fa-solid fa-trash"></i>Remover</button>
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-fixa')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" onclick="cpSalvarFixa()"><i class="fa-solid fa-floppy-disk"></i>Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: GERAR CONTAS FIXAS ══ -->
+<div class="cp-overlay" id="cp-modal-gerar-fixas">
+  <div class="cp-modal">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-calendar-plus"></i>Gerar títulos do mês</h3>
+      <div class="sub" id="cp-gf-sub">—</div></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-gerar-fixas')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-campo"><label class="cp-lbl">Competência</label>
+        <input type="month" id="cp-gf-competencia" class="cp-inp" onchange="cpPreviaFixas()" />
+      </div>
+      <div class="cp-tbl-wrap" style="margin-top:10px;">
+        <table class="cp-tbl">
+          <thead><tr><th style="width:30px;"></th><th>Conta</th><th>Vencimento</th><th class="cp-num">Valor</th><th>Situação</th></tr></thead>
+          <tbody id="cp-tb-gf"></tbody>
+        </table>
+      </div>
+      <p style="font-size:.76rem;color:var(--muted);margin-top:10px;line-height:1.5;">
+        Só as contas marcadas viram título. O que já foi gerado aparece travado —
+        rodar de novo não duplica.
+      </p>
+    </div>
+    <div class="cp-modal-f">
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-gerar-fixas')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" id="cp-gf-btn" onclick="cpGerarFixas()"><i class="fa-solid fa-check"></i>Gerar</button>
+    </div>
+  </div>
 </div>
 
 <!-- ══ MODAL: TÍTULO ══ -->
@@ -5348,7 +5496,7 @@ function selecionarRegra(id){
       </div>
       <div class="cp-campo"><label class="cp-lbl">Nome *</label><input type="text" id="cp-c-nome" class="cp-inp" /></div>
       <div class="cp-campo"><label class="cp-lbl">Macro-natureza</label>
-        <select id="cp-c-macro" class="cp-inp">
+        <select id="cp-c-macronat" class="cp-inp">
           <option value="OPERACIONAL">Operacional</option>
           <option value="FIXO">Fixo / Administrativo</option>
           <option value="FINANCEIRO">Financeiro</option>
@@ -5379,7 +5527,7 @@ const CP = {
   // Cole aqui a URL /exec do apps-script/contas-pagar.gs depois de publicar.
   API: 'https://script.google.com/macros/s/AKfycbyES-4fUjuDv_4t-Jm4_cqgMiVrnGm_fOvb5qgGMcjZDXt5FKPldZtNPiUMhLoaRYa0/exec',
 
-  titulos: [], plano: [], fornecedores: [],
+  titulos: [], plano: [], fornecedores: [], fixas: [],
   competencia: '',            // 'YYYY-MM'
   eixo: 'vencimento',         // 'vencimento' | 'emissao' — ver CP_EIXOS
   hoje: '',                   // 'YYYY-MM-DD'
@@ -5390,6 +5538,8 @@ const CP = {
   baixando: null,
   planoRascunho: null,        // cópia do plano enquanto há edição pendente
   contaEditando: null,
+  fixaEditando: null,         // id da conta fixa aberta no modal
+  gfPrevia: null,             // prévia da geração: { competencia, itens: [...] }
   sync: { notas: [], marcadas: {}, existentes: {}, suspeitos: {}, naturezas: {} },
   selecaoBI: null,            // { tipo: 'macro'|'fornecedor'|'semana'|'atraso', valor, rotulo }
   carregado: false
@@ -5456,7 +5606,7 @@ const cpBRLc = v => {
 /** 'YYYY-MM-DD' → 'DD/MM'. Sem new Date(): o fuso rouba um dia. */
 const cpData = s => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
-  return m ? m[3] + '/' + m[2] : '—';
+  return m ? m[3] + '/' + m[2] + '/' + m[1] : '—';
 };
 const cpDataLonga = s => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
@@ -5548,6 +5698,7 @@ async function cpCarregar(forcar) {
     CP.plano = d.plano || [];
     CP.macroIdx = null;          // o plano mudou: o índice tem que ser remontado
     CP.fornecedores = d.fornecedores || [];
+    CP.fixas = d.fixas || [];
     CP.hoje = d.hoje || cpHojeISO();
     CP.carregado = true;
     CP.planoRascunho = null;
@@ -5614,7 +5765,7 @@ function cpAplicarEixoNaUI() {
 
 function cpAba(qual) {
   CP.aba = qual;
-  ['dash', 'titulos', 'plano'].forEach(a => {
+  ['dash', 'titulos', 'fixas', 'plano'].forEach(a => {
     document.getElementById('cp-tab-' + a).classList.toggle('active', a === qual);
     document.getElementById('cp-pane-' + a).classList.toggle('active', a === qual);
   });
@@ -5625,6 +5776,7 @@ function cpAba(qual) {
 function cpRender() {
   cpRenderDash();
   cpRenderTitulos();
+  cpRenderFixas();
   cpRenderPlano();
 }
 
@@ -6215,6 +6367,7 @@ function cpPreencherSelects() {
     `<option value="${cpEsc(c.codigo)}">${cpEsc(c.codigo)} — ${cpEsc(c.nome)}</option>`).join('');
 
   document.getElementById('cp-t-natureza').innerHTML = opcoes;
+  document.getElementById('cp-fx-natureza').innerHTML = opcoes;
   document.getElementById('cp-f-natureza').innerHTML =
     '<option value="">Todas as naturezas</option>' + opcoes;
 
@@ -6227,6 +6380,205 @@ function cpPreencherSelects() {
   const nomes = Array.from(new Set(CP.titulos.map(t => t.fornecedor).filter(Boolean))).sort();
   document.getElementById('cp-lista-forn').innerHTML =
     nomes.map(n => `<option value="${cpEsc(n)}"></option>`).join('');
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// CONTAS FIXAS — aluguel, contador, internet: o que se repete todo mês
+// ═════════════════════════════════════════════════════════════════════════
+
+/** 'YYYY-MM' → 'mm/aaaa'. */
+const cpComp = c => {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(c || ''));
+  return m ? m[2] + '/' + m[1] : '—';
+};
+
+function cpRenderFixas() {
+  const lista = (CP.fixas || []).slice().sort((a, b) =>
+    String(a.descricao).localeCompare(String(b.descricao), 'pt-BR'));
+  const podeEditar = cpPodeEditar();
+  const mes = CP.competencia || CP.hoje.slice(0, 7);
+
+  const vigente = f => f.ativo && (!f.inicio || f.inicio <= mes) && (!f.fim || f.fim >= mes);
+  const ativas = lista.filter(vigente);
+  const mensal = ativas.reduce((t, f) => t + (Number(f.valor_previsto) || 0), 0);
+
+  // Quanto do mês já virou título: é o que diz se falta gerar.
+  const geradas = CP.titulos.filter(t => t.origem === 'FIXA' && t.competencia === mes).length;
+
+  const resumo = document.getElementById('cp-fixas-resumo');
+  if (resumo) {
+    resumo.innerHTML =
+      '<div class="cp-fx-card"><span>Contas fixas ativas</span><b>' + ativas.length + '</b></div>' +
+      '<div class="cp-fx-card"><span>Custo fixo mensal</span><b>' + cpBRL(mensal) + '</b></div>' +
+      '<div class="cp-fx-card"><span>Geradas em ' + cpComp(mes) + '</span><b>' + geradas + ' de ' + ativas.length + '</b></div>' +
+      '<div class="cp-fx-card"><span>Custo fixo no ano</span><b>' + cpBRLc(mensal * 12) + '</b></div>';
+  }
+
+  document.getElementById('cp-tb-fixas').innerHTML = lista.length ? lista.map(f =>
+    '<tr' + (f.ativo ? '' : ' class="pausada"') + '>' +
+      '<td style="font-weight:700;">' + cpEsc(f.descricao) +
+        (f.observacao ? '<div style="font-size:.7rem;color:var(--muted);font-weight:500;">' + cpEsc(f.observacao) + '</div>' : '') + '</td>' +
+      '<td>' + cpEsc(f.fornecedor || '—') + '</td>' +
+      '<td style="font-size:.74rem;">' + cpEsc(f.natureza_codigo || '—') +
+        (f.natureza ? ' <span style="color:var(--muted);">' + cpEsc(f.natureza) + '</span>' : '') + '</td>' +
+      '<td class="cp-num">dia ' + (Number(f.dia_vencimento) || 0) + '</td>' +
+      '<td class="cp-num" style="font-weight:800;">' + cpBRL(f.valor_previsto) + '</td>' +
+      '<td style="font-size:.74rem;white-space:nowrap;">' + cpComp(f.inicio) +
+        ' → ' + (f.fim ? cpComp(f.fim) : '<span style="color:var(--muted);">sem prazo</span>') + '</td>' +
+      '<td>' + (f.ativo
+        ? '<span class="cp-pill cp-pill-ABERTO">Ativa</span>'
+        : '<span class="cp-pill cp-pill-CANCELADO">Pausada</span>') + '</td>' +
+      '<td style="text-align:right;">' + (podeEditar
+        ? '<button class="cp-acao" onclick="cpAbrirFixa(\'' + cpEsc(f.id) + '\')" title="Editar"><i class="fa-solid fa-pen"></i></button>' : '') + '</td>' +
+    '</tr>').join('')
+    : '<tr><td colspan="8" class="cp-vazio">Nenhuma conta fixa cadastrada.<br>' +
+      'Cadastre aluguel, contador, internet, seguros e softwares: são eles que fazem o custo fixo aparecer no DRE sem ninguém precisar lembrar todo mês.</td></tr>';
+}
+
+function cpAbrirFixa(id) {
+  if (!cpPodeEditar()) { cpAviso('Seu acesso é de consulta.', 'info'); return; }
+  const f = id ? (CP.fixas || []).find(x => x.id === id) : null;
+  CP.fixaEditando = f ? f.id : null;
+
+  document.getElementById('cp-fx-titulo').textContent = f ? 'Editar conta fixa' : 'Nova conta fixa';
+  document.getElementById('cp-fx-descricao').value = f ? f.descricao : '';
+  document.getElementById('cp-fx-fornecedor').value = f ? f.fornecedor : '';
+  document.getElementById('cp-fx-natureza').value = f ? f.natureza_codigo : '';
+  document.getElementById('cp-fx-valor').value =
+    f && Number(f.valor_previsto) > 0 ? Number(f.valor_previsto).toFixed(2).replace('.', ',') : '';
+  document.getElementById('cp-fx-dia').value = f ? (Number(f.dia_vencimento) || 10) : 10;
+  document.getElementById('cp-fx-empresa').value = f ? (f.empresa || 'RENOVA') : 'RENOVA';
+  document.getElementById('cp-fx-inicio').value = f ? f.inicio : (CP.competencia || CP.hoje.slice(0, 7));
+  document.getElementById('cp-fx-fim').value = f ? f.fim : '';
+  document.getElementById('cp-fx-forma').value = f && f.forma_pagamento ? f.forma_pagamento : 'Boleto';
+  document.getElementById('cp-fx-obs').value = f ? f.observacao : '';
+  document.getElementById('cp-fx-ativo').value = f ? (f.ativo ? '1' : '0') : '1';
+  document.getElementById('cp-fx-remover').style.display = f ? '' : 'none';
+  cpAbrir('cp-modal-fixa');
+}
+
+async function cpSalvarFixa() {
+  const g = id => document.getElementById(id).value;
+  const codigo = g('cp-fx-natureza');
+  const conta = CP.plano.find(c => c.codigo === codigo);
+  const fixa = {
+    id: CP.fixaEditando,
+    descricao: g('cp-fx-descricao').trim(),
+    fornecedor: g('cp-fx-fornecedor').trim(),
+    natureza_codigo: codigo,
+    natureza: conta ? conta.nome : '',
+    empresa: g('cp-fx-empresa'),
+    valor_previsto: cpNum(g('cp-fx-valor')),
+    dia_vencimento: Number(g('cp-fx-dia')) || 0,
+    forma_pagamento: g('cp-fx-forma'),
+    inicio: g('cp-fx-inicio'),
+    fim: g('cp-fx-fim'),
+    observacao: g('cp-fx-obs').trim(),
+    ativo: g('cp-fx-ativo') === '1'
+  };
+  if (!fixa.descricao) { cpAviso('Informe a descrição da conta fixa.', 'erro'); return; }
+  if (!fixa.natureza_codigo) { cpAviso('Escolha a natureza — é ela que leva a conta ao lugar certo do DRE.', 'erro'); return; }
+  if (fixa.valor_previsto <= 0) { cpAviso('Informe o valor previsto.', 'erro'); return; }
+  if (!(fixa.dia_vencimento >= 1 && fixa.dia_vencimento <= 31)) { cpAviso('O dia do vencimento vai de 1 a 31.', 'erro'); return; }
+  if (!fixa.inicio) { cpAviso('Informe o mês em que a conta começa.', 'erro'); return; }
+
+  try {
+    await cpPost('fixa_salvar', { fixa });
+    cpFechar('cp-modal-fixa');
+    await cpCarregar();
+    cpAviso('Conta fixa salva. Ela passa a entrar na geração mensal.', 'ok');
+  } catch (e) {
+    cpAviso('<b>Não consegui salvar.</b> ' + cpEsc(e.message), 'erro');
+  }
+}
+
+async function cpRemoverFixa() {
+  if (!CP.fixaEditando) return;
+  if (!confirm('Remover esta conta fixa?\n\n' +
+               'Só o molde some: os títulos já gerados continuam na base, porque são ' +
+               'dívida de verdade.\n\nSe a conta apenas parou por um tempo, prefira ' +
+               '"Pausada" — assim o histórico e o valor ficam guardados.')) return;
+  try {
+    await cpPost('fixa_remover', { id: CP.fixaEditando });
+    cpFechar('cp-modal-fixa');
+    await cpCarregar();
+    cpAviso('Conta fixa removida.', 'ok');
+  } catch (e) {
+    cpAviso('<b>Não consegui remover.</b> ' + cpEsc(e.message), 'erro');
+  }
+}
+
+// ── Geração do mês ───────────────────────────────────────────────────────
+function cpAbrirGerarFixas() {
+  if (!cpPodeEditar()) { cpAviso('Seu acesso é de consulta.', 'info'); return; }
+  document.getElementById('cp-gf-competencia').value = CP.competencia || CP.hoje.slice(0, 7);
+  CP.gfPrevia = null;
+  document.getElementById('cp-tb-gf').innerHTML =
+    '<tr><td colspan="5" class="cp-vazio">Carregando…</td></tr>';
+  cpAbrir('cp-modal-gerar-fixas');
+  cpPreviaFixas();
+}
+
+/** Mostra o que a geração faria, antes de gravar qualquer coisa. */
+async function cpPreviaFixas() {
+  const competencia = document.getElementById('cp-gf-competencia').value;
+  const tb = document.getElementById('cp-tb-gf');
+  const btn = document.getElementById('cp-gf-btn');
+  if (!competencia) { tb.innerHTML = '<tr><td colspan="5" class="cp-vazio">Escolha a competência.</td></tr>'; return; }
+
+  tb.innerHTML = '<tr><td colspan="5" class="cp-vazio">Carregando…</td></tr>';
+  btn.disabled = true;
+  try {
+    const d = await cpPost('fixas_previa', { competencia });
+    CP.gfPrevia = d;
+    document.getElementById('cp-gf-sub').textContent = 'Competência ' + cpComp(d.competencia);
+
+    const podem = d.itens.filter(i => i.vigente && !i.ja_gerado);
+    tb.innerHTML = d.itens.length ? d.itens.map(i => {
+      const livre = i.vigente && !i.ja_gerado;
+      return '<tr' + (livre ? '' : ' style="opacity:.55;"') + '>' +
+        '<td>' + (livre
+          ? '<input type="checkbox" class="cp-gf-chk" value="' + cpEsc(i.id) + '" checked />'
+          : '<i class="fa-solid fa-lock" style="color:var(--muted);font-size:.72rem;"></i>') + '</td>' +
+        '<td style="font-weight:700;">' + cpEsc(i.descricao) +
+          (i.fornecedor ? '<div style="font-size:.7rem;color:var(--muted);font-weight:500;">' + cpEsc(i.fornecedor) + '</div>' : '') + '</td>' +
+        '<td style="white-space:nowrap;">' + cpDataLonga(i.data_vencimento) + '</td>' +
+        '<td class="cp-num" style="font-weight:800;">' + cpBRL(i.valor_previsto) + '</td>' +
+        '<td style="font-size:.74rem;color:' + (livre ? 'var(--muted)' : '#b45309') + ';">' +
+          cpEsc(i.motivo || 'Pronta para gerar') + '</td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="5" class="cp-vazio">Nenhuma conta fixa cadastrada.</td></tr>';
+
+    btn.disabled = !podem.length;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i>Gerar ' + podem.length + ' título(s)';
+  } catch (e) {
+    tb.innerHTML = '<tr><td colspan="5" class="cp-vazio">Não consegui montar a prévia: ' + cpEsc(e.message) + '</td></tr>';
+  }
+}
+
+async function cpGerarFixas() {
+  const competencia = document.getElementById('cp-gf-competencia').value;
+  const ids = Array.from(document.querySelectorAll('.cp-gf-chk:checked')).map(c => c.value);
+  if (!ids.length) { cpAviso('Marque ao menos uma conta.', 'erro'); return; }
+
+  const btn = document.getElementById('cp-gf-btn');
+  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Gerando…';
+  try {
+    const r = await cpPost('fixas_gerar', { competencia, ids });
+    cpFechar('cp-modal-gerar-fixas');
+    await cpCarregar();
+    const total = r.criados.reduce((t, c) => t + (Number(c.valor) || 0), 0);
+    cpAviso(r.criados.length
+      ? '<b>' + r.criados.length + ' título(s) gerado(s)</b> para ' + cpComp(r.competencia) +
+        ', somando ' + cpBRL(total) + '. Já aparecem na aba Títulos.'
+      : 'Nada a gerar em ' + cpComp(r.competencia) + ' — tudo já estava lançado.',
+      r.criados.length ? 'ok' : 'info');
+  } catch (e) {
+    cpAviso('<b>Não consegui gerar.</b> ' + cpEsc(e.message), 'erro');
+    btn.disabled = false;
+  } finally {
+    btn.innerHTML = '<i class="fa-solid fa-check"></i>Gerar';
+  }
 }
 
 function cpAbrirTitulo(id) {
@@ -6412,7 +6764,7 @@ function cpAbrirConta(codigo, paiSugerido) {
   document.getElementById('cp-c-codigo').value = c ? c.codigo : '';
   document.getElementById('cp-c-codigo').disabled = !!c;
   document.getElementById('cp-c-nome').value = c ? c.nome : '';
-  document.getElementById('cp-c-macro').value = c ? c.macro : 'OPERACIONAL';
+  document.getElementById('cp-c-macronat').value = c ? c.macro : 'OPERACIONAL';
   document.getElementById('cp-c-remover').style.display = c ? 'inline-flex' : 'none';
 
   const raizes = plano.filter(x => !x.codigo_pai && x.codigo !== codigo);
@@ -6428,7 +6780,7 @@ function cpAplicarConta() {
   const codigo = document.getElementById('cp-c-codigo').value.trim();
   const nome = document.getElementById('cp-c-nome').value.trim();
   const pai = document.getElementById('cp-c-pai').value;
-  const macro = document.getElementById('cp-c-macro').value;
+  const macro = document.getElementById('cp-c-macronat').value;
 
   if (!codigo) { cpAviso('Informe o código da conta.', 'erro'); return; }
   if (!nome) { cpAviso('Informe o nome da conta.', 'erro'); return; }
@@ -7202,6 +7554,8 @@ async function cpSyncAprovar() {
     </span>
     <span class="cr-spacer"></span>
     <button class="cr-btn cr-btn-peq" onclick="crSelecionarTudoAntecipar()"><i class="fa-solid fa-check-double"></i>Selecionar tudo o que está visível</button>
+    <button class="cr-btn cr-btn-peq rv-so-admin" onclick="crAplicarRegrasNosVencimentos()" title="Joga cada vencimento para o dia em que o cliente realmente paga, pela regra cadastrada em Parceiros &amp; Políticas"><i class="fa-solid fa-calendar-check"></i>Aplicar regra dos clientes</button>
+    <button class="cr-btn cr-btn-peq rv-so-admin" onclick="crLimparVencimentos()" title="Volta todos os vencimentos ao que está gravado no título"><i class="fa-solid fa-rotate-left"></i>Desfazer correções</button>
   </div>
 
   <div class="cr-grid" style="align-items:start;">
@@ -7468,7 +7822,7 @@ async function cpSyncAprovar() {
       <thead><tr>
         <th>Cliente</th><th class="cr-col-apoio">Código</th><th>Antecipa OS?</th>
         <th class="cr-num">% máx.</th><th class="cr-num cr-col-apoio">Dias p/ faturar</th>
-        <th class="cr-num cr-col-apoio">Prazo venc.</th><th class="cr-num">Teto</th><th></th>
+        <th class="cr-num cr-col-apoio">Prazo venc.</th><th>Regra de pagamento</th><th class="cr-num">Teto</th><th></th>
       </tr></thead>
       <tbody id="cr-tb-politicas"></tbody>
     </table>
@@ -7480,18 +7834,18 @@ async function cpSyncAprovar() {
   <div class="cr-modal">
     <div class="cr-modal-h">
       <div><h3><i class="fa-solid fa-file-invoice"></i><span id="cr-mt-titulo">Novo título a receber</span></h3>
-      <div class="sub" id="cr-mt-sub">Lançamento manual</div></div>
+      <div class="sub" id="cr-mt-sub">Lançamento manual — inclusive PIX, dinheiro ou serviço sem nota</div></div>
       <button class="cr-fechar" onclick="crFechar('cr-modal-titulo')">&times;</button>
     </div>
     <div class="cr-modal-b">
       <div class="cr-campo"><label class="cr-lbl">Cliente *</label>
-        <input type="text" id="cr-t-cliente" class="cr-inp" list="cr-lista-cli" placeholder="Razão social do cliente" />
+        <input type="text" id="cr-t-cliente" class="cr-inp" list="cr-lista-cli" placeholder="Razão social do cliente" onchange="crConferirRegraTitulo()" />
         <datalist id="cr-lista-cli"></datalist>
       </div>
       <div class="cr-g3">
-        <div class="cr-campo"><label class="cr-lbl">Código do cliente</label><input type="text" id="cr-t-clicod" class="cr-inp" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Código do cliente</label><input type="text" id="cr-t-clicod" class="cr-inp" onchange="crConferirRegraTitulo()" /></div>
         <div class="cr-campo"><label class="cr-lbl">Emissão</label><input type="date" id="cr-t-emissao" class="cr-inp" /></div>
-        <div class="cr-campo"><label class="cr-lbl">Vencimento *</label><input type="date" id="cr-t-vencimento" class="cr-inp" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Vencimento *</label><input type="date" id="cr-t-vencimento" class="cr-inp" onchange="crConferirRegraTitulo()" /></div>
       </div>
       <div class="cr-g3">
         <div class="cr-campo"><label class="cr-lbl">Número NF</label><input type="text" id="cr-t-nf" class="cr-inp" /></div>
@@ -7514,6 +7868,13 @@ async function cpSyncAprovar() {
         <div class="cr-campo"><label class="cr-lbl">Data do recebimento</label><input type="date" id="cr-t-databaixa" class="cr-inp" /></div>
       </div>
       <div class="cr-campo"><label class="cr-lbl">Observação</label><input type="text" id="cr-t-obs" class="cr-inp" /></div>
+      <div class="cr-ajuda" id="cr-t-regra"></div>
+      <p class="cr-ajuda">
+        <b>Entrou dinheiro sem documento?</b> Deixe a NF em branco: PIX, transferência,
+        dinheiro ou serviço pedido sem nota entram por aqui e contam na carteira,
+        no fluxo de caixa e no BI como qualquer outro título. Sem NF, o título
+        não pode ir para borderô — fundo nenhum compra recebível sem documento.
+      </p>
       <p class="cr-ajuda" id="cr-t-aviso-ant"></p>
     </div>
     <div class="cr-modal-f">
@@ -7622,10 +7983,55 @@ async function cpSyncAprovar() {
     </div>
     <div class="cr-modal-f">
       <button class="cr-btn cr-acao excluir rv-so-admin" id="cr-op-cancelar" onclick="crCancelarOperacao()"><i class="fa-solid fa-ban"></i>Cancelar operação</button>
+      <button class="cr-btn cr-acao excluir rv-so-admin" id="cr-op-excluir" onclick="crExcluirOperacao()" title="Apaga a operação do histórico e devolve os títulos"><i class="fa-solid fa-trash"></i>Excluir</button>
       <span class="cr-spacer"></span>
+      <button class="cr-btn rv-so-admin" id="cr-op-editar" onclick="crAbrirEditarOperacao()"><i class="fa-solid fa-pen"></i>Editar</button>
       <button class="cr-btn" onclick="crPreBorderoDaOperacao('pdf')"><i class="fa-solid fa-file-pdf"></i>Borderô</button>
       <button class="cr-btn" onclick="crPreBorderoDaOperacao('xlsx')"><i class="fa-solid fa-file-excel"></i>Excel</button>
       <button class="cr-btn" onclick="crFechar('cr-modal-operacao')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: EDITAR OPERAÇÃO ══ -->
+<div class="cr-overlay" id="cr-modal-op-editar">
+  <div class="cr-modal">
+    <div class="cr-modal-h roxo">
+      <div><h3><i class="fa-solid fa-pen"></i>Editar operação</h3>
+      <div class="sub" id="cr-oe-sub">—</div></div>
+      <button class="cr-fechar" onclick="crFechar('cr-modal-op-editar')">&times;</button>
+    </div>
+    <div class="cr-modal-b">
+      <div class="cr-g2">
+        <div class="cr-campo"><label class="cr-lbl">Parceiro financeiro</label>
+          <select id="cr-oe-parceiro" class="cr-inp"></select>
+        </div>
+        <div class="cr-campo"><label class="cr-lbl">Data da operação</label>
+          <input type="date" id="cr-oe-data" class="cr-inp" />
+        </div>
+      </div>
+      <div class="cr-g2" id="cr-oe-liq" style="display:none;">
+        <div class="cr-campo"><label class="cr-lbl">Líquido creditado (R$)</label>
+          <input type="text" id="cr-oe-liquido" class="cr-inp cr-num" placeholder="0,00" />
+        </div>
+        <div class="cr-campo"><label class="cr-lbl">Data do crédito</label>
+          <input type="date" id="cr-oe-credito" class="cr-inp" />
+        </div>
+      </div>
+      <div class="cr-campo"><label class="cr-lbl">Observação</label>
+        <input type="text" id="cr-oe-obs" class="cr-inp" />
+      </div>
+      <p class="cr-ajuda">
+        Trocar o <b>parceiro</b> ou a <b>data</b> refaz o deságio estimado: as condições
+        e o prazo médio mudam junto.
+        <br>A <b>lista de títulos</b> do borderô não se edita aqui — trocar o conteúdo de
+        uma operação em análise no fundo é outra operação. Cancele e monte de novo.
+      </p>
+    </div>
+    <div class="cr-modal-f">
+      <span class="cr-spacer"></span>
+      <button class="cr-btn" onclick="crFechar('cr-modal-op-editar')">Fechar</button>
+      <button class="cr-btn cr-btn-primary" onclick="crSalvarEdicaoOperacao()"><i class="fa-solid fa-floppy-disk"></i>Salvar</button>
     </div>
   </div>
 </div>
@@ -7687,6 +8093,17 @@ async function cpSyncAprovar() {
 </div>
 
 <!-- ══ MODAL: POLÍTICA ══ -->
+<style>
+  #cr-modal-politica .cr-sep-regra{border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin:4px 0 12px;background:#f8fafc;}
+  #cr-modal-politica .cr-sep-t{font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#0284c7;margin-bottom:9px;display:flex;align-items:center;gap:7px;}
+</style>
+<style>
+  body.rv-admin .rv-so-admin.cr-oculto,
+  body.cp-admin .rv-so-admin.cr-oculto{display:none!important;}
+  .cr-venc-inp{border:1px solid var(--border);border-radius:6px;padding:3px 5px;font-family:inherit;font-size:.74rem;background:#fff;color:inherit;max-width:130px;}
+  .cr-venc-inp:focus{outline:none;border-color:#0284c7;}
+  .cr-venc-inp.mudou{border-color:#b45309;background:#fffbeb;font-weight:800;}
+</style>
 <div class="cr-overlay" id="cr-modal-politica">
   <div class="cr-modal">
     <div class="cr-modal-h">
@@ -7714,6 +8131,32 @@ async function cpSyncAprovar() {
         <div class="cr-campo"><label class="cr-lbl">Prazo de vencimento (dias)</label><input type="number" id="cr-pol-prazo" class="cr-inp" min="0" value="30" /></div>
         <div class="cr-campo"><label class="cr-lbl">Teto de exposição (R$)</label><input type="text" id="cr-pol-teto" class="cr-inp cr-num" placeholder="0,00" /></div>
       </div>
+      <div class="cr-sep-regra">
+        <div class="cr-sep-t"><i class="fa-solid fa-calendar-check"></i>Regra de pagamento do cliente</div>
+        <div class="cr-g2">
+          <div class="cr-campo"><label class="cr-lbl">Como este cliente paga</label>
+            <select id="cr-pol-regra" class="cr-inp" onchange="crPoliticaRegraMudou()">
+              <option value="">Vence pelo prazo, sem dia fixo</option>
+              <option value="DIAS_FIXOS">Só paga em dias fixos do mês</option>
+              <option value="DIA_SEMANA">Prazo em dias, caindo num dia da semana</option>
+            </select>
+          </div>
+          <div class="cr-campo" id="cr-pol-wrap-diasfixos" style="display:none;">
+            <label class="cr-lbl">Dias do mês em que paga</label>
+            <input type="text" id="cr-pol-diasfixos" class="cr-inp" placeholder="Ex.: 10, 25" />
+          </div>
+          <div class="cr-campo" id="cr-pol-wrap-diasemana" style="display:none;">
+            <label class="cr-lbl">Dia da semana</label>
+            <select id="cr-pol-diasemana" class="cr-inp">
+              <option value="1">Segunda-feira</option><option value="2">Terça-feira</option>
+              <option value="3">Quarta-feira</option><option value="4">Quinta-feira</option>
+              <option value="5">Sexta-feira</option><option value="6">Sábado</option>
+              <option value="0">Domingo</option>
+            </select>
+          </div>
+        </div>
+        <div class="cr-ajuda" id="cr-pol-regra-exemplo"></div>
+      </div>
       <div class="cr-campo"><label class="cr-lbl">Observação</label><input type="text" id="cr-pol-obs" class="cr-inp" placeholder="Ex.: fundo exige carta de circularização assinada" /></div>
       <p class="cr-ajuda">
         <b>Dias até faturar + prazo de vencimento</b> é o que projeta o vencimento
@@ -7721,6 +8164,9 @@ async function cpSyncAprovar() {
         um recebível que ainda não existe. O botão de sugestão lê o histórico real
         deste cliente no Genesis.
         <br><b>Teto</b> em zero significa sem limite.
+        <br><b>A regra de pagamento</b> entra depois do prazo: a data calculada anda
+        para a frente até o primeiro dia em que o cliente paga. É o que faz o borderô
+        e a projeção de caixa baterem com a realidade de quem só paga em dia certo.
       </p>
     </div>
     <div class="cr-modal-f">
@@ -7784,6 +8230,7 @@ const CR = {
   selCarteira: {},          // carteira antecipada — id → true
   selAntTit: {},            // montagem do borderô — id do título → true
   selAntOS: {},             // montagem do borderô — num_os → true
+  vencAjustado: {},         // montagem do borderô — id do título → vencimento corrigido
   simulacao: null,
 
   editando: null,
@@ -7830,7 +8277,7 @@ const crBRLc = v => {
 /** 'YYYY-MM-DD' → 'DD/MM'. Sem new Date(): o fuso rouba um dia. */
 const crData = s => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
-  return m ? m[3] + '/' + m[2] : '—';
+  return m ? m[3] + '/' + m[2] + '/' + m[1] : '—';
 };
 const crDataLonga = s => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
@@ -8611,6 +9058,32 @@ function crBaixarCSV(matriz, nome) {
 }
 
 // ── Modal de título ──────────────────────────────────────────────────────────
+/**
+ * Confere o vencimento digitado contra a regra do cliente e oferece a data certa.
+ * Sugestão, não imposição: lançamento manual às vezes é exatamente a exceção.
+ */
+function crConferirRegraTitulo() {
+  const el = document.getElementById('cr-t-regra');
+  if (!el) return;
+  const venc = document.getElementById('cr-t-vencimento').value;
+  const pol = crPoliticaDe(document.getElementById('cr-t-clicod').value.trim(),
+                           document.getElementById('cr-t-cliente').value.trim());
+  if (!venc || !pol || !pol.regra_venc) { el.innerHTML = ''; return; }
+  const certo = crAplicarRegra(venc, pol);
+  el.innerHTML = certo === venc
+    ? '<span style="color:var(--ant);font-weight:700;"><i class="fa-solid fa-check"></i> ' +
+      'O vencimento bate com a regra deste cliente.</span>'
+    : '<span style="color:#b45309;font-weight:700;"><i class="fa-solid fa-triangle-exclamation"></i> ' +
+      'Este cliente só paga ' + crRegraTexto(pol).replace(/<[^>]+>/g, '') + '. Pela regra, o recebimento cairia em <b>' +
+      crDataLonga(certo) + '</b>.</span> <button type="button" class="cr-btn cr-btn-peq" onclick="crUsarVencDaRegra(\'' +
+      certo + '\')">Usar ' + crData(certo) + '</button>';
+}
+
+function crUsarVencDaRegra(iso) {
+  document.getElementById('cr-t-vencimento').value = iso;
+  crConferirRegraTitulo();
+}
+
 function crAbrirTitulo(id) {
   if (!crPodeEditar()) return;
   const t = id ? CR.titulos.filter(x => x.id === id)[0] : null;
@@ -8646,6 +9119,7 @@ function crAbrirTitulo(id) {
   } else { aviso.textContent = ''; }
 
   document.getElementById('cr-t-cancelar').style.display = t && !crAntecipado(t) ? '' : 'none';
+  crConferirRegraTitulo();
   crAbrir('cr-modal-titulo');
 }
 
@@ -8677,7 +9151,20 @@ async function crSalvarTitulo() {
 
   btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Salvando…';
   try {
-    await crPost('titulo_salvar', { titulo });
+    try {
+      await crPost('titulo_salvar', { titulo });
+    } catch (e1) {
+      // Recebimento avulso que repete de verdade (dois PIX iguais no mesmo dia)
+      // não é duplicidade — mas só passa se alguém disser que é mesmo outro.
+      const repetivel = !titulo.id && !titulo.numero_nf && /já existe na base/.test(e1.message || '');
+      if (!repetivel) throw e1;
+      if (!confirm('Já existe um lançamento igual: mesmo cliente, mesmo vencimento e mesmo valor.\n\n' +
+                   'Se este é outro recebimento de verdade, confirme para lançar assim mesmo.')) {
+        crAviso('Lançamento não gravado — nada foi duplicado.', 'info');
+        return;
+      }
+      await crPost('titulo_salvar', { titulo: Object.assign({}, titulo, { permitir_duplicado: true }) });
+    }
     crFechar('cr-modal-titulo');
     await crCarregar();
     crAviso('Título salvo.', 'ok');
@@ -8854,11 +9341,27 @@ function crRenderAntecipar() {
   const tbT = document.getElementById('cr-tb-a-titulos');
   tbT.innerHTML = titulos.length ? titulos.map(t => {
     const marcado = !!CR.selAntTit[t.id];
-    const prazo = crDias(CR.hoje, t.data_vencimento);
+    const venc = crVencDe(t);
+    const mudou = venc !== t.data_vencimento;
+    const prazo = crDias(CR.hoje, venc);
+    // Data editável na própria linha: é aqui que o financeiro corrige o
+    // vencimento que veio errado do Genesis, antes de o borderô ir ao fundo.
+    const pol = crPoliticaDe(t.cliente_cod);
+    const pelaRegra = pol && pol.regra_venc ? crAplicarRegra(venc, pol) : venc;
+    const foraDaRegra = pelaRegra !== venc;
     return '<tr class="' + (marcado ? 'sel' : '') + '">' +
       '<td><input type="checkbox" ' + (marcado ? 'checked' : '') + ' onchange="crMarcarAntTit(\'' + t.id + '\',this.checked)" /></td>' +
-      '<td style="white-space:nowrap;">' + crData(t.data_vencimento) + '</td>' +
-      '<td class="cr-cli" title="' + crEsc(t.cliente) + '">' + crEsc(t.cliente) + '</td>' +
+      '<td style="white-space:nowrap;">' +
+        (podeEditar
+          ? '<input type="date" class="cr-venc-inp' + (mudou ? ' mudou' : '') + '" value="' + crEsc(venc) +
+            '" onchange="crAjustarVenc(\'' + t.id + '\',this.value)" title="Vencimento original: ' + crData(t.data_vencimento) + '" />'
+          : crData(venc)) +
+        (mudou ? '<div class="cr-sub" style="color:#b45309;">era ' + crData(t.data_vencimento) + '</div>' : '') +
+        (foraDaRegra ? '<div class="cr-sub" style="color:#b45309;" title="' + crEsc(t.cliente) +
+           ' só paga nos dias da regra cadastrada">fora da regra → ' + crData(pelaRegra) + '</div>' : '') +
+      '</td>' +
+      '<td class="cr-cli" title="' + crEsc(t.cliente) + '">' + crEsc(t.cliente) +
+        (pol && pol.regra_venc ? ' ' + crRegraTexto(pol) : '') + '</td>' +
       '<td class="cr-col-apoio">' + crEsc(crRotuloNF(t)) + '</td>' +
       '<td class="cr-num" style="font-weight:800;">' + crBRL(t.valor_total) + '</td>' +
       '<td class="cr-num">' + prazo + 'd</td></tr>';
@@ -8900,6 +9403,52 @@ function crRenderAntecipar() {
   crSimular();
 }
 
+/** O vencimento que vale na montagem: o corrigido à mão, ou o do título. */
+function crVencDe(t) {
+  return CR.vencAjustado[t.id] || t.data_vencimento;
+}
+
+/** Correção manual do vencimento de um título dentro do borderô em montagem. */
+function crAjustarVenc(id, valor) {
+  const t = CR.titulos.filter(x => x.id === id)[0];
+  if (!t) return;
+  if (!valor || !/^\d{4}-\d{2}-\d{2}$/.test(valor) || valor === t.data_vencimento) {
+    delete CR.vencAjustado[id];
+  } else {
+    CR.vencAjustado[id] = valor;
+  }
+  crRenderAntecipar();
+}
+
+/**
+ * Joga todos os títulos à vista para o dia em que o cliente realmente paga.
+ *
+ * Só mexe em quem tem regra cadastrada e está fora dela — quem já está no dia
+ * certo fica como está, e cliente sem regra não é tocado.
+ */
+function crAplicarRegrasNosVencimentos() {
+  const alvo = crTitulosAntecipaveis();
+  let n = 0;
+  alvo.forEach(t => {
+    const pol = crPoliticaDe(t.cliente_cod);
+    if (!pol || !pol.regra_venc) return;
+    const atual = crVencDe(t);
+    const novo = crAplicarRegra(atual, pol);
+    if (novo && novo !== atual) { CR.vencAjustado[t.id] = novo; n++; }
+  });
+  crRenderAntecipar();
+  crAviso(n
+    ? '<b>' + n + ' vencimento(s) ajustado(s)</b> para o dia de pagamento de cada cliente. ' +
+      'A correção vale no borderô e volta para o título quando a operação for registrada.'
+    : 'Nenhum título à vista está fora da regra do cliente.', n ? 'ok' : 'info');
+}
+
+/** Desfaz todas as correções manuais desta montagem. */
+function crLimparVencimentos() {
+  CR.vencAjustado = {};
+  crRenderAntecipar();
+}
+
 function crMarcarAntTit(id, m) { if (m) CR.selAntTit[id] = true; else delete CR.selAntTit[id]; crRenderAntecipar(); }
 function crMarcarAntOS(os, m) { if (m) CR.selAntOS[os] = true; else delete CR.selAntOS[os]; crRenderAntecipar(); }
 
@@ -8918,7 +9467,7 @@ function crItensSelecionados() {
       tipo: 'TITULO', ref_id: t.id, num_os: t.num_os, numero_nf: crRotuloNF(t),
       parcela: t.parcela, cliente: t.cliente, cliente_cod: t.cliente_cod,
       cliente_cnpj: t.cliente_cnpj || '', emissao: t.data_emissao,
-      vencimento: t.data_vencimento, valor: Number(t.valor_total) || 0
+      vencimento: crVencDe(t), valor: Number(t.valor_total) || 0
     });
   });
   // Sem filtro aqui, de propósito: o carrinho não pode perder um item porque
@@ -9054,9 +9603,12 @@ async function crRegistrarOperacao() {
   const { itens, parceiro, calculo } = CR.simulacao;
   if (!parceiro) { crAviso('Escolha o parceiro financeiro.', 'erro'); return; }
 
+  const corrigidos = itens.filter(i => i.tipo === 'TITULO' && CR.vencAjustado[i.ref_id]).length;
   const msg = 'Registrar operação com ' + parceiro.nome + '?\n\n' +
     itens.length + ' item(ns) · face ' + crBRL(calculo.bruto) + '\n' +
     'Deságio estimado ' + crBRL(calculo.desagio) + ' · líquido ' + crBRL(calculo.liquido) + '\n\n' +
+    (corrigidos ? corrigidos + ' vencimento(s) corrigido(s) à mão — a data nova passa a valer ' +
+                  'também no título, na carteira e na projeção de caixa.\n\n' : '') +
     'Os títulos ficam reservados para esta operação a partir de agora — é o que impede ' +
     'a mesma duplicata de entrar em dois borderôs. Cancelar a operação devolve todos.';
   if (!confirm(msg)) return;
@@ -9072,7 +9624,7 @@ async function crRegistrarOperacao() {
         valor: i.valor, valor_os: i.valor_os, vencimento: i.vencimento
       }))
     });
-    CR.selAntTit = {}; CR.selAntOS = {};
+    CR.selAntTit = {}; CR.selAntOS = {}; CR.vencAjustado = {};
     await crCarregar();
     crAba('operacoes');
     crAviso('Operação <b>' + r.numero + '</b> registrada com ' + r.itens + ' item(ns). ' +
@@ -9364,6 +9916,13 @@ function crAbrirOperacao(id) {
     op.parceiro + ' · ' + crDataLonga(op.data_operacao) + ' · ' + crStatusOp(op.status);
 
   const liquidada = op.status === 'LIQUIDADA';
+  // Cancelar é o caminho normal e some quando não cabe; excluir fica sempre à
+  // mão, mas o servidor barra o que já encostou em dinheiro ou em nota.
+  const btnCancelar = document.getElementById('cr-op-cancelar');
+  if (btnCancelar) btnCancelar.classList.toggle('cr-oculto', liquidada || op.status === 'CANCELADA');
+  const btnEditar = document.getElementById('cr-op-editar');
+  if (btnEditar) btnEditar.classList.toggle('cr-oculto', op.status === 'CANCELADA');
+
   document.getElementById('cr-op-resumo').innerHTML =
     '<div class="cr-resumo-linha"><span>Valor de face</span><b>' + crBRL(op.valor_bruto) + '</b></div>' +
     '<div class="cr-resumo-linha"><span>Prazo médio ponderado</span><b>' + (Number(op.prazo_medio) || 0).toLocaleString('pt-BR') + ' dias</b></div>' +
@@ -9409,6 +9968,84 @@ function crAbrirOperacao(id) {
   document.getElementById('cr-op-cancelar').style.display =
     crPodeEditar() && op.status !== 'LIQUIDADA' && op.status !== 'CANCELADA' ? '' : 'none';
   crAbrir('cr-modal-operacao');
+}
+
+/** Operação liquidada também se edita — o que muda é o que fica editável. */
+function crAbrirEditarOperacao() {
+  const op = CR.opAberta;
+  if (!op || !crPodeEditar()) return;
+  if (op.status === 'CANCELADA') { crAviso('Operação cancelada não se edita.', 'erro'); return; }
+
+  document.getElementById('cr-oe-sub').textContent =
+    'Operação nº ' + (op.numero || op.id) + ' · ' + crStatusOp(op.status);
+
+  const sel = document.getElementById('cr-oe-parceiro');
+  sel.innerHTML = CR.parceiros.filter(p => p.ativo || p.id === op.parceiro_id)
+    .map(p => '<option value="' + p.id + '">' + crEsc(p.nome) +
+      (p.taxa_mes ? ' — ' + Number(p.taxa_mes).toLocaleString('pt-BR') + '% a.m.' : '') + '</option>').join('');
+  sel.value = op.parceiro_id || '';
+
+  document.getElementById('cr-oe-data').value = op.data_operacao || CR.hoje;
+  document.getElementById('cr-oe-obs').value = op.observacao || '';
+
+  const liquidada = op.status === 'LIQUIDADA';
+  document.getElementById('cr-oe-liq').style.display = liquidada ? '' : 'none';
+  if (liquidada) {
+    document.getElementById('cr-oe-liquido').value =
+      (Number(op.valor_liquido) || 0).toFixed(2).replace('.', ',');
+    document.getElementById('cr-oe-credito').value = op.data_credito || '';
+  }
+  crAbrir('cr-modal-op-editar');
+}
+
+async function crSalvarEdicaoOperacao() {
+  const op = CR.opAberta;
+  if (!op) return;
+  const corpo = {
+    id: op.id,
+    parceiro_id: document.getElementById('cr-oe-parceiro').value,
+    data_operacao: document.getElementById('cr-oe-data').value,
+    observacao: document.getElementById('cr-oe-obs').value.trim()
+  };
+  if (op.status === 'LIQUIDADA') {
+    corpo.valor_liquido = crNum(document.getElementById('cr-oe-liquido').value);
+    corpo.data_credito = document.getElementById('cr-oe-credito').value;
+  }
+  try {
+    const r = await crPost('operacao_editar', corpo);
+    crFechar('cr-modal-op-editar');
+    crFechar('cr-modal-operacao');
+    await crCarregar();
+    crAviso('<b>Operação atualizada.</b>' +
+      ((r.avisos || []).length ? ' ' + r.avisos.map(crEsc).join(' ') : ''),
+      (r.avisos || []).length ? 'info' : 'ok');
+  } catch (e) {
+    crAviso('<b>Não consegui salvar.</b> ' + crEsc(e.message), 'erro');
+  }
+}
+
+/**
+ * Excluir apaga do histórico; cancelar deixa rastro. O caminho normal é
+ * cancelar — excluir é para o borderô lançado errado, que só suja a base.
+ */
+async function crExcluirOperacao() {
+  const op = CR.opAberta;
+  if (!op || !crPodeEditar()) return;
+  const rotulo = 'nº ' + (op.numero || op.id);
+  if (!confirm('Excluir a operação ' + rotulo + ' de vez?\n\n' +
+               'A operação, os itens do borderô e as antecipações de OS somem da base, e os ' +
+               'títulos voltam a ficar livres. Não dá para desfazer.\n\n' +
+               'Se a operação existiu de verdade e só terminou sem efeito, o certo é ' +
+               'CANCELAR — assim ela continua no histórico.')) return;
+  if (!confirm('Confirma a exclusão definitiva da operação ' + rotulo + '?')) return;
+  try {
+    const r = await crPost('operacao_excluir', { id: op.id, confirmar: true });
+    crFechar('cr-modal-operacao');
+    await crCarregar();
+    crAviso('Operação ' + rotulo + ' excluída. ' + r.titulos_liberados + ' título(s) devolvido(s).', 'ok');
+  } catch (e) {
+    crAviso('<b>Não consegui excluir.</b> ' + crEsc(e.message), 'erro');
+  }
 }
 
 async function crCancelarOperacao() {
@@ -9995,12 +10632,110 @@ function crRenderPoliticas() {
       '<td class="cr-num">' + (p.permite_os ? (Number(p.pct_max_os) || 100) + '%' : '—') + '</td>' +
       '<td class="cr-num cr-col-apoio">' + (Number(p.dias_ate_faturar) || 0) + 'd</td>' +
       '<td class="cr-num cr-col-apoio">' + (Number(p.dias_prazo_venc) || 0) + 'd</td>' +
+      '<td>' + crRegraTexto(p) + '</td>' +
       '<td class="cr-num">' + (Number(p.teto_exposicao) > 0 ? crBRL(p.teto_exposicao) : 'sem teto') + '</td>' +
       '<td style="text-align:right;">' + (podeEditar
         ? '<button class="cr-acao" onclick="crAbrirPolitica(\'' + crEsc(p.cliente_cod) + '\')" title="Editar"><i class="fa-solid fa-pen"></i></button>' : '') + '</td>' +
     '</tr>').join('')
-    : '<tr><td colspan="8" class="cr-vazio">Nenhuma política cadastrada.<br>' +
+    : '<tr><td colspan="9" class="cr-vazio">Nenhuma política cadastrada.<br>' +
       'Sem política, o cliente pode antecipar duplicata emitida mas não OS sem pedido.</td></tr>';
+}
+
+const CR_DIAS_SEMANA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira',
+                        'quinta-feira', 'sexta-feira', 'sábado'];
+
+/** Como a regra do cliente aparece na tabela e no borderô. */
+function crRegraTexto(p) {
+  const dias = crDiasFixos(p && p.dias_fixos);
+  if (p && p.regra_venc === 'DIAS_FIXOS' && dias.length) {
+    return '<span class="cr-pill cr-pill-livre" title="Só paga nesses dias do mês">dia ' +
+      dias.join(' e ') + '</span>';
+  }
+  if (p && p.regra_venc === 'DIA_SEMANA' && p.dia_semana != null) {
+    return '<span class="cr-pill cr-pill-livre" title="O prazo corre e a data cai neste dia da semana">' +
+      crEsc(CR_DIAS_SEMANA[Number(p.dia_semana)] || '—') + '</span>';
+  }
+  return '<span class="cr-col-apoio">—</span>';
+}
+
+/** "10, 25" ou [10,25] → [10, 25]. Só 1–31, sem repetir, em ordem. */
+function crDiasFixos(v) {
+  return String(v == null ? '' : v).split(/[^0-9]+/)
+    .map(x => parseInt(x, 10))
+    .filter(n => n >= 1 && n <= 31)
+    .filter((n, i, a) => a.indexOf(n) === i)
+    .sort((a, b) => a - b);
+}
+
+/** Mostra só os campos da regra escolhida, com um exemplo do que vai acontecer. */
+function crPoliticaRegraMudou() {
+  const regra = document.getElementById('cr-pol-regra').value;
+  document.getElementById('cr-pol-wrap-diasfixos').style.display = regra === 'DIAS_FIXOS' ? '' : 'none';
+  document.getElementById('cr-pol-wrap-diasemana').style.display = regra === 'DIA_SEMANA' ? '' : 'none';
+
+  const el = document.getElementById('cr-pol-regra-exemplo');
+  const prazo = Number(document.getElementById('cr-pol-prazo').value) || 0;
+  const base = crSomaDias(CR.hoje, prazo);
+  const p = {
+    regra_venc: regra,
+    dias_fixos: document.getElementById('cr-pol-diasfixos').value,
+    dia_semana: document.getElementById('cr-pol-diasemana').value
+  };
+  if (!regra) {
+    el.innerHTML = 'Exemplo: nota emitida hoje vence em <b>' + crDataLonga(base) + '</b>, ' + prazo + ' dias depois.';
+    return;
+  }
+  const ajustado = crAplicarRegra(base, p);
+  el.innerHTML = 'Exemplo: nota emitida hoje venceria em ' + crDataLonga(base) +
+    ' e, pela regra, o recebimento fica em <b>' + crDataLonga(ajustado) + '</b>.';
+}
+
+/**
+ * Espelho de aplicarRegraVencimento() do Apps Script — a tela precisa mostrar a
+ * data antes de gravar. Quem manda continua sendo o servidor.
+ */
+function crAplicarRegra(iso, p) {
+  if (!iso || !p) return iso;
+  const [y, m, d] = String(iso).split('-').map(Number);
+  if (!y) return iso;
+  const base = new Date(y, m - 1, d, 12, 0, 0, 0);
+  const fim = dt => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') +
+                    '-' + String(dt.getDate()).padStart(2, '0');
+
+  if (p.regra_venc === 'DIAS_FIXOS') {
+    const dias = crDiasFixos(p.dias_fixos);
+    if (!dias.length) return iso;
+    for (let salto = 0; salto < 3; salto++) {
+      const ano = base.getFullYear(), mes = base.getMonth() + salto;
+      const ultimo = new Date(ano, mes + 1, 0).getDate();
+      for (let i = 0; i < dias.length; i++) {
+        // Dia 31 em mês de 30 vira o último dia do mês, não o dia 1 do seguinte.
+        const alvo = new Date(ano, mes, Math.min(dias[i], ultimo), 12, 0, 0, 0);
+        if (alvo.getTime() >= base.getTime()) return fim(alvo);
+      }
+    }
+    return iso;
+  }
+  if (p.regra_venc === 'DIA_SEMANA') {
+    const alvo = Number(p.dia_semana);
+    if (!(alvo >= 0 && alvo <= 6)) return iso;
+    base.setDate(base.getDate() + ((alvo - base.getDay() + 7) % 7));
+    return fim(base);
+  }
+  return iso;
+}
+
+/** A política do cliente, ou null. É por ela que passa todo vencimento calculado. */
+function crPoliticaDe(clienteCod, clienteNome) {
+  if (clienteCod != null && clienteCod !== '') {
+    const p = CR.politicas.filter(x => String(x.cliente_cod) === String(clienteCod))[0];
+    if (p) return p;
+  }
+  if (clienteNome) {
+    const n = String(clienteNome).trim().toLowerCase();
+    return CR.politicas.filter(x => String(x.cliente || '').trim().toLowerCase() === n)[0] || null;
+  }
+  return null;
 }
 
 function crAbrirPolitica(cod) {
@@ -10019,7 +10754,11 @@ function crAbrirPolitica(cod) {
   document.getElementById('cr-pol-teto').value =
     p && Number(p.teto_exposicao) > 0 ? Number(p.teto_exposicao).toFixed(2).replace('.', ',') : '';
   document.getElementById('cr-pol-obs').value = p ? (p.observacao || '') : '';
+  document.getElementById('cr-pol-regra').value = p ? (p.regra_venc || '') : '';
+  document.getElementById('cr-pol-diasfixos').value = p ? crDiasFixos(p.dias_fixos).join(', ') : '';
+  document.getElementById('cr-pol-diasemana').value = p && p.dia_semana != null ? String(p.dia_semana) : '4';
   document.getElementById('cr-pol-remover').style.display = p ? '' : 'none';
+  crPoliticaRegraMudou();
   crPoliticaClienteMudou();
   crAbrir('cr-modal-politica');
 }
@@ -10075,9 +10814,16 @@ async function crSalvarPolitica() {
     dias_ate_faturar: Number(document.getElementById('cr-pol-dias').value) || 0,
     dias_prazo_venc: Number(document.getElementById('cr-pol-prazo').value) || 0,
     teto_exposicao: crNum(document.getElementById('cr-pol-teto').value),
+    regra_venc: document.getElementById('cr-pol-regra').value,
+    dias_fixos: crDiasFixos(document.getElementById('cr-pol-diasfixos').value).join(','),
+    dia_semana: document.getElementById('cr-pol-diasemana').value,
     observacao: document.getElementById('cr-pol-obs').value.trim(),
     ativo: true
   };
+  if (politica.regra_venc === 'DIAS_FIXOS' && !politica.dias_fixos) {
+    crAviso('Informe ao menos um dia do mês (ex.: 10, 25) para a regra de dias fixos.', 'erro');
+    return;
+  }
   try {
     await crPost('politica_salvar', { politica });
     crFechar('cr-modal-politica');
@@ -10303,14 +11049,10 @@ async function crSyncAprovar() {
   #screen-resultado .rs-chip.ruim{background:var(--rs-ruim-bg);color:var(--rs-ruim);}
   #screen-resultado .rs-chip.neutro{background:#f1f5f9;color:#475569;}
   #screen-resultado .rs-tend{font-size:.68rem;font-weight:700;color:var(--muted);}
-  #screen-resultado .rs-leitura{margin-top:14px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;}
-  @media (max-width:900px){#screen-resultado .rs-leitura{grid-template-columns:minmax(0,1fr);}}
+  #screen-resultado .rs-leitura{margin-top:14px;}
   #screen-resultado .rs-leitura ul{list-style:none;display:flex;flex-direction:column;gap:7px;}
   #screen-resultado .rs-leitura li{font-size:.86rem;line-height:1.5;padding-left:14px;position:relative;}
   #screen-resultado .rs-leitura li::before{content:"";position:absolute;left:0;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--rs);}
-  #screen-resultado .rs-aposta label{font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--rs);display:block;margin-bottom:5px;}
-  #screen-resultado .rs-aposta textarea{width:100%;min-height:78px;border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;font-family:inherit;font-size:.86rem;resize:vertical;}
-  #screen-resultado .rs-aposta textarea:focus{outline:none;border-color:var(--rs);}
   /* Tabelas */
   #screen-resultado .rs-tabela-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
   #screen-resultado .rs-tabela-wrap.alta{max-height:440px;overflow-y:auto;}
@@ -10404,7 +11146,6 @@ async function crSyncAprovar() {
     #screen-resultado .rs-layout{grid-template-columns:minmax(0,1fr)!important;padding:0;}
     #screen-resultado .rs-card{break-inside:avoid;box-shadow:none;}
     #screen-resultado .rs-tabela-wrap.alta{max-height:none;overflow:visible;}
-    #screen-resultado .rs-aposta textarea{border:none;resize:none;}
   }
 </style>
 
@@ -10488,10 +11229,6 @@ async function crSyncAprovar() {
           <div class="rs-placar" id="rs-placar"></div>
           <div class="rs-leitura">
             <div><ul id="rs-frases"></ul></div>
-            <div class="rs-aposta">
-              <label for="rs-aposta">A aposta da semana — uma ação, com dono e prazo</label>
-              <textarea id="rs-aposta" placeholder="Ex.: Até sexta, revisar a tabela de preço das 10 peças que venderam abaixo do custo — resp.: Compras." oninput="rsGuardarAposta()"></textarea>
-            </div>
           </div>
         </section>
 
@@ -10500,11 +11237,11 @@ async function crSyncAprovar() {
             <span class="rs-h-extra"><select class="rs-sel" id="rs-evo-n" onchange="rsRenderEvolucao()" aria-label="Quantidade de semanas">
               <option value="8">8 semanas</option><option value="12" selected>12 semanas</option><option value="26">26 semanas</option></select></span></h2>
           <div class="rs-evo">
-            <div><div class="rs-evo-t">Faturamento finalizado por semana</div><div class="rs-grafico" style="height:270px;"><canvas id="rs-evo-fat" role="img" aria-label="Barras do faturamento finalizado por semana, separado em serviços, peças de estoque, peças DIV e sem abertura"></canvas></div></div>
+            <div><div class="rs-evo-t">Faturamento finalizado por semana</div><div class="rs-grafico" style="height:270px;"><canvas id="rs-evo-fat" role="img" aria-label="Barras do faturamento finalizado por semana, separado em serviços, peças de estoque e peças DIV"></canvas></div></div>
             <div><div class="rs-evo-t">Margens por semana <span class="rs-nota">(tracejado = meta)</span></div><div class="rs-grafico" style="height:270px;"><canvas id="rs-evo-mg" role="img" aria-label="Linhas das margens de serviços, peças de estoque e global por semana"></canvas></div></div>
           </div>
           <div class="rs-tabela-wrap alta" id="rs-evo-tabela" style="margin-top:12px;"></div>
-          <p class="rs-nota" style="margin-top:8px;">Todas as semanas usam os <b>parâmetros base atuais</b>, para serem comparáveis entre si — o número salvo no fechamento de cada semana fica registrado na coluna "Fechamento". Semanas com <b>cobertura</b> abaixo de 95% têm OSs sem abertura de peças e serviços; a margem delas é parcial. Clique numa semana para abrir a análise dela.</p>
+          <p class="rs-nota" style="margin-top:8px;">Todas as semanas usam os <b>parâmetros base atuais</b>, para serem comparáveis entre si — o número salvo no fechamento de cada semana fica registrado na coluna "Fechamento". Clique numa semana para abrir a análise dela.</p>
         </section>
 
         <section class="rs-card" aria-label="Faturamento por cliente">
@@ -10778,7 +11515,7 @@ const RS_CALC = (() => {
       const its = itensPorOS[l.os] || [];
       const cab = dados.oss[l.os];
       const r = { os: l.os, dia: l.dia, cliente: '', serv: 0, pecEst: 0, pecDiv: 0, custoEst: 0, custoDiv: 0,
-        pecSemDet: 0, semAbertura: 0, desconto: 0, total: 0, situacao: 'ok', itens: its, totalCabecalho: null };
+        semDetalhe: 0, desconto: 0, total: 0, situacao: 'ok', itens: its, totalCabecalho: null };
       if (its.length) {
         its.forEach(it => {
           r.desconto += it.desconto || 0;
@@ -10790,17 +11527,17 @@ const RS_CALC = (() => {
         if (cab && Math.abs(cab.total - (r.serv + r.pecEst + r.pecDiv)) > 1) { r.situacao = 'diverge'; r.totalCabecalho = cab.total; }
       } else if (dados.osDetalhe[l.os]) {
         r.cliente = dados.osDetalhe[l.os].cliente; // OS existe no detalhe, mas sem itens com valor
-        if (cab) { r.serv = cab.serv; r.pecSemDet = cab.pec; }
-        r.situacao = r.pecSemDet > 0 ? 'sem-detalhe' : 'ok';
+        if (cab) { r.serv = cab.serv; r.semDetalhe = cab.pec; }
+        r.situacao = r.semDetalhe > 0 ? 'sem-detalhe' : 'ok';
       } else if (cab) {
-        r.serv = cab.serv; r.pecSemDet = cab.pec; r.cliente = cab.cliente;
+        r.serv = cab.serv; r.semDetalhe = cab.pec; r.cliente = cab.cliente;
         r.situacao = cab.pec > 0 ? 'sem-detalhe' : 'ok';
       } else {
-        r.semAbertura = l.valor || 0;
+        r.semDetalhe = l.valor || 0;
         r.situacao = 'sem-dados';
       }
       if (!r.cliente) r.cliente = l.cliente || '(sem cliente)';
-      r.total = r.serv + r.pecEst + r.pecDiv + r.pecSemDet + r.semAbertura;
+      r.total = r.serv + r.pecEst + r.pecDiv + r.semDetalhe;
       return r;
     });
     oss.sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : +a.os - +b.os));
@@ -10817,7 +11554,7 @@ const RS_CALC = (() => {
   }
 
   function calcular(per, P, custoMO) {
-    const t = { serv: 0, pecEst: 0, pecDiv: 0, custoEst: 0, custoDiv: 0, pecSemDet: 0, semAbertura: 0 };
+    const t = { serv: 0, pecEst: 0, pecDiv: 0, custoEst: 0, custoDiv: 0, semDetalhe: 0 };
     per.oss.forEach(o => { Object.keys(t).forEach(k => { t[k] += o[k]; }); });
     const fs = 1 + P.reajServ / 100, fp = 1 + P.reajPec / 100;
     const despBase = (P.simples + P.adm + P.fin) / 100;
@@ -10847,14 +11584,14 @@ const RS_CALC = (() => {
     };
 
     const rDiv = t.pecDiv * fp;
-    const serv = bloco('serv', 'Serviços', t.serv * fs, custoMO == null ? null : custoMO, P.comissaoServ, P.metaServ);
-    const est = bloco('est', 'Peças de estoque', t.pecEst * fp, t.custoEst, P.comissaoPec, P.metaPec);
-    const div = bloco('div', 'Peças DIV', rDiv, t.custoDiv + rDiv * P.custoDivPct / 100, P.comissaoPec, P.metaPec);
+    const serv = bloco('serv', 'Serviços', t.serv * fs, custoMO == null ? null : custoMO, P.comissao, P.metaServ);
+    const est = bloco('est', 'Peças de estoque', t.pecEst * fp, t.custoEst, P.comissao, P.metaPec);
+    const div = bloco('div', 'Peças DIV', rDiv, t.custoDiv + rDiv * P.custoDivPct / 100, P.comissao, P.metaPec);
     const pecas = somar('pecas', 'Peças (todas)', [est, div]);
     const globalEst = somar('globalEst', 'Global sem DIV', [serv, est]);
     const globalTodas = somar('globalTodas', 'Global com DIV', [serv, est, div]);
 
-    const despPec = despBase + P.comissaoPec / 100;
+    const despPec = despBase + P.comissao / 100;
     const abaixo = [];
     per.oss.forEach(o => o.itens.forEach(it => {
       if (it.tipo !== 'est') return;
@@ -10910,7 +11647,7 @@ const RS_CALC = (() => {
       const mo = custoMaoDeObra(o.P, diasUteis(de, ate));
       const r = calcular(per, o.P, mo && mo.total);
       const ind = indicadores(per, r);
-      const semAbrir = r.t.pecSemDet + r.t.semAbertura;
+      const semAbrir = r.t.semDetalhe;
       out.push(Object.assign({ de, ate, serv: r.t.serv, pecEst: r.t.pecEst, pecDiv: r.t.pecDiv, semAbrir,
         lucroGlobal: r.globalEst.lucro, metaGlobal: r.globalEst.meta,
         cobertura: ind.fat > 0 ? (ind.fat - semAbrir) / ind.fat : null }, ind));
@@ -10925,7 +11662,7 @@ const RS_CALC = (() => {
 // ═══════════════════════════════════════════════════════════════════════════
 // Resultado Semanal — tela
 // ═══════════════════════════════════════════════════════════════════════════
-const RS_PADRAO = { simples: 12, adm: 5, fin: 5, comissaoServ: 0, comissaoPec: 0, metaServ: 25, metaPec: 25,
+const RS_PADRAO = { simples: 12, adm: 5, fin: 5, comissao: 0, metaServ: 25, metaPec: 25,
   folha: null, he: 10, encargos: 52, diasMes: 24, reajServ: 0, reajPec: 0, custoDivPct: 0 };
 const RS_METAS_PADRAO = { fat: 75000, divPct: null };
 
@@ -10935,8 +11672,7 @@ const RS_CAMPOS = [
   { k: 'simples', l: 'Simples Nacional', u: '%', step: 0.1 },
   { k: 'adm', l: 'Custo administrativo', u: '%', step: 0.1 },
   { k: 'fin', l: 'Custo financeiro', u: '%', step: 0.1 },
-  { k: 'comissaoServ', l: 'Comissão sobre serviços', s: 'vendedores', u: '%', step: 0.1 },
-  { k: 'comissaoPec', l: 'Comissão sobre peças', s: 'vendedores', u: '%', step: 0.1 },
+  { k: 'comissao', l: 'Comissão de vendas', s: 'sobre a receita, peças e serviços', u: '%', step: 0.1 },
   { g: 'Metas de rentabilidade' },
   { k: 'metaServ', l: 'Meta — serviços', u: '%', step: 0.5 },
   { k: 'metaPec', l: 'Meta — peças', u: '%', step: 0.5 },
@@ -10957,7 +11693,7 @@ const RS_CAMPOS = [
 const RS = {
   // URL /exec do apps-script/resultado-semanal.gs (guia: integracao/LEIA-ME-resultado-semanal.md).
   // Enquanto não for colada, o módulo funciona só com o arquivo arrastado e guarda tudo no navegador.
-  API: 'COLE_AQUI_A_URL_DO_RESULTADO_SEMANAL',
+  API: CONFIG.RESULTADO_SEMANAL_API,
   iniciado: false, arquivos: {}, dados: null, finalizadas: null, finErro: null, carregandoFin: false,
   banco: null, bancoErro: null, carregandoBanco: false, fechamentos: [],
   fonte: 'planilha', de: '', ate: '', diasManual: null, base: null, cen: null, metas: null,
@@ -10970,11 +11706,23 @@ const rsP = (v, dec = 1) => (v == null || !isFinite(v)) ? '—' : (v * 100).toLo
 const rsPP = v => (v >= 0 ? '+' : '−') + Math.abs(v * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' p.p.';
 const rsN = (v, dec = 0) => (v == null || !isFinite(v)) ? '—' : v.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const rsDia = k => { if (!k) return '—'; const [y, m, d] = k.split('-'); return d + '/' + m + '/' + y; };
-const rsDiaCurto = k => { if (!k) return '—'; const [, m, d] = k.split('-'); return d + '/' + m; };
+const rsDiaCurto = k => { if (!k) return '—'; const [y, m, d] = k.split('-'); return d + '/' + m + '/' + y; };
+/** Só para o eixo X dos gráficos: com 26 semanas, o ano não cabe. */
+const rsDiaEixo = k => { if (!k) return '—'; const [, m, d] = k.split('-'); return d + '/' + m; };
 
 function rsLer(chave, padrao) {
-  try { const v = JSON.parse(localStorage.getItem(chave) || 'null'); return Object.assign({}, padrao, v || {}); }
+  try { const v = JSON.parse(localStorage.getItem(chave) || 'null'); return rsMigrar(Object.assign({}, padrao, v || {})); }
   catch (e) { return Object.assign({}, padrao); }
+}
+
+/** A comissão era separada em serviços e peças. Vale a maior das duas — assumir
+ *  a menor esconderia despesa e inflaria a margem. */
+function rsMigrar(P) {
+  if (P && P.comissao == null && (P.comissaoServ != null || P.comissaoPec != null)) {
+    P.comissao = Math.max(Number(P.comissaoServ) || 0, Number(P.comissaoPec) || 0);
+  }
+  delete P.comissaoServ; delete P.comissaoPec;
+  return P;
 }
 function rsGravar(chave, valor) { try { localStorage.setItem(chave, JSON.stringify(valor)); } catch (e) { /* navegador sem storage: segue sem lembrar */ } }
 
@@ -11016,7 +11764,6 @@ function rsDefinirPeriodo(de, ate, recalcular = true) {
   RS.de = de; RS.ate = ate; RS.diasManual = null;
   rs$('rs-de').value = de; rs$('rs-ate').value = ate;
   rs$('rs-titulo-periodo').textContent = rsDia(de) + ' a ' + rsDia(ate);
-  rsCarregarAposta();
   if (recalcular) rsRecalcular();
 }
 
@@ -11213,12 +11960,12 @@ function rsRenderAvisos(per, rb) {
   const diverge = per.oss.filter(o => o.situacao === 'diverge');
   const lista = arr => arr.map(o => o.os).join(', ');
   if (!RS.dados) {
-    av.push(['info', 'fa-circle-info', 'Mostrando só o faturamento anotado na planilha do gerente. <b>Arraste o relatório "OSs detalhe"</b> para abrir peças e serviços e calcular a rentabilidade.']);
+    av.push(['info', 'fa-circle-info', 'A planilha do gerente diz <b>quais OSs</b> fecharam na semana, mas ainda falta o <b>conteúdo</b> de cada uma — peças e serviços vêm da <b>vw_os_produto_serviço</b>. Publique o <code>apps-script/resultado-semanal.gs</code> e cole o /exec em <code>CONFIG.RESULTADO_SEMANAL_API</code> (guia em <code>integracao/LEIA-ME-resultado-semanal.md</code>). Enquanto isso, dá para arrastar o relatório "OSs detalhe" à mão.']);
   } else if (semDados.length) {
-    av.push(['', 'fa-triangle-exclamation', '<b>' + semDados.length + ' OS(s) finalizada(s) sem itens no detalhe</b> (banco ou arquivo) — ' + rsR(semDados.reduce((s, o) => s + o.semAbertura, 0)) + ', valor da planilha do gerente, fica fora da rentabilidade: ' + lista(semDados) + '. Amplie a janela do extrator (--desde) ou use um arquivo com intervalo de datas maior.']);
+    av.push(['', 'fa-triangle-exclamation', '<b>' + semDados.length + ' OS(s) finalizada(s) sem itens no detalhe</b> (banco ou arquivo) — ' + rsR(semDados.reduce((s, o) => s + o.semDetalhe, 0)) + ', valor da planilha do gerente, fica fora da rentabilidade: ' + lista(semDados) + '. Amplie a janela do extrator (--desde) ou use um arquivo com intervalo de datas maior.']);
   }
   if (semDet.length) {
-    av.push(['', 'fa-triangle-exclamation', '<b>' + semDet.length + ' OS(s) sem linhas no detalhe</b>: o serviço entra pelo relatório de OSs, mas ' + rsR(semDet.reduce((s, o) => s + o.pecSemDet, 0)) + ' de peças ficam sem custo e fora da rentabilidade de peças: ' + lista(semDet) + '.']);
+    av.push(['', 'fa-triangle-exclamation', '<b>' + semDet.length + ' OS(s) sem linhas no detalhe</b>: o serviço entra pelo relatório de OSs, mas ' + rsR(semDet.reduce((s, o) => s + o.semDetalhe, 0)) + ' de peças ficam sem custo e fora da rentabilidade de peças: ' + lista(semDet) + '.']);
   }
   if (diverge.length) {
     av.push(['', 'fa-scale-unbalanced', '<b>Valores diferentes entre detalhe e relatório de OSs</b> em ' + diverge.length + ' OS(s): ' + diverge.map(o => o.os + ' (' + rsR(o.serv + o.pecEst + o.pecDiv) + ' × ' + rsR(o.totalCabecalho) + ')').join(', ') + '. A análise usa o detalhe.']);
@@ -11233,7 +11980,7 @@ function rsRenderAvisos(per, rb) {
   rs$('rs-avisos').innerHTML = av.map(a => '<div class="rs-aviso ' + a[0] + '"><i class="fa-solid ' + a[1] + '" style="margin-top:3px;"></i><div>' + a[2] + '</div></div>').join('');
 }
 
-// ── Placar (método da skill Placar: poucos números, meta, status, tendência, uma aposta) ──
+// ── Placar (método da skill Placar: poucos números, meta, status, tendência) ──
 function rsStatusMargem(v, meta) {
   if (v == null || meta == null) return null;
   if (v >= meta) return 'bom';
@@ -11311,13 +12058,9 @@ function rsFrases(per, rb, ind) {
   return fr.slice(0, 3);
 }
 
-function rsGuardarAposta() {
-  try { localStorage.setItem('rs_aposta_' + RS.de + '_' + RS.ate, rs$('rs-aposta').value); } catch (e) { }
-}
-
 async function rsSalvarFechamento() {
   if (!RS.ultimo || !RS.ultimo.ind) return;
-  const f = { de: RS.de, ate: RS.ate, ind: RS.ultimo.ind, aposta: rs$('rs-aposta').value, base: Object.assign({}, RS.base) };
+  const f = { de: RS.de, ate: RS.ate, ind: RS.ultimo.ind, base: Object.assign({}, RS.base) };
   const remoto = rsApiLigada() && RV.token;
   if (remoto) {
     try { const r = await rsPost('fechamento_salvar', { fechamento: f }); f.salvoEm = r.salvoEm; f.salvoPor = r.salvoPor; }
@@ -11325,7 +12068,6 @@ async function rsSalvarFechamento() {
   } else { f.salvoEm = new Date().toISOString(); f.salvoPor = RV.usuario || ''; }
   RS.fechamentos = (RS.fechamentos || []).filter(x => !(x.de === f.de && x.ate === f.ate)).concat([f]);
   if (!remoto) rsGravar('rs_historico', RS.fechamentos.slice(-104));
-  try { localStorage.removeItem('rs_aposta_' + f.de + '_' + f.ate); } catch (e) { }
   rsAtualizarSemanas(); rsRender();
   alert('Fechamento de ' + rsDia(RS.de) + ' a ' + rsDia(RS.ate) + ' salvo ' + (remoto ? 'para todos os administradores.' : 'neste navegador.') + ' Na próxima semana o placar mostra a tendência contra ele.');
 }
@@ -11338,24 +12080,23 @@ function rsAgruparClientes(per) {
   const m = {};
   per.oss.forEach(o => {
     const chave = RS_CALC.normH(rsNomeCurto(o.cliente)) || o.cliente;
-    const c = m[chave] || (m[chave] = { cliente: o.cliente, serv: 0, pec: 0, sem: 0, total: 0, n: 0 });
+    const c = m[chave] || (m[chave] = { cliente: o.cliente, serv: 0, pec: 0, total: 0, n: 0 });
     if (o.cliente.length > c.cliente.length) c.cliente = o.cliente;
-    c.serv += o.serv; c.pec += o.pecEst + o.pecDiv + o.pecSemDet; c.sem += o.semAbertura; c.total += o.total; c.n++;
+    c.serv += o.serv; c.pec += o.pecEst + o.pecDiv + o.semDetalhe; c.total += o.total; c.n++;
   });
   return Object.values(m).sort((a, b) => b.total - a.total);
 }
 
 function rsRenderClientes(per) {
   const cli = rsAgruparClientes(per);
-  const tot = cli.reduce((s, c) => ({ serv: s.serv + c.serv, pec: s.pec + c.pec, sem: s.sem + c.sem, total: s.total + c.total, n: s.n + c.n }), { serv: 0, pec: 0, sem: 0, total: 0, n: 0 });
-  const temSem = tot.sem > 0.005;
+  const tot = cli.reduce((s, c) => ({ serv: s.serv + c.serv, pec: s.pec + c.pec, total: s.total + c.total, n: s.n + c.n }), { serv: 0, pec: 0, total: 0, n: 0 });
   rs$('rs-cli-resumo').textContent = cli.length + ' clientes · ' + tot.n + ' OSs · ' + rsR(tot.total);
 
   rs$('rs-tabela-clientes').innerHTML = '<table class="rs-t"><thead><tr><th>Cliente</th><th class="n">OSs</th><th class="n"><span class="rs-sw" style="background:var(--rs-serv)"></span>Serviços</th><th class="n"><span class="rs-sw" style="background:var(--rs-pec)"></span>Peças</th>'
-    + (temSem ? '<th class="n"><span class="rs-sw" style="background:var(--rs-neutro)"></span>Sem abertura</th>' : '') + '<th class="n">Total</th><th class="n">%</th></tr></thead><tbody>'
+    + '<th class="n">Total</th><th class="n">%</th></tr></thead><tbody>'
     + cli.map(c => '<tr><td class="cli" title="' + rsEsc(c.cliente) + '">' + rsEsc(rsNomeCurto(c.cliente)) + '</td><td class="n">' + c.n + '</td><td class="n">' + rsR(c.serv) + '</td><td class="n">' + rsR(c.pec) + '</td>'
-      + (temSem ? '<td class="n">' + rsR(c.sem) + '</td>' : '') + '<td class="n"><b>' + rsR(c.total) + '</b></td><td class="n">' + rsP(tot.total ? c.total / tot.total : null, 1) + '</td></tr>').join('')
-    + '<tr class="tot"><td>Total</td><td class="n">' + tot.n + '</td><td class="n">' + rsR(tot.serv) + '</td><td class="n">' + rsR(tot.pec) + '</td>' + (temSem ? '<td class="n">' + rsR(tot.sem) + '</td>' : '') + '<td class="n">' + rsR(tot.total) + '</td><td class="n">100%</td></tr></tbody></table>';
+      + '<td class="n"><b>' + rsR(c.total) + '</b></td><td class="n">' + rsP(tot.total ? c.total / tot.total : null, 1) + '</td></tr>').join('')
+    + '<tr class="tot"><td>Total</td><td class="n">' + tot.n + '</td><td class="n">' + rsR(tot.serv) + '</td><td class="n">' + rsR(tot.pec) + '</td>' + '<td class="n">' + rsR(tot.total) + '</td><td class="n">100%</td></tr></tbody></table>';
 
   const wrap = rs$('rs-grafico-wrap');
   wrap.style.height = Math.max(180, cli.length * 34 + 70) + 'px';
@@ -11366,7 +12107,6 @@ function rsRenderClientes(per) {
     { label: 'Serviços', data: cli.map(c => c.serv), backgroundColor: '#2a78d6' },
     { label: 'Peças', data: cli.map(c => c.pec), backgroundColor: '#eb6834' }
   ];
-  if (temSem) ds.push({ label: 'Sem abertura', data: cli.map(c => c.sem), backgroundColor: '#b9b8b1' });
   ds.forEach(d => Object.assign(d, { borderColor: '#ffffff', borderWidth: { right: 2 }, borderSkipped: false, barPercentage: 0.78, categoryPercentage: 0.9 }));
   const totais = cli.map(c => c.total);
   const maximo = Math.max(1, ...totais);
@@ -11524,23 +12264,22 @@ const RS_SITUACAO = {
   'sem-dados': ['ruim', 'fa-circle-xmark', 'Sem itens no detalhe']
 };
 function rsRenderOSs(per) {
-  const t = per.oss.reduce((s, o) => ({ serv: s.serv + o.serv, est: s.est + o.pecEst, div: s.div + o.pecDiv, sem: s.sem + o.pecSemDet + o.semAbertura, desconto: s.desconto + (o.desconto || 0), custo: s.custo + o.custoEst + o.custoDiv, total: s.total + o.total }), { serv: 0, est: 0, div: 0, sem: 0, desconto: 0, custo: 0, total: 0 });
+  const t = per.oss.reduce((s, o) => ({ serv: s.serv + o.serv, est: s.est + o.pecEst, div: s.div + o.pecDiv, desconto: s.desconto + (o.desconto || 0), custo: s.custo + o.custoEst + o.custoDiv, total: s.total + o.total }), { serv: 0, est: 0, div: 0, desconto: 0, custo: 0, total: 0 });
   const temDesconto = t.desconto > 0.005;
-  const temSem = t.sem > 0.005;
-  rs$('rs-oss-resumo').textContent = per.oss.length + ' OSs · ' + rsR(t.total) + (temDesconto ? ' · ' + rsR(t.desconto) + ' em desconto' : '') + (temSem ? ' · ' + rsR(t.sem) + ' sem abertura' : '');
-  rs$('rs-tabela-oss').innerHTML = '<table class="rs-t"><thead><tr><th>OS</th><th>Finalizada</th><th>Cliente</th><th class="n">Serviços</th><th class="n">Peças estoque</th><th class="n">Peças DIV</th>' + (temSem ? '<th class="n">Sem abertura</th>' : '') + '<th class="n">Custo peças</th>' + (temDesconto ? '<th class="n">Desconto</th>' : '') + '<th class="n">Total</th><th>Situação</th></tr></thead><tbody>'
+  rs$('rs-oss-resumo').textContent = per.oss.length + ' OSs · ' + rsR(t.total) + (temDesconto ? ' · ' + rsR(t.desconto) + ' em desconto' : '');
+  rs$('rs-tabela-oss').innerHTML = '<table class="rs-t"><thead><tr><th>OS</th><th>Finalizada</th><th>Cliente</th><th class="n">Serviços</th><th class="n">Peças estoque</th><th class="n">Peças DIV</th>' + '<th class="n">Custo peças</th>' + (temDesconto ? '<th class="n">Desconto</th>' : '') + '<th class="n">Total</th><th>Situação</th></tr></thead><tbody>'
     + per.oss.map(o => {
       const s = RS_SITUACAO[o.situacao];
       return '<tr><td><b>' + rsEsc(o.os) + '</b></td><td>' + rsDiaCurto(o.dia) + '</td><td title="' + rsEsc(o.cliente) + '">' + rsEsc(rsNomeCurto(o.cliente)) + '</td><td class="n">' + rsR(o.serv) + '</td><td class="n">' + rsR(o.pecEst) + '</td><td class="n">' + rsR(o.pecDiv) + '</td>'
-        + (temSem ? '<td class="n">' + rsR(o.pecSemDet + o.semAbertura) + '</td>' : '') + '<td class="n">' + rsR(o.custoEst + o.custoDiv) + '</td>'
+        + '<td class="n">' + rsR(o.custoEst + o.custoDiv) + '</td>'
         + (temDesconto ? '<td class="n' + (o.desconto > 0.005 ? ' neg' : '') + '">' + (o.desconto > 0.005 ? rsR(o.desconto) : '—') + '</td>' : '') + '<td class="n"><b>' + rsR(o.total) + '</b></td>'
         + '<td><span class="rs-chip ' + s[0] + '"><i class="fa-solid ' + s[1] + '"></i>' + s[2] + '</span></td></tr>';
     }).join('')
-    + '<tr class="tot"><td colspan="3">Total</td><td class="n">' + rsR(t.serv) + '</td><td class="n">' + rsR(t.est) + '</td><td class="n">' + rsR(t.div) + '</td>' + (temSem ? '<td class="n">' + rsR(t.sem) + '</td>' : '') + '<td class="n">' + rsR(t.custo) + '</td>' + (temDesconto ? '<td class="n">' + rsR(t.desconto) + '</td>' : '') + '<td class="n">' + rsR(t.total) + '</td><td></td></tr></tbody></table>';
+    + '<tr class="tot"><td colspan="3">Total</td><td class="n">' + rsR(t.serv) + '</td><td class="n">' + rsR(t.est) + '</td><td class="n">' + rsR(t.div) + '</td>' + '<td class="n">' + rsR(t.custo) + '</td>' + (temDesconto ? '<td class="n">' + rsR(t.desconto) + '</td>' : '') + '<td class="n">' + rsR(t.total) + '</td><td></td></tr></tbody></table>';
 }
 
 // ── Backend (apps-script/resultado-semanal.gs) ──
-const rsDataHora = iso => { const d = new Date(iso); return !iso || isNaN(d) ? '—' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
+const rsDataHora = iso => { const d = new Date(iso); return !iso || isNaN(d) ? '—' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 function rsApiLigada() { return /^https?:\/\//.test(RS.API || ''); }
 
 async function rsPost(action, corpo) {
@@ -11558,7 +12297,7 @@ async function rsCarregarRemoto() {
   await Promise.all([
     rsPost('parametros_ler').then(p => {
       const cenarioEraBase = rsDiferencas().length === 0;
-      if (p.base && p.base.valor) { RS.base = Object.assign({}, RS_PADRAO, p.base.valor); rsGravar('rs_params_base', RS.base); }
+      if (p.base && p.base.valor) { RS.base = rsMigrar(Object.assign({}, RS_PADRAO, p.base.valor)); rsGravar('rs_params_base', RS.base); }
       if (p.metas && p.metas.valor) { RS.metas = Object.assign({}, RS_METAS_PADRAO, p.metas.valor); rsGravar('rs_metas', RS.metas); }
       if (cenarioEraBase) { RS.cen = Object.assign({}, RS.base); rsGravar('rs_params_cenario', RS.cen); }
       if (!p.base && RS.base.folha > 0) rsSalvarRemoto('base'); // 1ª vez com servidor: sobe a base deste navegador
@@ -11568,8 +12307,7 @@ async function rsCarregarRemoto() {
       // Fechamentos antigos só deste navegador continuam valendo até serem salvos de novo no servidor.
       const locais = rsFechamentosLocais().filter(l => !f.some(x => x.de === l.de && x.ate === l.ate));
       RS.fechamentos = f.concat(locais);
-      rsCarregarAposta();
-    }).catch(e => console.warn('Resultado Semanal — fechamentos:', e.message)),
+      }).catch(e => console.warn('Resultado Semanal — fechamentos:', e.message)),
     rsCarregarBanco(false)
   ]);
   rsRecalcular();
@@ -11604,15 +12342,6 @@ function rsSalvarRemoto(chave) {
 }
 
 // ── Semanas anteriores ──
-function rsCarregarAposta() {
-  const ap = rs$('rs-aposta');
-  if (!ap) return;
-  let rascunho = null;
-  try { rascunho = localStorage.getItem('rs_aposta_' + RS.de + '_' + RS.ate); } catch (e) { }
-  const f = rsFechamentoDoPeriodo();
-  ap.value = rascunho != null ? rascunho : (f ? f.aposta || '' : '');
-}
-
 function rsSemanaISO(k) {
   const [y, m, d] = k.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
@@ -11657,7 +12386,7 @@ function rsUsarParametrosDaEpoca() {
 // ── Evolução semana a semana ──
 /** Configurações dos dois gráficos — as mesmas servem à tela e ao PDF. */
 function rsCfgEvolucao(serie, idxAtual) {
-  const rot = serie.map(s => rsDiaCurto(s.de));
+  const rot = serie.map(s => rsDiaEixo(s.de));
   const titulo = it => { const s = serie[it[0].dataIndex]; return rsDia(s.de) + ' a ' + rsDia(s.ate) + ' · ' + s.n + ' OSs'; };
   const faixa = {
     id: 'rsFaixa',
@@ -11674,7 +12403,7 @@ function rsCfgEvolucao(serie, idxAtual) {
 
   const barras = [
     { label: 'Serviços', k: 'serv', cor: '#2a78d6' }, { label: 'Peças de estoque', k: 'pecEst', cor: '#eb6834' },
-    { label: 'Peças DIV', k: 'pecDiv', cor: '#1baf7a' }, { label: 'Sem abertura', k: 'semAbrir', cor: '#b9b8b1' }
+    { label: 'Peças DIV', k: 'pecDiv', cor: '#1baf7a' }
   ].filter(b => serie.some(s => s[b.k] > 0.005))
     .map(b => ({ label: b.label, data: serie.map(s => s[b.k]), backgroundColor: b.cor, borderColor: '#ffffff', borderWidth: { top: 2 }, borderSkipped: false, maxBarThickness: 46 }));
   const fat = {
@@ -11723,15 +12452,13 @@ function rsRenderEvolucao() {
 
   const fech = {};
   (RS.fechamentos || []).forEach(f => { fech[f.de + '_' + f.ate] = f; });
-  rs$('rs-evo-tabela').innerHTML = '<table class="rs-t"><thead><tr><th>Semana</th><th class="n">OSs</th><th class="n">Faturamento</th><th class="n">Margem serviços</th><th class="n">Margem peças est.</th><th class="n">Margem global</th><th class="n">Peças DIV</th><th class="n">Cobertura</th><th>Fechamento</th></tr></thead><tbody>'
+  rs$('rs-evo-tabela').innerHTML = '<table class="rs-t"><thead><tr><th>Semana</th><th class="n">OSs</th><th class="n">Faturamento</th><th class="n">Margem serviços</th><th class="n">Margem peças est.</th><th class="n">Margem global</th><th class="n">Peças DIV</th><th>Fechamento</th></tr></thead><tbody>'
     + serie.slice().reverse().map(s => {
       const f = fech[s.de + '_' + s.ate];
-      const parcial = s.cobertura != null && s.cobertura < 0.95;
       return '<tr class="clicavel' + (s.de === RS.de && s.ate === RS.ate ? ' atual' : '') + '" onclick="rsEscolherSemana(\'' + s.de + '\')" title="Abrir a análise desta semana">'
         + '<td>' + rsDiaCurto(s.de) + ' a ' + rsDiaCurto(s.ate) + '</td><td class="n">' + s.n + '</td><td class="n">' + rsR(s.fat, 0) + '</td>'
         + '<td class="n">' + rsP(s.mServ) + '</td><td class="n">' + rsP(s.mEst) + '</td><td class="n">' + rsP(s.mGlobal) + '</td><td class="n">' + rsP(s.divPct, 0) + '</td>'
-        + '<td class="n"' + (parcial ? ' style="color:var(--rs-alerta);font-weight:800;"' : '') + '>' + (s.cobertura == null ? '—' : rsP(s.cobertura, 0)) + '</td>'
-        + '<td>' + (f ? '<span class="rs-chip neutro" title="' + rsEsc(f.aposta ? 'Aposta: ' + f.aposta : 'Sem aposta registrada') + '"><i class="fa-solid fa-thumbtack"></i>' + rsDataHora(f.salvoEm).slice(0, 5) + '</span>' : '') + '</td></tr>';
+        + '<td>' + (f ? '<span class="rs-chip neutro" title="Fechamento salvo por ' + rsEsc(f.salvoPor || '—') + '"><i class="fa-solid fa-thumbtack"></i>' + rsDataHora(f.salvoEm).slice(0, 5) + '</span>' : '') + '</td></tr>';
     }).join('') + '</tbody></table>';
 
   ['fat', 'mg'].forEach(k => { if (RS.graficosEvo[k]) { RS.graficosEvo[k].destroy(); RS.graficosEvo[k] = null; } });
@@ -11971,22 +12698,14 @@ async function rsMontarPdf(u) {
   });
   y += tileH + 8;
 
-  // ── Leitura e aposta ──
+  // ── Leitura ──
   secao('Leitura da semana', 40);
   rsFrases(u.per, u.rb, u.ind).forEach(f => {
     garantir(8);
     doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]); doc.circle(M + 1.2, y + 2.4, 0.75, 'F');
     texto(f, { x: M + 4.5, larg: CW - 4.5, depois: 2.2 });
   });
-  const aposta = (rs$('rs-aposta').value || '').trim();
-  fonte(10, aposta ? 'bold' : 'italic');
-  const lsAposta = doc.splitTextToSize(T(aposta || '(a definir na reunião)'), CW - 8);
-  const altAposta = 10 + lsAposta.length * 4.4;
-  y += 2; garantir(altAposta);
-  doc.setFillColor(245, 248, 252); doc.setDrawColor(207, 222, 240); doc.roundedRect(M, y, CW, altAposta, 2, 2, 'FD');
-  fonte(7, 'bold', NAVY); doc.text('A APOSTA DA SEMANA', M + 4, y + 5.2);
-  fonte(10, aposta ? 'bold' : 'italic', aposta ? TINTA : MUTED); doc.text(lsAposta, M + 4, y + 10.5);
-  y += altAposta + 6;
+  y += 4;
 
   const avisos = Array.from(rs$('rs-avisos').children).map(el => el.textContent.trim()).filter(Boolean);
   const difs = rsDiferencas();
@@ -12009,8 +12728,8 @@ async function rsMontarPdf(u) {
     y += gh + 11;
     const fech = {};
     (RS.fechamentos || []).forEach(f => { fech[f.de + '_' + f.ate] = f; });
-    tabela(['Semana', 'OSs', 'Faturamento', 'Mg. serviços', 'Mg. peças est.', 'Mg. global', 'Peças DIV', 'Cobertura', 'Fechada'],
-      u.serie.slice().reverse().map(s => [rsDiaCurto(s.de) + ' a ' + rsDiaCurto(s.ate), s.n, rsR(s.fat, 0), rsP(s.mServ), rsP(s.mEst), rsP(s.mGlobal), rsP(s.divPct, 0), s.cobertura == null ? '—' : rsP(s.cobertura, 0), fech[s.de + '_' + s.ate] ? 'sim' : '']),
+    tabela(['Semana', 'OSs', 'Faturamento', 'Mg. serviços', 'Mg. peças est.', 'Mg. global', 'Peças DIV', 'Fechada'],
+      u.serie.slice().reverse().map(s => [rsDiaCurto(s.de) + ' a ' + rsDiaCurto(s.ate), s.n, rsR(s.fat, 0), rsP(s.mServ), rsP(s.mEst), rsP(s.mGlobal), rsP(s.divPct, 0), fech[s.de + '_' + s.ate] ? 'sim' : '']),
       { direita: [1, 2, 3, 4, 5, 6, 7], tam: 7.8, celula: d => { if (d.section === 'body' && u.serie.slice().reverse()[d.row.index].de === RS.de) d.cell.styles.fillColor = [238, 242, 255]; } });
   }
 
@@ -12024,10 +12743,9 @@ async function rsMontarPdf(u) {
     y += altCli + 5;
   }
   const totCli = cli.reduce((s, c) => s + c.total, 0);
-  const temSem = cli.some(c => c.sem > 0.005);
-  tabela(['Cliente', 'OSs', 'Serviços', 'Peças'].concat(temSem ? ['Sem abertura'] : [], ['Total', '%']),
-    cli.map(c => [c.cliente, c.n, rsR(c.serv), rsR(c.pec)].concat(temSem ? [rsR(c.sem)] : [], [rsR(c.total), rsP(totCli ? c.total / totCli : null)])),
-    { direita: temSem ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5], colunas: { 0: { cellWidth: 62 } } });
+  tabela(['Cliente', 'OSs', 'Serviços', 'Peças', 'Total', '%'],
+    cli.map(c => [c.cliente, c.n, rsR(c.serv), rsR(c.pec), rsR(c.total), rsP(totCli ? c.total / totCli : null)]),
+    { direita: [1, 2, 3, 4, 5], colunas: { 0: { cellWidth: 62 } } });
 
   // ── Rentabilidade ──
   secao('Rentabilidade — peças e serviços' + (difs.length ? ' (cenário "E se")' : ''), 80);
@@ -12108,14 +12826,12 @@ async function rsMontarPdf(u) {
   abcTabela('Serviços', servicosAbc);
 
   // ── OSs ──
-  const temSemPdf = u.per.oss.some(o => (o.pecSemDet + o.semAbertura) > 0.005);
   const temDescontoPdf = u.per.oss.some(o => (o.desconto || 0) > 0.005);
   secao('OSs consideradas (' + u.per.oss.length + ')', 30);
-  const posSem = 6, posDesc = temSemPdf ? 7 : 6, posTotal = posDesc + (temDescontoPdf ? 1 : 0);
-  const direitaOs = [3, 4, 5].concat(temSemPdf ? [posSem] : []).concat(temDescontoPdf ? [posDesc] : []).concat([posTotal]);
-  tabela(['OS', 'Data', 'Cliente', 'Serviços', 'Peças est.', 'Peças DIV'].concat(temSemPdf ? ['Sem abertura'] : []).concat(temDescontoPdf ? ['Desconto'] : []).concat(['Total', 'Situação']),
+  const posDesc = 6, posTotal = posDesc + (temDescontoPdf ? 1 : 0);
+  const direitaOs = [3, 4, 5].concat(temDescontoPdf ? [posDesc] : []).concat([posTotal]);
+  tabela(['OS', 'Data', 'Cliente', 'Serviços', 'Peças est.', 'Peças DIV'].concat(temDescontoPdf ? ['Desconto'] : []).concat(['Total', 'Situação']),
     u.per.oss.map(o => [o.os, rsDiaCurto(o.dia), rsNomeCurto(o.cliente), rsR(o.serv), rsR(o.pecEst), rsR(o.pecDiv)]
-      .concat(temSemPdf ? [rsR(o.pecSemDet + o.semAbertura)] : [])
       .concat(temDescontoPdf ? [o.desconto > 0.005 ? rsR(o.desconto) : '—'] : []).concat([rsR(o.total), RS_SITUACAO[o.situacao][2]])),
     { direita: direitaOs, tam: 7, colunas: { 2: { cellWidth: 40 } },
       celula: d => { const ultima = posTotal + 1; if (d.section === 'body' && d.column.index === ultima) { const s = RS_SITUACAO[u.per.oss[d.row.index].situacao][0]; d.cell.styles.textColor = COR[s] || CINZA; } } });
@@ -12152,8 +12868,6 @@ function rsTextoResumo() {
   });
   linhas.push('', '*Leitura*');
   rsFrases(u.per, u.rb, u.ind).forEach(f => linhas.push('• ' + tira(f)));
-  const ap = (rs$('rs-aposta').value || '').trim();
-  linhas.push('', '*A aposta da semana*', ap || '(a definir na reunião)');
   return linhas.join('\n');
 }
 async function rsCopiarResumo() {
@@ -12178,7 +12892,7 @@ function rsBaixarExcel() {
 
   add('Placar', [['Resultado semanal', rsDia(RS.de) + ' a ' + rsDia(RS.ate)], [], ['Indicador', 'Valor', 'Meta', 'Status']]
     .concat(rsIndicadoresPlacar(u.ind).map(i => [i.l, i.dif === 'pp' ? r4(i.v) : r2(i.v), i.meta == null ? null : (i.dif === 'pp' ? r4(i.meta) : r2(i.meta)), i.st ? RS_STATUS[i.st][1] : '']))
-    .concat([[], ['Leitura']], rsFrases(u.per, u.rb, u.ind).map(f => [String(f).replace(/<[^>]+>/g, '')]), [[], ['Aposta da semana', rs$('rs-aposta').value || '']]));
+    .concat([[], ['Leitura']], rsFrases(u.per, u.rb, u.ind).map(f => [String(f).replace(/<[^>]+>/g, '')])));
 
   add('Por cliente', [['Cliente', 'OSs', 'Serviços', 'Peças', 'Sem abertura', 'Total']].concat(rsAgruparClientes(u.per).map(c => [c.cliente, c.n, r2(c.serv), r2(c.pec), r2(c.sem), r2(c.total)])));
 
@@ -12188,8 +12902,8 @@ function rsBaixarExcel() {
     lin('Financeiro', 'fin'), lin('Comissão', 'com'), lin('Resultado', 'lucro'), lin('Margem', 'margem', r4), lin('Meta', 'meta', r4), lin('Preço mínimo', 'precoMin'), lin('Folga', 'folga'),
     [], ['Mão de obra no período', r2(u.moCen && u.moCen.total), 'dias', u.dias]]);
 
-  add('OSs', [['OS', 'Finalizada', 'Cliente', 'Serviços', 'Peças estoque', 'Peças DIV', 'Sem abertura', 'Custo estoque', 'Custo DIV', 'Desconto', 'Total', 'Situação']]
-    .concat(u.per.oss.map(o => [o.os, rsDia(o.dia), o.cliente, r2(o.serv), r2(o.pecEst), r2(o.pecDiv), r2(o.pecSemDet + o.semAbertura), r2(o.custoEst), r2(o.custoDiv), r2(o.desconto || 0), r2(o.total), RS_SITUACAO[o.situacao][2]])));
+  add('OSs', [['OS', 'Finalizada', 'Cliente', 'Serviços', 'Peças estoque', 'Peças DIV', 'Custo estoque', 'Custo DIV', 'Desconto', 'Total', 'Situação']]
+    .concat(u.per.oss.map(o => [o.os, rsDia(o.dia), o.cliente, r2(o.serv), r2(o.pecEst), r2(o.pecDiv), r2(o.custoEst), r2(o.custoDiv), r2(o.desconto || 0), r2(o.total), RS_SITUACAO[o.situacao][2]])));
 
   const itens = [['OS', 'Cliente', 'Tipo', 'Código', 'Descrição', 'Qtd', 'Venda', 'Desconto', 'Custo']];
   u.per.oss.forEach(o => o.itens.forEach(it => itens.push([o.os, o.cliente, it.tipo === 'serv' ? 'Serviço' : it.tipo === 'div' ? 'Peça DIV' : 'Peça estoque', it.codigo, it.descricao, it.qtd, r2(it.receita), r2(it.desconto || 0), r2(it.custo)])));
@@ -12202,8 +12916,8 @@ function rsBaixarExcel() {
   add('Curva ABC - Serviços', abcCab.concat(abcLinhas(servicosTodos)));
   add('Itens', itens);
   add('Abaixo do custo', [['OS', 'Cliente', 'Código', 'Descrição', 'Qtd', 'Venda', 'Custo', 'Sobra']].concat(u.rc.abaixo.map(a => [a.os, a.cliente, a.codigo, a.descricao, a.qtd, r2(a.receita), r2(a.custo), r2(a.sobra)])));
-  if (u.serie) add('Evolução', [['Semana (segunda)', 'Até', 'OSs', 'Faturamento', 'Serviços', 'Peças estoque', 'Peças DIV', 'Sem abertura', 'Margem serviços', 'Margem peças estoque', 'Margem global sem DIV', 'Peças DIV / peças', 'Cobertura']]
-    .concat(u.serie.map(s => [rsDia(s.de), rsDia(s.ate), s.n, r2(s.fat), r2(s.serv), r2(s.pecEst), r2(s.pecDiv), r2(s.semAbrir), r4(s.mServ), r4(s.mEst), r4(s.mGlobal), r4(s.divPct), r4(s.cobertura)])));
+  if (u.serie) add('Evolução', [['Semana (segunda)', 'Até', 'OSs', 'Faturamento', 'Serviços', 'Peças estoque', 'Peças DIV', 'Margem serviços', 'Margem peças estoque', 'Margem global sem DIV', 'Peças DIV / peças']]
+    .concat(u.serie.map(s => [rsDia(s.de), rsDia(s.ate), s.n, r2(s.fat), r2(s.serv), r2(s.pecEst), r2(s.pecDiv), r4(s.mServ), r4(s.mEst), r4(s.mGlobal), r4(s.divPct)])));
   add('Parâmetros', [['Parâmetro', 'Base', 'Cenário']].concat(RS_CAMPOS.filter(c => c.k && !c.meta).map(c => [c.l + ' (' + c.u + ')', RS.base[c.k], RS.cen[c.k]])));
 
   XLSX.writeFile(wb, 'Resultado_semanal_' + RS.de + '_a_' + RS.ate + '.xlsx');
