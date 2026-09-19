@@ -325,7 +325,7 @@ function openSaved(){
         onclick="loadStudy('${k}')">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div style="font-weight:800;font-size:.84rem;">${s.os?'OS '+s.os+' · ':''} ${s.cliente||'Sem cliente'}</div>
+            <div style="font-weight:800;font-size:.84rem;">${s.os?'OS '+kbEsc(s.os)+' · ':''} ${s.cliente?kbEsc(s.cliente):'Sem cliente'}</div>
             <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">
               ${s.total||''} · ${s.savedAt?new Date(s.savedAt).toLocaleDateString('pt-BR'):''}
             </div>

@@ -40,6 +40,7 @@ const MODULOS = {
 const rtPromessas = {};   // módulo -> Promise do carregamento (clique duplo não baixa duas vezes)
 const rtProntos   = {};   // módulo -> true quando template + JS já estão na página
 const rtLibs      = {};   // biblioteca -> Promise
+const rtCssPromessas = {}; // href -> Promise (nova tentativa não duplica o <link>)
 
 function rtUrl(pasta, arquivo){ return 'modules/'+pasta+'/'+arquivo+'?v='+VERSAO_PORTAL; }
 
@@ -54,13 +55,15 @@ function rtScript(src){
 }
 
 function rtCss(href){
-  return new Promise((ok, falha)=>{
+  if(rtCssPromessas[href]) return rtCssPromessas[href];
+  rtCssPromessas[href] = new Promise((ok, falha)=>{
     const l = document.createElement('link');
     l.rel = 'stylesheet'; l.href = href;
     l.onload = ok;
-    l.onerror = ()=>{ l.remove(); falha(new Error('Não consegui baixar '+href)); };
+    l.onerror = ()=>{ l.remove(); delete rtCssPromessas[href]; falha(new Error('Não consegui baixar '+href)); };
     document.head.appendChild(l);
   });
+  return rtCssPromessas[href];
 }
 
 function rtLib(nome){
