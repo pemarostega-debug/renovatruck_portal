@@ -1,0 +1,46 @@
+<div id="screen-kanban">
+
+  <div class="kb-topbar">
+    <button class="kb-back" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i> Início</button>
+    <div class="kb-title"><i class="fa-solid fa-table-columns"></i> Kanban Operacional — Pátio</div>
+    <div class="kb-spacer"></div>
+    <button class="kb-refresh" onclick="kbCarregar()"><i class="fa-solid fa-rotate"></i> Atualizar pátio</button>
+  </div>
+
+  <div id="kb-notice" class="kb-notice"></div>
+
+  <div class="kb-bi">
+    <div class="kb-bi-box">
+      <div class="kb-bi-h">Serviços no pátio</div>
+      <div class="kb-val-big" id="kb-valor-total">R$ 0,00</div>
+      <div class="kb-val-sub" id="kb-valor-sub">0 OS(s) atribuída(s)</div>
+    </div>
+    <div class="kb-bi-box">
+      <div class="kb-bi-h">Equipamentos no pátio (<span id="kb-total-eq">0</span>)</div>
+      <div class="kb-tipos" id="kb-tipos"></div>
+    </div>
+  </div>
+
+  <div class="kb-board" id="kb-board"></div>
+
+  <!-- Modal de atribuição de OSs -->
+  <div class="kb-overlay" id="kb-overlay" onclick="kbFecharOS(event)">
+    <div class="kb-modal" onclick="event.stopPropagation()">
+      <div class="kb-modal-h">
+        <div><h3 id="kb-modal-titulo">Atribuir OSs</h3><span id="kb-modal-sub"></span></div>
+        <button class="kb-x" onclick="kbFecharOS()">✕</button>
+      </div>
+      <div class="kb-modal-body">
+        <div class="kb-add">
+          <input id="kb-os-input" type="text" inputmode="numeric" placeholder="Nº da OS (ex: 3923)" onkeydown="if(event.key==='Enter')kbAddOS()">
+          <button onclick="kbAddOS()">Adicionar</button>
+        </div>
+        <div class="kb-oslist" id="kb-oslist"></div>
+      </div>
+      <div class="kb-modal-foot">
+        <span class="lbl">Total do card</span>
+        <span class="tot" id="kb-modal-total">R$ 0,00</span>
+      </div>
+    </div>
+  </div>
+</div>

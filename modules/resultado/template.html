@@ -1,0 +1,198 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     RESULTADO SEMANAL — reunião de segunda com a diretoria (somente admin)
+
+     De onde vêm os números:
+       • Lista de OSs finalizadas: a mesma planilha do gerente operacional que
+         alimenta o gráfico "OSs finalizadas" do Dashboard.
+       • Valores, custo de peças e itens DIV: o relatório "OSs detalhe" (e,
+         opcionalmente, o relatório de OSs) que o admin arrasta para a tela.
+
+     O arquivo é lido SÓ no navegador de quem abriu. Nada é enviado ao servidor
+     nem gravado no repositório — o repo é público e custo de peça é sigilo.
+     Pelo mesmo motivo a folha produtiva não tem valor padrão aqui: é digitada
+     no painel e fica no localStorage de quem usa.
+
+     Barra (Capricho):
+       1. Escala 10×: 500 OSs / 3.000 linhas de detalhe lidas e calculadas
+          sem travar; mudar um parâmetro recalcula em < 16 ms.
+       2. Fluidez: o recálculo parte dos totais por OS, nunca relê o arquivo.
+       3. Estética: "sala de diretoria" — papel claro, tinta escura; verde só
+          para lucro, vermelho só para prejuízo, azul = serviços, laranja = peças.
+       4. Bordas: OS repetida na planilha, OS já contada em semana anterior, OS
+          finalizada sem linha no detalhe, número pt-BR em texto, data serial
+          do Excel, o mesmo arquivo arrastado duas vezes, folha não informada.
+       5. Prova: o bloco RS-CALC é puro e roda em Node contra o Excel da
+          planilha manual usada na reunião de 08/09/2026 (resultados fora do repositório).
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-resultado">
+
+  <div class="tool-nav">
+    <button class="back-btn" onclick="goHome()"><i class="fa-solid fa-arrow-left"></i> Início</button>
+    <span style="font-weight:900;font-size:.9rem;">Resultado Semanal</span>
+    <span style="font-size:.7rem;color:#94a3b8;">Reunião de diretoria · acesso administrador</span>
+  </div>
+
+  <div class="rs-sub">
+    <span class="rs-titulo"><i class="fa-solid fa-scale-balanced"></i>Resultado da semana · <span id="rs-titulo-periodo">—</span></span>
+    <div class="rs-periodo">
+      <button class="rs-btn peq" onclick="rsDeslocar(-7)" title="Semana anterior" aria-label="Voltar uma semana"><i class="fa-solid fa-chevron-left"></i></button>
+      <input type="date" id="rs-de" aria-label="Data inicial" onchange="rsMudarPeriodo()">
+      <span class="rs-nota">até</span>
+      <input type="date" id="rs-ate" aria-label="Data final" onchange="rsMudarPeriodo()">
+      <button class="rs-btn peq" onclick="rsDeslocar(7)" title="Próxima semana" aria-label="Avançar uma semana"><i class="fa-solid fa-chevron-right"></i></button>
+      <select class="rs-sel" id="rs-semana" onchange="rsEscolherSemana(this.value)" aria-label="Escolher semana" style="min-height:34px;max-width:260px;"><option value="">Semanas…</option></select>
+      <button class="rs-btn peq" onclick="rsPeriodoPreset('anterior')">Semana anterior</button>
+    </div>
+    <span class="rs-spacer"></span>
+    <span class="rs-selo-cen" title="Há parâmetros diferentes da base — a rentabilidade mostra um cenário">cenário "E se"</span>
+    <button class="rs-btn" id="rs-btn-param" onclick="rsAlternarParametros()"><i class="fa-solid fa-sliders"></i> Parâmetros e "E se"</button>
+    <button class="rs-btn" id="rs-btn-apres" onclick="rsAlternarApresentacao()"><i class="fa-solid fa-display"></i> Apresentar</button>
+    <button class="rs-btn" onclick="rsCopiarResumo()" title="Copia um resumo em texto para WhatsApp ou e-mail"><i class="fa-regular fa-copy"></i> Resumo</button>
+    <button class="rs-btn" onclick="rsBaixarExcel()"><i class="fa-solid fa-file-excel"></i> Excel</button>
+    <button class="rs-btn prim" id="rs-btn-pdf" onclick="rsGerarPdf()" title="Gera o relatório da semana em PDF"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+  </div>
+
+  <div class="rs-layout">
+    <div class="rs-main">
+
+      <section class="rs-card rs-bastidor" aria-label="Fontes de dados" hidden title="Escondido por padrão a pedido — reabra removendo o atributo 'hidden' desta seção se precisar trocar a fonte ou subir um arquivo manualmente.">
+        <h2><i class="fa-solid fa-database"></i> Fontes da análise
+          <span class="rs-h-extra rs-nota"><i class="fa-solid fa-lock"></i> Os arquivos são lidos só neste computador — nada é enviado.</span></h2>
+        <div class="rs-fontes">
+          <div class="rs-fonte">
+            <i class="ic fa-solid fa-list-check"></i>
+            <div style="min-width:0;flex:1;">
+              <b>OSs finalizadas no período</b>
+              <div class="rs-nota" id="rs-fonte-fin">Carregando a planilha do gerente…</div>
+              <div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                <select class="rs-sel" id="rs-fonte-sel" onchange="rsMudarFonte(this.value)" aria-label="Critério de OS finalizada">
+                  <option value="planilha">Planilha do gerente (padrão)</option>
+                  <option value="encerramento">Data de encerramento no arquivo</option>
+                </select>
+                <button class="rs-btn peq" onclick="rsRecarregarFinalizadas()"><i class="fa-solid fa-rotate"></i> Recarregar</button>
+              </div>
+            </div>
+          </div>
+          <div class="rs-fonte" id="rs-fonte-banco-card">
+            <i class="ic fa-solid fa-server"></i>
+            <div style="min-width:0;flex:1;">
+              <b>Peças e serviços — banco do Genesis</b>
+              <div class="rs-nota" id="rs-fonte-banco">Conectando…</div>
+              <div style="margin-top:6px;"><button class="rs-btn peq" onclick="rsCarregarBanco(true)"><i class="fa-solid fa-rotate"></i> Buscar de novo</button></div>
+            </div>
+          </div>
+          <label class="rs-fonte rs-drop" id="rs-drop" for="rs-arquivo">
+            <i class="ic fa-solid fa-file-arrow-up"></i>
+            <div style="min-width:0;flex:1;">
+              <b>Ou um arquivo "OSs detalhe" (.xlsx ou .csv)</b>
+              <div class="rs-nota">Arraste aqui ou clique. O arquivo tem prioridade sobre o banco nas OSs que ele trouxer. Serve a própria planilha da reunião.</div>
+              <div id="rs-arquivos"></div>
+            </div>
+            <input type="file" id="rs-arquivo" accept=".xlsx,.xls,.csv" multiple hidden onchange="rsReceberArquivos(this.files);this.value='';">
+          </label>
+        </div>
+      </section>
+
+      <div class="rs-avisos rs-bastidor" id="rs-avisos"></div>
+
+      <div class="rs-card rs-vazio" id="rs-vazio"><i class="fa-solid fa-hourglass-half"></i><b>Preparando a análise…</b></div>
+
+      <div id="rs-conteudo" hidden>
+
+        <section class="rs-card" aria-label="Placar da semana">
+          <h2><i class="fa-solid fa-flag-checkered"></i> Placar da semana
+            <span class="rs-h-extra"><button class="rs-btn peq rs-bastidor" onclick="rsSalvarFechamento()" title="Guarda os números desta semana neste navegador para mostrar a tendência na próxima"><i class="fa-solid fa-thumbtack"></i> Salvar fechamento</button></span></h2>
+          <div id="rs-fech-banner"></div>
+          <div class="rs-placar" id="rs-placar"></div>
+          <div class="rs-leitura">
+            <div><ul id="rs-frases"></ul></div>
+          </div>
+        </section>
+
+        <section class="rs-card" aria-label="Evolução semana a semana">
+          <h2><i class="fa-solid fa-chart-line"></i> Evolução semana a semana
+            <span class="rs-h-extra"><select class="rs-sel" id="rs-evo-n" onchange="rsRenderEvolucao()" aria-label="Quantidade de semanas">
+              <option value="8">8 semanas</option><option value="12" selected>12 semanas</option><option value="26">26 semanas</option></select></span></h2>
+          <div class="rs-evo">
+            <div><div class="rs-evo-t">Faturamento finalizado por semana</div><div class="rs-grafico" style="height:270px;"><canvas id="rs-evo-fat" role="img" aria-label="Barras do faturamento finalizado por semana, separado em serviços, peças de estoque e peças DIV"></canvas></div></div>
+            <div><div class="rs-evo-t">Margens por semana <span class="rs-nota">(tracejado = meta)</span></div><div class="rs-grafico" style="height:270px;"><canvas id="rs-evo-mg" role="img" aria-label="Linhas das margens de serviços, peças de estoque e global por semana"></canvas></div></div>
+          </div>
+          <div class="rs-tabela-wrap alta" id="rs-evo-tabela" style="margin-top:12px;"></div>
+          <p class="rs-nota" style="margin-top:8px;">Todas as semanas usam os <b>parâmetros base atuais</b>, para serem comparáveis entre si — o número salvo no fechamento de cada semana fica registrado na coluna "Fechamento". Clique numa semana para abrir a análise dela.</p>
+        </section>
+
+        <section class="rs-card" aria-label="Faturamento por cliente">
+          <h2><i class="fa-solid fa-building"></i> Faturamento por cliente <span class="rs-h-extra rs-nota" id="rs-cli-resumo"></span></h2>
+          <div class="rs-clientes">
+            <div class="rs-grafico" id="rs-grafico-wrap"><canvas id="rs-grafico-clientes" role="img" aria-label="Gráfico de barras do faturamento por cliente"></canvas></div>
+            <div class="rs-tabela-wrap alta" id="rs-tabela-clientes"></div>
+          </div>
+        </section>
+
+        <section class="rs-card" aria-label="Rentabilidade">
+          <h2><i class="fa-solid fa-chart-pie"></i> Rentabilidade — peças e serviços
+            <span class="rs-h-extra rs-nota" id="rs-rent-cenario"></span></h2>
+          <div id="rs-cmp"></div>
+          <div class="rs-margens" id="rs-margens"></div>
+          <div class="rs-tabela-wrap" id="rs-tabela-rent"></div>
+          <p class="rs-nota" style="margin-top:8px;">Resultado = receita − custo direto − Simples − administrativo − financeiro − comissão, com todas as despesas em % da receita.
+            O <b>preço mínimo</b> é o faturamento que cobriria o custo, as despesas e a meta de rentabilidade: custo ÷ (1 − despesas − meta). A <b>folga</b> é o quanto se faturou acima (ou abaixo) dele.</p>
+        </section>
+
+        <section class="rs-card" aria-label="Custo da mão de obra">
+          <h2><i class="fa-solid fa-helmet-safety"></i> Custo da mão de obra produtiva no período</h2>
+          <div class="rs-memo" id="rs-memo"></div>
+          <p class="rs-nota" style="margin-top:8px;">Estimativa pela folha dos produtivos. Quando a folha real (horas extras e encargos de verdade) estiver disponível, basta trocar os valores no painel de parâmetros.</p>
+        </section>
+
+        <section class="rs-card" aria-label="Peças">
+          <h2><i class="fa-solid fa-gears"></i> Peças que pedem atenção</h2>
+          <div class="rs-clientes">
+            <div>
+              <div class="rs-nota" style="margin-bottom:6px;font-weight:700;color:var(--text);">De estoque vendidas abaixo do custo + despesas <span id="rs-abaixo-resumo" class="rs-nota"></span></div>
+              <div class="rs-tabela-wrap alta" id="rs-tabela-abaixo"></div>
+            </div>
+            <div>
+              <div class="rs-nota" style="margin-bottom:6px;font-weight:700;color:var(--text);">Itens DIV (sucata, recondicionada, fora do inventário) <span id="rs-div-resumo" class="rs-nota"></span></div>
+              <div class="rs-tabela-wrap alta" id="rs-tabela-div"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="rs-card" aria-label="Curva ABC">
+          <h2><i class="fa-solid fa-ranking-star"></i> Curva ABC — o que mais pesa no faturamento</h2>
+          <div class="rs-clientes">
+            <div>
+              <div class="rs-nota" style="margin-bottom:6px;font-weight:700;color:var(--text);">Peças <span id="rs-abc-pec-resumo" class="rs-nota"></span></div>
+              <div class="rs-tabela-wrap alta" id="rs-tabela-abc-pec"></div>
+            </div>
+            <div>
+              <div class="rs-nota" style="margin-bottom:6px;font-weight:700;color:var(--text);">Serviços <span id="rs-abc-serv-resumo" class="rs-nota"></span></div>
+              <div class="rs-tabela-wrap alta" id="rs-tabela-abc-serv"></div>
+            </div>
+          </div>
+          <p class="rs-nota" style="margin-top:8px;">Classe <b>A</b> = itens que somam até 80% do faturamento do grupo; <b>B</b> até 95%; <b>C</b> o resto. Agrupado por código do item, somando o período mostrado.</p>
+        </section>
+
+        <section class="rs-card" aria-label="OSs do período">
+          <h2><i class="fa-solid fa-clipboard-list"></i> OSs consideradas <span class="rs-h-extra rs-nota" id="rs-oss-resumo"></span></h2>
+          <div class="rs-tabela-wrap alta" id="rs-tabela-oss"></div>
+        </section>
+      </div>
+    </div>
+
+    <div class="rs-param-backdrop" onclick="rsAlternarParametros()"></div>
+    <aside class="rs-param" aria-label="Parâmetros">
+      <div class="rs-param-inner">
+        <h3><i class="fa-solid fa-sliders"></i> Parâmetros e "E se" <span class="rs-selo-cen">cenário</span>
+          <button class="rs-btn peq" style="margin-left:auto;" onclick="rsAlternarParametros()" aria-label="Fechar painel"><i class="fa-solid fa-xmark"></i></button></h3>
+        <p class="rs-nota" style="margin-top:6px;">Mude qualquer número e a análise recalcula na hora. Campos em azul estão diferentes da <b>base</b> — o placar sempre usa a base; a rentabilidade mostra o cenário.</p>
+        <div id="rs-campos"></div>
+        <div class="rs-param-acoes">
+          <button class="rs-btn peq prim" onclick="rsTornarBase()"><i class="fa-solid fa-check"></i> Tornar este cenário a base</button>
+          <button class="rs-btn peq" onclick="rsVoltarBase()"><i class="fa-solid fa-rotate-left"></i> Voltar para a base</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
