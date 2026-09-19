@@ -34,6 +34,12 @@ header{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:.6r
 .container{max-width:1260px;margin:1.2rem auto;padding:0 1.2rem;
   display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;}
 @media(max-width:760px){.container{grid-template-columns:1fr;}}
+.prec-id-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.7rem;}
+/* Celular: identificação em 2 colunas e "Rentab. Alvo" desce para a linha de baixo em vez de ser cortado. */
+@media(max-width:640px){
+  .prec-id-grid{grid-template-columns:1fr 1fr;}
+  .card-head{flex-wrap:wrap;gap:8px;}
+}
 
 /* CARD */
 .card{background:var(--surface);border-radius:14px;padding:1.2rem;

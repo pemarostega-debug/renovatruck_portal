@@ -24,6 +24,8 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);pad
 .section-label{font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.8rem;display:flex;align-items:center;gap:8px;}
 .section-label::after{content:"";flex:1;height:1px;background:var(--border);}
 .tool-nav{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:.6rem 1.2rem;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:40;box-shadow:0 2px 12px rgba(0,0,0,.2);}
+/* Celular: os botões da direita descem de linha em vez de serem cortados (ex.: "Exportar PDF" da Curva ABC). */
+@media(max-width:640px){.tool-nav{flex-wrap:wrap;}}
 .back-btn{background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:background .2s;}
 .back-btn:hover{background:rgba(255,255,255,.22);}
 #screen-dashboard,#screen-prec,#screen-abc,#screen-kanban,#screen-historico,#screen-manual,#screen-contaspagar,#screen-contasreceber,#screen-resultado{display:none;}

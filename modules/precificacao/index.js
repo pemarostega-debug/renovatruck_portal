@@ -300,37 +300,16 @@ function getFormState(){
 }
 
 function saveStudy(){
-  const os = gv('h-os').trim();
-  const cli = gv('h-cliente').trim();
+  const os = gv('f-os').trim();
+  const cli = gv('f-cliente-prec').trim();
   if(!os && !cli){ alert('Preencha ao menos o Nº da OS ou o Cliente antes de salvar.'); return; }
 
+  // Estudos ficam só neste navegador (localStorage); não há envio para planilha.
   const state = getFormState();
   const key = 'rv_estudo_' + Date.now();
   localStorage.setItem(key, JSON.stringify(state));
 
-  // Save to Google Sheets
-  saveToSheets(state);
-
   toast('Estudo salvo!');
-}
-
-async function saveToSheets(s){
-  // Appends a row to "ESTUDOS" tab via Google Sheets API public append
-  // Uses the same Sheet as the dashboard (read via gviz), writes via fetch to Apps Script URL
-  // For now: stores in localStorage and logs — full Sheets write requires Apps Script endpoint
-  // Structured for easy integration when endpoint is configured
-  const row = [
-    new Date().toLocaleDateString('pt-BR'),
-    s.os, s.cliente, s.regime,
-    s.dias, s.ofic, s.meio,
-    s.precoServ, s.precoPecas, s.total,
-    document.getElementById('r-custo-mo').textContent,
-    document.getElementById('r-compra').textContent,
-    s.descServ.replace(/\n/g,' ')
-  ];
-  console.log('Estudo para Sheets:', row);
-  // TODO: POST to Apps Script doPost URL when configured
-  // await fetch(APPS_SCRIPT_URL, {method:'POST', body: JSON.stringify({sheet:'ESTUDOS', row})});
 }
 
 function openSaved(){
@@ -378,7 +357,7 @@ function loadStudy(k){
 
 function newForm(){
   if(!confirm('Limpar e iniciar novo orçamento?')) return;
-  sv('h-os',''); sv('h-cliente',''); sv('desc-serv','');
+  sv('f-os',''); sv('f-placa',''); sv('f-equip',''); sv('f-cliente-prec',''); sv('desc-serv','');
   sv('s-dias',1); sv('s-ofic',1); sv('s-meio',0); sv('s-km',0);
   sv('rent-serv', cfg.rentServDef); sv('rent-pecas', cfg.rentPecDef);
   document.getElementById('pecas-body').innerHTML='';
