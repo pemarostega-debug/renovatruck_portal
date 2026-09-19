@@ -1,0 +1,39 @@
+<div id="screen-abc">
+  <div class="tool-nav">
+    <button class="back-btn" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i>Início</button>
+    <img src="assets/logo-renova.jpg" style="height:32px;filter:drop-shadow(0 1px 4px rgba(0,0,0,.4));" />
+    <span style="font-size:.85rem;font-weight:800;">Curva ABC</span>
+    <div style="margin-left:auto;display:flex;gap:6px;">
+      <button class="back-btn" onclick="loadABC()"><i class="fa-solid fa-rotate-right"></i> Atualizar</button>
+      <button class="back-btn" style="background:rgba(22,163,74,.3);" onclick="exportABCPDF()" id="btn-export-abc" disabled>📄 Exportar PDF</button>
+    </div>
+  </div>
+  <div id="abc-loading"><div class="spinner"></div><p style="font-weight:700;color:#1e3a5f;font-size:.9rem;">Carregando dados...</p></div>
+  <div id="abc-content" style="display:none;max-width:1100px;margin:0 auto;padding:1.5rem 1.2rem 5rem;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.9rem;margin-bottom:1.2rem;">
+      <div class="card" style="text-align:center;padding:.9rem;"><p style="font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Faturamento Total</p><p style="font-size:1.1rem;font-weight:900;color:var(--primary);" id="abc-total">–</p></div>
+      <div class="card" style="text-align:center;padding:.9rem;"><p style="font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">OSs Faturadas</p><p style="font-size:1.1rem;font-weight:900;color:var(--primary);" id="abc-os">–</p></div>
+      <div class="card" style="text-align:center;padding:.9rem;"><p style="font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Clientes Ativos</p><p style="font-size:1.1rem;font-weight:900;color:var(--primary);" id="abc-cli">–</p></div>
+      <div class="card" style="text-align:center;padding:.9rem;"><p style="font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Ticket Médio</p><p style="font-size:1.1rem;font-weight:900;color:var(--primary);" id="abc-ticket">–</p></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem;margin-bottom:1.2rem;">
+      <div class="card" style="background:linear-gradient(135deg,#0f172a,#1e3a5f);border:none;padding:1rem;"><p style="font-size:.62rem;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:3px;">Classe A · Estratégicos</p><p style="font-size:1.1rem;font-weight:900;color:#fff;" id="abc-a-cli">–</p><p style="font-size:.72rem;color:rgba(255,255,255,.55);" id="abc-a-val">–</p></div>
+      <div class="card" style="background:var(--primary);border:none;padding:1rem;"><p style="font-size:.62rem;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:3px;">Classe B · Importantes</p><p style="font-size:1.1rem;font-weight:900;color:#fff;" id="abc-b-cli">–</p><p style="font-size:.72rem;color:rgba(255,255,255,.55);" id="abc-b-val">–</p></div>
+      <div class="card" style="background:var(--bg);padding:1rem;"><p style="font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:3px;">Classe C · Complementares</p><p style="font-size:1.1rem;font-weight:900;color:var(--text);" id="abc-c-cli">–</p><p style="font-size:.72rem;color:var(--muted);" id="abc-c-val">–</p></div>
+    </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div style="font-size:.69rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.8rem;">Top 20 — Ranking por Faturamento</div>
+      <div style="position:relative;width:100%;" id="abc-bar-wrap"><canvas id="abc-bar-chart" role="img" aria-label="Ranking de clientes por faturamento"></canvas></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:.69rem;font-weight:800;color:var(--muted);text-transform:uppercase;">Detalhamento Completo</div>
+        <input type="text" id="abc-search" class="search-input" placeholder="Filtrar cliente..." style="max-width:200px;" oninput="filterABCTable(this.value)" />
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>#</th><th>Cliente</th><th style="text-align:right;">Faturamento</th><th>Participação</th><th style="text-align:right;">Acumulado</th><th style="text-align:center;">Classe</th></tr></thead>
+        <tbody id="abc-table-body"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>

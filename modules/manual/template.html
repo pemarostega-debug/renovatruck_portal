@@ -1,0 +1,381 @@
+<div id="screen-manual">
+
+  <div class="mn-topbar">
+    <button class="mn-back" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i> Início</button>
+    <div class="mn-title"><i class="fa-solid fa-book-open"></i> Manual da Empresa</div>
+    <div class="mn-spacer"></div>
+    <span class="mn-quem-barra"><i class="fa-solid fa-user"></i> <span id="rv-quem">—</span> <span class="rv-papel comum" id="rv-papel">Consulta</span></span>
+  </div>
+
+  <div class="mn-tabs">
+    <button class="mn-tab active" data-mntab="institucional" onclick="switchManualTab('institucional')"><i class="fa-solid fa-flag"></i> Institucional</button>
+    <button class="mn-tab" data-mntab="organograma" onclick="switchManualTab('organograma')"><i class="fa-solid fa-sitemap"></i> Organograma</button>
+    <button class="mn-tab" data-mntab="cargos" onclick="switchManualTab('cargos')"><i class="fa-solid fa-id-badge"></i> Descrições de Cargo</button>
+    <button class="mn-tab" data-mntab="processo" onclick="switchManualTab('processo')"><i class="fa-solid fa-diagram-project"></i> Processo Operacional</button>
+    <button class="mn-tab" data-mntab="regras" onclick="switchManualTab('regras')"><i class="fa-solid fa-scale-balanced"></i> Regras e Conduta</button>
+    <button class="mn-tab" data-mntab="config" onclick="switchManualTab('config')"><i class="fa-solid fa-gear"></i> Configurações</button>
+  </div>
+
+  <div class="mn-body">
+
+    <div class="mn-panel active" id="mn-panel-institucional">
+      <div class="mn-hero">
+        <img class="mn-hero-logo" id="mn-hero-logo" alt="Renova Truck">
+        <h2>Manual da Empresa</h2>
+        <div class="sub">Renova Manutenções</div>
+        <span class="selo"><i class="fa-solid fa-certificate"></i> Versão 1.0 &middot; emitido em 01/08/2026</span>
+      </div>
+
+      <div class="mn-bloco">
+        <h3><i class="fa-solid fa-hand-sparkles"></i> Apresentação</h3>
+        <p class="saudacao">Bem-vindo(a) à Renova Manutenções</p>
+        <p>Este manual reúne, em um só lugar, como a empresa está organizada e como o trabalho acontece: a estrutura de cargos, o que se espera de cada função, o caminho que uma Ordem de Serviço percorre da portaria ao faturamento, e as regras de conduta que valem para todos.</p>
+        <p>Ele orienta todos os colaboradores e prestadores de serviços sobre os princípios, comportamentos e normas esperados durante a execução de suas atividades. Nosso compromisso é manter um ambiente de trabalho seguro, organizado, respeitoso e profissional, garantindo qualidade nos serviços prestados aos nossos clientes.</p>
+      </div>
+
+      <div class="mn-bloco mn-compromisso">
+        <h3><i class="fa-solid fa-handshake"></i> Compromisso</h3>
+        <p>O cumprimento deste Manual é obrigatório para todos os colaboradores e prestadores de serviços da Renova Manutenções, e para todos que prestam serviços nas dependências da empresa.</p>
+        <p>O desconhecimento das normas aqui estabelecidas não isenta o profissional de sua responsabilidade.</p>
+        <div class="aviso"><i class="fa-solid fa-circle-question"></i><span>Em caso de dúvidas, procure seu gestor imediato ou o responsável pela empresa <b>antes</b> de executar qualquer atividade.</span></div>
+      </div>
+
+      <div class="mn-mv">
+        <div class="mn-mv-card missao">
+          <i class="fa-solid fa-bullseye marca"></i>
+          <h3>Missão</h3>
+          <p>Executar serviços de manutenção com qualidade, segurança, responsabilidade e comprometimento, buscando sempre a satisfação dos nossos clientes.</p>
+        </div>
+        <div class="mn-mv-card visao">
+          <i class="fa-solid fa-binoculars marca"></i>
+          <h3>Visão</h3>
+          <p>Ser referência em manutenção de veículos pesados, reconhecida pela qualidade dos serviços, organização e excelência operacional.</p>
+        </div>
+      </div>
+
+      <div class="mn-bloco">
+        <h3><i class="fa-solid fa-heart"></i> Nossos valores</h3>
+        <div class="mn-valores">
+          <div class="mn-valor"><i class="fa-solid fa-helmet-safety"></i><span>Segurança</span></div>
+          <div class="mn-valor"><i class="fa-solid fa-scale-balanced"></i><span>Honestidade</span></div>
+          <div class="mn-valor"><i class="fa-solid fa-handshake-angle"></i><span>Respeito</span></div>
+          <div class="mn-valor"><i class="fa-solid fa-flag-checkered"></i><span>Comprometimento</span></div>
+          <div class="mn-valor"><i class="fa-solid fa-people-group"></i><span>Trabalho em equipe</span></div>
+          <div class="mn-valor"><i class="fa-solid fa-award"></i><span>Qualidade</span></div>
+          <div class="mn-valor"><i class="fa-solid fa-shield-heart"></i><span>Responsabilidade</span></div>
+        </div>
+      </div>
+
+      <div class="mn-bloco">
+        <h3><i class="fa-solid fa-compass"></i> O que você encontra neste manual</h3>
+        <div class="mn-atalhos">
+          <button class="mn-atalho" onclick="switchManualTab('organograma')">
+            <i class="fa-solid fa-sitemap"></i>
+            <span><b>Organograma</b><small>Quem é quem e a quem cada função reporta</small></span>
+          </button>
+          <button class="mn-atalho" onclick="switchManualTab('cargos')">
+            <i class="fa-solid fa-id-badge"></i>
+            <span><b>Descrições de Cargo</b><small>O que se espera de cada função, em detalhe</small></span>
+          </button>
+          <button class="mn-atalho" onclick="switchManualTab('processo')">
+            <i class="fa-solid fa-diagram-project"></i>
+            <span><b>Processo Operacional</b><small>Da portaria ao faturamento, passo a passo</small></span>
+          </button>
+          <button class="mn-atalho" onclick="switchManualTab('regras')">
+            <i class="fa-solid fa-scale-balanced"></i>
+            <span><b>Regras e Conduta</b><small>As normas que valem para todos</small></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mn-panel" id="mn-panel-organograma">
+      <div class="mn-org-toolbar">
+        <button class="mn-tool-btn" onclick="orgZoom(-1)" title="Diminuir zoom"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+        <span class="mn-tool-zoom" id="mn-zoom-label">100%</span>
+        <button class="mn-tool-btn" onclick="orgZoom(1)" title="Aumentar zoom"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+        <button class="mn-tool-btn" onclick="orgFit()" title="Ajustar à tela"><i class="fa-solid fa-expand"></i> Ajustar</button>
+        <span class="mn-tool-sep"></span>
+        <button class="mn-tool-btn" onclick="orgExpandAll(true)"><i class="fa-solid fa-chevron-down"></i> Expandir tudo</button>
+        <button class="mn-tool-btn" onclick="orgExpandAll(false)"><i class="fa-solid fa-chevron-up"></i> Recolher</button>
+        <span class="mn-tool-sep"></span>
+        <button class="mn-tool-btn" id="mn-btn-fotos" onclick="orgToggleFotos()"><i class="fa-solid fa-image-portrait"></i> Fotos</button>
+        <button class="mn-tool-btn so-admin" id="mn-btn-edit" onclick="orgToggleEdit()"><i class="fa-solid fa-pen-to-square"></i> Editar</button>
+      </div>
+      <div class="mn-org-viewport" id="mn-org-viewport">
+        <div class="mn-org-canvas" id="mn-org-canvas">
+          <svg class="mn-org-links" id="mn-org-links"></svg>
+          <div id="mn-org-nodes"></div>
+        </div>
+      </div>
+      <div class="mn-org-legend">
+        <span><i style="background:#0f172a;"></i> Diretoria</span>
+        <span><i style="background:#fff;border:2px solid #cbd5e1;"></i> Cargo</span>
+        <span><i style="background:#faf5ff;border:2px dashed #d8b4fe;"></i> Assessoria (reporta a ambos os diretores)</span>
+        <span><i style="background:#fff7f7;border:2px dashed #fca5a5;"></i> Vaga em aberto</span>
+      </div>
+      <div class="mn-org-hint"><i class="fa-solid fa-hand-pointer"></i> Clique no cargo para ver a descrição completa &middot; arraste para mover &middot; use a roda do mouse com Ctrl para dar zoom &middot; clique no <b>+</b> abaixo do cargo para expandir a equipe.</div>
+    </div>
+
+    <div class="mn-panel" id="mn-panel-cargos">
+      <div class="mn-cargo-toolbar">
+        <input type="text" class="mn-cargo-search" id="mn-cargo-search" placeholder="Buscar por cargo, área ou nome da pessoa..." oninput="filterCargos(this.value)">
+        <span class="mn-cargo-count" id="mn-cargo-count"></span>
+        <span style="flex:1"></span>
+        <button class="mn-tool-btn so-admin" onclick="abrirEditorCargo(null)"><i class="fa-solid fa-plus"></i> Novo cargo</button>
+      </div>
+      <div id="mn-cargo-list"></div>
+    </div>
+
+    <div class="mn-panel" id="mn-panel-processo">
+      <div id="mn-flow"></div>
+    </div>
+
+    <div class="mn-panel" id="mn-panel-regras">
+      <div class="mn-regras-doc">
+        <div><b>Manual de Regras e Conduta</b> &middot; Renova Manutenções &middot; Versão 1.0 &middot; Emissão: 01/08/2026</div>
+      </div>
+      <div class="mn-regras-wrap">
+        <div class="mn-regras-nav" id="mn-regras-nav"></div>
+        <div class="mn-regras-content" id="mn-regras-content"></div>
+      </div>
+    </div>
+
+    <div class="mn-panel" id="mn-panel-config">
+
+      <div class="mn-cfg-card">
+        <h3><i class="fa-solid fa-user-shield"></i> Sua conta</h3>
+        <p>Você está conectado como <b id="cfg-eu-nome">—</b> (<span id="cfg-eu-login">—</span>), com perfil <b id="cfg-eu-papel">—</b>.</p>
+        <div class="mn-cfg-actions">
+          <button class="mn-cfg-btn ghost" onclick="abrirTrocarSenha(false)"><i class="fa-solid fa-key"></i> Trocar minha senha</button>
+          <button class="mn-cfg-btn ghost" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+        </div>
+      </div>
+
+      <div class="mn-cfg-card so-admin bloco">
+        <h3><i class="fa-solid fa-users-gear"></i> Acessos ao sistema</h3>
+        <p>Quem pode entrar no portal e o que cada um pode fazer. <b>Administrador</b> edita organograma, cargos e gerencia acessos. <b>Consulta</b> apenas visualiza.</p>
+        <div class="mn-cfg-actions" style="margin-bottom:14px;">
+          <button class="mn-cfg-btn" onclick="abrirUsuario(null)"><i class="fa-solid fa-user-plus"></i> Novo acesso</button>
+          <button class="mn-cfg-btn ghost" onclick="carregarUsuarios()"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+        </div>
+        <div id="cfg-usuarios"><p class="mn-ed-note">Carregando…</p></div>
+      </div>
+
+      <div class="mn-cfg-card">
+        <h3><i class="fa-solid fa-pen-to-square"></i> Suas alterações</h3>
+        <p>Ao ativar o modo <b>Editar</b> na aba Organograma você pode incluir os nomes e fotos das pessoas, renomear cargos, criar novas posições, reordenar e remover. Com a planilha conectada as alterações são gravadas automaticamente e todo mundo passa a enxergá-las; sem conexão elas ficam guardadas apenas neste navegador.</p>
+        <div class="mn-cfg-actions" style="margin-bottom:12px;">
+          <span class="mn-cfg-status limpo" id="mn-cfg-nuvem"><i class="fa-solid fa-plug-circle-xmark"></i> Verificando conexão…</span>
+          <span class="mn-cfg-status limpo" id="mn-cfg-status"><i class="fa-solid fa-check"></i> Sem alterações locais</span>
+        </div>
+        <div class="mn-cfg-actions">
+          <button class="mn-cfg-btn" onclick="mnBaixarJSON()"><i class="fa-solid fa-download"></i> Baixar backup (JSON)</button>
+          <button class="mn-cfg-btn ghost" onclick="document.getElementById('mn-import-file').click()"><i class="fa-solid fa-upload"></i> Restaurar backup</button>
+          <button class="mn-cfg-btn ghost" onclick="mnCopiarTSV()"><i class="fa-solid fa-clipboard"></i> Copiar para a planilha</button>
+          <button class="mn-cfg-btn ghost" onclick="mnResetarEdicoes()"><i class="fa-solid fa-rotate-left"></i> Descartar alterações</button>
+        </div>
+        <input type="file" id="mn-import-file" accept="application/json" style="display:none" onchange="mnImportarJSON(this)">
+        <p class="mn-ed-note" style="margin-top:12px;font-size:.75rem;">O rascunho fica apenas neste navegador. Para que a equipe toda enxergue as mesmas informações, use <b>Baixar backup</b> e me envie o arquivo — eu publico no portal — ou <b>Copiar para a planilha</b> e cole na aba <code>Pessoas</code> da planilha de referência.</p>
+      </div>
+      <div class="mn-cfg-card">
+        <h3><i class="fa-solid fa-database"></i> Fonte dos dados</h3>
+        <p>Organograma, cargos, processo operacional e apresentação institucional vêm do Manual da Empresa aprovado. A planilha de referência abaixo está liberada para qualquer pessoa com o link.</p>
+        <a class="mn-cfg-btn" href="https://docs.google.com/spreadsheets/d/1zHJwKw88K0ArhN9qpWM8T0bzSMFpglebn5PZIdfgev0/edit" target="_blank" rel="noopener"><i class="fa-solid fa-table"></i> Abrir planilha de referência</a>
+      </div>
+      <div class="mn-cfg-card">
+        <h3><i class="fa-solid fa-file-shield"></i> Regras e Conduta</h3>
+        <p>Conteúdo extraído do documento oficial "Manual de Regras e Conduta" (Versão 1.0, emitido em 01/08/2026 pelo RH da Renova Manutenções). Qualquer atualização de versão deve ser repassada para manter esta aba sincronizada com o documento oficial.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="overlay" id="mn-modal-edit">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3 id="mn-ed-title">Editar posição</h3>
+      <button class="close-btn" onclick="fecharEditor()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="mn-ed-row">
+        <label>Cargo</label>
+        <input type="text" id="mn-ed-cargo" placeholder="Ex: Mecânico Oficial">
+      </div>
+      <div class="mn-ed-row">
+        <label>Complemento / especialidade</label>
+        <input type="text" id="mn-ed-sub" placeholder="Ex: Implementos Rodoviários (opcional)">
+      </div>
+      <div class="mn-ed-row">
+        <label>Nome da pessoa que ocupa a função</label>
+        <input type="text" id="mn-ed-nome" placeholder="Deixe em branco se for uma vaga em aberto" oninput="mnPreviewAvatar()">
+      </div>
+      <div class="mn-ed-row">
+        <label>Foto</label>
+        <div class="mn-ed-foto">
+          <div class="mn-ed-prev" id="mn-ed-prev">?</div>
+          <div class="mn-ed-foto-btns">
+            <button class="mn-ed-mini" onclick="document.getElementById('mn-ed-file').click()"><i class="fa-solid fa-camera"></i> Enviar foto do computador</button>
+            <input type="text" id="mn-ed-foto-url" placeholder="ou cole o link de uma imagem" oninput="mnPreviewAvatar()" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;font-size:.78rem;font-family:'DM Sans',sans-serif;outline:none;box-sizing:border-box;">
+            <button class="mn-ed-mini danger" onclick="mnRemoverFoto()"><i class="fa-solid fa-trash"></i> Remover foto</button>
+          </div>
+        </div>
+        <input type="file" id="mn-ed-file" accept="image/*" style="display:none" onchange="mnUploadFoto(this)">
+      </div>
+      <div class="mn-ed-struct">
+        <button class="mn-ed-mini" onclick="mnAddFilho()"><i class="fa-solid fa-plus"></i> Adicionar subordinado</button>
+        <button class="mn-ed-mini" onclick="mnMover(-1)"><i class="fa-solid fa-arrow-left"></i> Mover</button>
+        <button class="mn-ed-mini" onclick="mnMover(1)">Mover <i class="fa-solid fa-arrow-right"></i></button>
+        <button class="mn-ed-mini danger" onclick="mnRemoverNo()"><i class="fa-solid fa-trash"></i> Remover posição</button>
+      </div>
+      <div class="mn-ed-note" id="mn-ed-note"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="mn-ed-mini" onclick="fecharEditor()">Cancelar</button>
+      <button class="mn-cfg-btn" onclick="salvarEditor()"><i class="fa-solid fa-check"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mn-modal-usuario">
+  <div class="modal" style="max-width:460px;width:100%;">
+    <div class="modal-hdr">
+      <h3 id="mn-us-titulo">Novo acesso</h3>
+      <button class="close-btn" onclick="document.getElementById('mn-modal-usuario').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="mn-form-erro" id="mn-us-erro"></div>
+      <div class="mn-form-row">
+        <label>Login</label>
+        <input type="text" id="mn-us-login" placeholder="ex: karina.rh" autocomplete="off">
+        <span class="dica">Só letras, números, ponto, hífen ou sublinhado. Não pode ser alterado depois.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Nome da pessoa</label>
+        <input type="text" id="mn-us-nome" placeholder="ex: Karina Souza" autocomplete="off">
+      </div>
+      <div class="mn-form-row">
+        <label>Perfil</label>
+        <select id="mn-us-papel">
+          <option value="comum">Consulta — apenas visualiza</option>
+          <option value="admin">Administrador — edita e gerencia acessos</option>
+        </select>
+      </div>
+      <div class="mn-form-row">
+        <label>Situação</label>
+        <select id="mn-us-ativo">
+          <option value="sim">Ativo</option>
+          <option value="nao">Desativado — não consegue entrar</option>
+        </select>
+      </div>
+      <div class="mn-form-row">
+        <label id="mn-us-lbl-senha">Senha</label>
+        <input type="text" id="mn-us-senha" placeholder="mínimo 6 caracteres" autocomplete="off">
+        <span class="dica" id="mn-us-dica-senha">Combine a senha com a pessoa. Ela pode trocá-la depois em Configurações.</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mn-ed-mini" onclick="document.getElementById('mn-modal-usuario').classList.remove('open')">Cancelar</button>
+      <button class="mn-cfg-btn" onclick="salvarUsuarioPortal()"><i class="fa-solid fa-check"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mn-modal-cargo">
+  <div class="modal" style="max-width:620px;width:100%;">
+    <div class="modal-hdr">
+      <h3 id="mn-cg-titulo">Editar cargo</h3>
+      <button class="close-btn" onclick="document.getElementById('mn-modal-cargo').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="mn-form-erro" id="mn-cg-erro"></div>
+      <div class="mn-form-row">
+        <label>Nome do cargo</label>
+        <input type="text" id="mn-cg-cargo" placeholder="ex: Auxiliar de Logística">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="mn-form-row"><label>Área</label><input type="text" id="mn-cg-area" placeholder="ex: Operacional"></div>
+        <div class="mn-form-row"><label>Reporta a</label><input type="text" id="mn-cg-reporta" placeholder="ex: Gerente Operacional"></div>
+      </div>
+      <div class="mn-form-row">
+        <label>Subordinados diretos</label>
+        <input type="text" id="mn-cg-subordinados" placeholder="ex: Nenhum">
+      </div>
+      <div class="mn-form-row">
+        <label>Especialidades</label>
+        <input type="text" id="mn-cg-especialidades" placeholder="ex: Implementos Rodoviários, Mecânica Diesel">
+        <span class="dica">Separe por vírgula. Deixe em branco se o cargo não tem especialidades.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Objetivo do cargo</label>
+        <textarea id="mn-cg-objetivo" placeholder="Para que esta função existe"></textarea>
+      </div>
+      <div class="mn-form-row">
+        <label>Responsabilidades principais</label>
+        <textarea id="mn-cg-responsabilidades" placeholder="Uma por linha"></textarea>
+        <span class="dica">Uma por linha.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Atividades detalhadas</label>
+        <textarea id="mn-cg-atividades" placeholder="Uma por linha, na ordem em que acontecem"></textarea>
+        <span class="dica">Uma por linha. Vira lista numerada.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Interfaces</label>
+        <textarea id="mn-cg-interfaces" placeholder="Uma por linha"></textarea>
+        <span class="dica">Com quem esta função se relaciona. Uma por linha.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Documentos e registros gerados</label>
+        <textarea id="mn-cg-documentos" placeholder="Um por linha"></textarea>
+        <span class="dica">Um por linha.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Indicadores</label>
+        <textarea id="mn-cg-indicadores" placeholder="Como o desempenho desta função é medido" style="min-height:60px;"></textarea>
+      </div>
+      <div class="mn-form-row">
+        <label>Observação</label>
+        <textarea id="mn-cg-nota" placeholder="Opcional" style="min-height:60px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mn-ed-mini" onclick="document.getElementById('mn-modal-cargo').classList.remove('open')">Cancelar</button>
+      <button class="mn-cfg-btn" onclick="salvarEditorCargo()"><i class="fa-solid fa-check"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mn-modal-senha">
+  <div class="modal" style="max-width:420px;width:100%;">
+    <div class="modal-hdr">
+      <h3>Trocar minha senha</h3>
+      <button class="close-btn" onclick="document.getElementById('mn-modal-senha').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="mn-form-erro" id="mn-sn-erro"></div>
+      <div class="mn-form-ok" id="mn-sn-ok"></div>
+      <p class="mn-ed-note" id="mn-sn-aviso" style="display:none;background:#fef3c7;color:#92400e;padding:10px 13px;border-radius:9px;font-weight:700;margin:0 0 13px;">
+        <i class="fa-solid fa-triangle-exclamation"></i> Você ainda está usando a senha inicial. Defina uma senha própria agora.
+      </p>
+      <div class="mn-form-row">
+        <label>Senha atual</label>
+        <input type="password" id="mn-sn-atual" autocomplete="current-password">
+      </div>
+      <div class="mn-form-row">
+        <label>Nova senha</label>
+        <input type="password" id="mn-sn-nova" autocomplete="new-password">
+        <span class="dica">Mínimo de 6 caracteres.</span>
+      </div>
+      <div class="mn-form-row">
+        <label>Repita a nova senha</label>
+        <input type="password" id="mn-sn-nova2" autocomplete="new-password" onkeydown="if(event.key==='Enter')salvarNovaSenha()">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mn-ed-mini" onclick="document.getElementById('mn-modal-senha').classList.remove('open')">Cancelar</button>
+      <button class="mn-cfg-btn" onclick="salvarNovaSenha()"><i class="fa-solid fa-check"></i> Trocar senha</button>
+    </div>
+  </div>
+</div>

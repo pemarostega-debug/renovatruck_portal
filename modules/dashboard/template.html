@@ -1,0 +1,236 @@
+<div id="screen-dashboard">
+  <div class="tool-nav">
+    <button class="back-btn" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i>Início</button>
+    <img src="assets/logo-renova.jpg" style="height:32px;filter:drop-shadow(0 1px 4px rgba(0,0,0,.4));" />
+    <span style="font-size:.85rem;font-weight:800;">Dashboard Gerencial</span>
+  </div>
+  <!-- HEADER -->
+  <header style="background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;position:sticky;top:0;z-index:40;box-shadow:0 2px 12px rgba(0,0,0,.2);">
+    <div class="header-inner" style="max-width:1400px;margin:0 auto;padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <!-- Logo -->
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <img src="assets/logo-renova.jpg" alt="Renova" style="height:40px;width:auto;filter:drop-shadow(0 2px 8px rgba(0,0,0,.4));" />
+        <div style="font-size:.62rem;color:#94a3b8;">Atualizado: <span id="last-update" style="color:#7dd3fc;font-weight:700;">--</span></div>
+      </div>
+      <!-- Controls -->
+      <div class="header-right" style="display:flex;align-items:center;gap:6px;">
+        <div class="co-filters" style="display:flex;gap:3px;background:rgba(255,255,255,.08);padding:3px;border-radius:24px;">
+        </div>
+        <button onclick="fetchData()" class="refresh-btn"><i class="fa-solid fa-rotate-right"></i></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <nav style="background:#fff;border-bottom:1px solid var(--border);position:sticky;top:60px;z-index:30;">
+    <div style="max-width:1400px;margin:0 auto;padding:0 1rem;display:flex;overflow-x:auto;">
+      <button onclick="switchTab('dash1')" id="btn-dash1" class="nav-btn active"><i class="fa-solid fa-list-check" style="margin-right:6px;"></i>Ordens em Aberto</button>
+      <button onclick="switchTab('dash2')" id="btn-dash2" class="nav-btn"><i class="fa-solid fa-chart-pie" style="margin-right:6px;"></i>Faturamento</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main style="max-width:1400px;margin:0 auto;padding:1.2rem 1rem 5rem;">
+
+    <!-- ── DASH 1 ── -->
+    <div id="dash1">
+      <div class="grid-2" style="margin-bottom:1rem;">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('afaturar')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-file-invoice-dollar" style="color:#3b82f6;"></i>A FATURAR</span>
+            <div><div class="kpi-val" id="kpi-afaturar-val">R$ 0</div><div class="kpi-qty" id="kpi-afaturar-qtd">0 OSs</div></div>
+          </div>
+          <div class="chart-container"><canvas id="c-afaturar"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('aguardando')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-box" style="color:#f59e0b;"></i>AGUARDANDO PEDIDO</span>
+            <div><div class="kpi-val" id="kpi-aguardando-val">R$ 0</div><div class="kpi-qty" id="kpi-aguardando-qtd">0 OSs</div></div>
+          </div>
+          <div class="chart-container"><canvas id="c-aguardando"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('finalizado')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-circle-check" style="color:#10b981;"></i>FINALIZADO (EVIDÊNCIAS)</span>
+            <div><div class="kpi-val" id="kpi-finalizado-val">R$ 0</div><div class="kpi-qty" id="kpi-finalizado-qtd">0 OSs</div></div>
+          </div>
+          <div class="chart-container"><canvas id="c-finalizado"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('execucao')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-wrench" style="color:#6366f1;"></i>EM EXECUÇÃO</span>
+            <div><div class="kpi-val" id="kpi-execucao-val">R$ 0</div><div class="kpi-qty" id="kpi-execucao-qtd">0 OSs</div></div>
+          </div>
+          <div class="chart-container"><canvas id="c-execucao"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('agendamento')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-calendar-check" style="color:#8b5cf6;"></i>AG. AGENDAMENTO TICKET</span>
+            <div><div class="kpi-val" id="kpi-agendamento-val">R$ 0</div><div class="kpi-qty" id="kpi-agendamento-qtd">0 OSs</div></div>
+          </div>
+          <div class="chart-container"><canvas id="c-agendamento"></canvas></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" style="cursor:pointer;" onclick="filterByGroup('orcamento')" title="Ver todas as OSs desta fase"><i class="fa-solid fa-file-pen" style="color:#64748b;"></i>EM ORÇAMENTO / APROVAÇÃO</span>
+            <div><div class="kpi-val" id="kpi-orcamento-val">R$ 0</div><div class="kpi-qty" id="kpi-orcamento-qtd">0 OSs</div></div>
+          </div>
+          <div class="chart-container"><canvas id="c-orcamento"></canvas></div>
+        </div>
+
+      </div>
+
+      <!-- Gráficos OSs Finalizadas: por Dia e por Mês -->
+      <div class="grid-2" style="margin-bottom:1rem;">
+        <div class="card" id="card-daily-os">
+          <div class="card-header">
+            <span class="card-title"><i class="fa-solid fa-calendar-days" style="color:#3b82f6;margin-right:6px;"></i>OSs Finalizadas por Dia</span>
+            <div id="daily-filter-tag" style="display:none;align-items:center;gap:8px;padding:5px 10px;background:#dbeafe;border-radius:8px;font-size:.73rem;font-weight:700;color:var(--primary);">
+              <i class="fa-solid fa-filter"></i>
+              <span id="daily-filter-label"></span>
+              <button onclick="clearDailyFilter()" style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:1rem;line-height:1;padding:0 2px;">✕</button>
+            </div>
+          </div>
+          <div id="daily-loading" style="display:none;padding:1rem;text-align:center;color:var(--muted);font-size:.82rem;">
+            <i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Carregando dados de finalizações...
+          </div>
+          <div class="chart-container" style="min-height:220px;"><canvas id="c-daily-os"></canvas></div>
+        </div>
+
+        <div class="card" id="card-monthly-os">
+          <div class="card-header">
+            <span class="card-title"><i class="fa-solid fa-calendar-week" style="color:#8b5cf6;margin-right:6px;"></i>OSs Finalizadas por Mês</span>
+            <div id="monthly-filter-tag" style="display:none;align-items:center;gap:8px;padding:5px 10px;background:#ede9fe;border-radius:8px;font-size:.73rem;font-weight:700;color:#7c3aed;">
+              <i class="fa-solid fa-filter"></i>
+              <span id="monthly-filter-label"></span>
+              <button onclick="clearMonthlyFilter()" style="background:none;border:none;cursor:pointer;color:#7c3aed;font-size:1rem;line-height:1;padding:0 2px;">✕</button>
+            </div>
+          </div>
+          <div id="monthly-loading" style="display:none;padding:1rem;text-align:center;color:var(--muted);font-size:.82rem;">
+            <i class="fa-solid fa-spinner fa-spin" style="margin-right:6px;"></i>Carregando dados de finalizações...
+          </div>
+          <div class="chart-container" style="min-height:220px;"><canvas id="c-monthly-os"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Tabela D1 -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;flex-wrap:wrap;gap:8px;">
+          <h3 style="font-weight:800;font-size:.82rem;"><i class="fa-solid fa-table" style="margin-right:6px;color:var(--primary);"></i>Detalhamento — Ordens em Aberto</h3>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="searchBox1" class="search-input" placeholder="Filtrar tabela..." />
+            <button onclick="exportD1XLSX()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;"><i class="fa-solid fa-file-excel"></i>Exportar Excel</button>
+          </div>
+        </div>
+        <div id="filter-tag-d1" class="filter-tag">
+          <i class="fa-solid fa-filter"></i>
+          <span id="filter-label-d1"></span>
+          <button onclick="clearFilter('d1')" title="Limpar filtro">✕</button>
+        </div>
+        <div class="table-wrap" style="margin-top:.5rem;">
+          <table>
+            <thead><tr>
+              <th>OS</th><th>Cliente</th>
+              <th class="hide-mobile">Placa</th><th>Status</th>
+              <th class="hide-mobile">Data</th><th style="text-align:right;">Valor</th>
+            </tr></thead>
+            <tbody id="table-body-d1"><tr><td colspan="6" class="empty-state">Carregando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DASH 2 ── -->
+    <div id="dash2" style="display:none;">
+
+      <!-- Filtro mês -->
+      <div class="card" style="margin-bottom:1rem;padding:.9rem 1rem;">
+        <p style="font-size:.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem;">Mês de Referência</p>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="month" id="monthFilter" style="flex:1;min-width:0;border:2px solid var(--border);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:'DM Sans',sans-serif;color:var(--primary);font-weight:700;outline:none;" />
+          <button onclick="renderDash2()" style="flex-shrink:0;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:700;font-size:.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;">
+            <i class="fa-solid fa-filter"></i><span>Filtrar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.8rem;margin-bottom:1rem;">
+        <div class="card" style="border-left:4px solid var(--renova);">
+          <p style="font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Faturamento (Mês)</p>
+          <p id="d2-total-value" style="font-size:clamp(.95rem,3.5vw,1.6rem);font-weight:900;line-height:1.2;">R$ 0,00</p>
+        </div>
+        <div class="card" style="border-left:4px solid #8b5cf6;">
+          <p style="font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Qtd. OSs Faturadas</p>
+          <p id="d2-total-qty" style="font-size:clamp(1.4rem,5vw,2rem);font-weight:900;">0</p>
+        </div>
+      </div>
+
+      <!-- Ranking -->
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="card-header"><span class="card-title">Ranking de Faturamento (Mês Selecionado)</span></div>
+        <div class="chart-container" style="min-height:280px;"><canvas id="c-faturamento"></canvas></div>
+      </div>
+
+      <!-- 12m + Rosca -->
+      <div class="grid-2-dash2" style="margin-bottom:1rem;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Faturamento Geral (Últimos 12 Meses)</span></div>
+          <div class="chart-container" style="min-height:300px;"><canvas id="c-geral-12m"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Share: Top 5 Clientes</span></div>
+          <div class="chart-container" style="min-height:260px;max-height:320px;"><canvas id="c-rosca"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Evolução cliente -->
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="card-header" style="flex-wrap:wrap;gap:8px;">
+          <span class="card-title">Evolução por Cliente (12 Meses)</span>
+          <select id="clientSelect" onchange="updateEvolution()" style="border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:.75rem;color:var(--text);font-family:'DM Sans',sans-serif;max-width:240px;">
+            <option>Selecione um cliente...</option>
+          </select>
+        </div>
+        <div id="evolution-placeholder" style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem;">
+          <i class="fa-solid fa-chart-line" style="font-size:1.5rem;margin-bottom:8px;display:block;opacity:.3;"></i>
+          Selecione um cliente para ver a evolução
+        </div>
+        <div id="evolution-chart-wrap" style="display:none;" class="chart-container" style="min-height:260px;"><canvas id="c-evolucao"></canvas></div>
+      </div>
+
+      <!-- Tabela D2 -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;flex-wrap:wrap;gap:8px;">
+          <h3 style="font-weight:800;font-size:.82rem;"><i class="fa-solid fa-file-invoice-dollar" style="margin-right:6px;color:var(--primary);"></i>Detalhamento — Faturamento</h3>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="searchBox2" class="search-input" placeholder="Filtrar tabela..." />
+            <button onclick="exportD2XLSX()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;"><i class="fa-solid fa-file-excel"></i>Exportar Excel</button>
+          </div>
+        </div>
+        <div id="filter-tag-d2" class="filter-tag">
+          <i class="fa-solid fa-filter"></i>
+          <span id="filter-label-d2"></span>
+          <button onclick="clearFilter('d2')" title="Limpar filtro">✕</button>
+        </div>
+        <div class="table-wrap" style="margin-top:.5rem;">
+          <table>
+            <thead><tr>
+              <th>OS</th><th>Cliente</th>
+              <th class="hide-mobile">Placa</th><th class="hide-mobile">Status</th>
+              <th>Data Fat.</th><th style="text-align:right;">Valor</th>
+            </tr></thead>
+            <tbody id="table-body-d2"><tr><td colspan="6" class="empty-state">Selecione um mês e clique em Filtrar.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
