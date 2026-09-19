@@ -1,0 +1,856 @@
+<div id="screen-contasreceber">
+
+<div class="cr-topbar">
+  <button class="cr-btn" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i>Início</button>
+  <img src="assets/logo-renova.jpg" style="height:30px;filter:drop-shadow(0 1px 4px rgba(0,0,0,.25));" alt="Renova" />
+  <span class="cr-title"><i class="fa-solid fa-hand-holding-dollar"></i><span class="cr-rot-longo">Contas a Receber &amp; Operações Financeiras</span><span class="cr-rot-curto">Contas a Receber</span></span>
+  <span class="cr-spacer"></span>
+  <input type="month" id="cr-competencia" class="cr-mes" onchange="crTrocarMes()" />
+  <button class="cr-btn" onclick="crCarregar(true)" title="Recarregar"><i class="fa-solid fa-rotate-right"></i></button>
+  <button class="cr-btn cr-btn-sync rv-so-admin" onclick="crAbrirSync()"><i class="fa-solid fa-cloud-arrow-down"></i><span class="cr-rot-longo">Sincronizar Notas de Saída</span><span class="cr-rot-curto">Sincronizar</span></button>
+  <button class="cr-btn cr-btn-primary rv-so-admin" onclick="crAbrirTitulo()"><i class="fa-solid fa-plus"></i><span class="cr-rot-longo">Novo Título</span><span class="cr-rot-curto">Novo</span></button>
+</div>
+
+<div id="cr-notice" class="cr-notice"></div>
+
+<div class="cr-tabs">
+  <button class="cr-tab active" id="cr-tab-dash"      onclick="crAba('dash')"><i class="fa-solid fa-chart-pie"></i>Dashboard</button>
+  <button class="cr-tab"        id="cr-tab-titulos"   onclick="crAba('titulos')"><i class="fa-solid fa-list-ul"></i>Títulos</button>
+  <button class="cr-tab"        id="cr-tab-antecipar" onclick="crAba('antecipar')"><i class="fa-solid fa-bolt"></i>Antecipar</button>
+  <button class="cr-tab"        id="cr-tab-operacoes" onclick="crAba('operacoes')"><i class="fa-solid fa-file-signature"></i>Operações<span class="cr-badge" id="cr-badge-risco" style="display:none;">0</span></button>
+  <button class="cr-tab"        id="cr-tab-bi"        onclick="crAba('bi')"><i class="fa-solid fa-chart-line"></i>BI Antecipações</button>
+  <button class="cr-tab"        id="cr-tab-cadastros" onclick="crAba('cadastros')"><i class="fa-solid fa-building-columns"></i>Parceiros &amp; Políticas</button>
+</div>
+
+<!-- ══════════════════ DASHBOARD ══════════════════ -->
+<div class="cr-pane active" id="cr-pane-dash">
+  <div class="cr-kpis">
+    <div class="cr-kpi faturado">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-file-invoice"></i>A receber no mês</div>
+      <div class="cr-kpi-val" id="cr-k-previsto">R$ 0</div>
+      <div class="cr-kpi-sub" id="cr-k-previsto-sub">— títulos vencendo</div>
+    </div>
+    <div class="cr-kpi recebido">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-circle-check"></i>Recebido no mês</div>
+      <div class="cr-kpi-val" id="cr-k-recebido">R$ 0</div>
+      <div class="cr-kpi-sub" id="cr-k-recebido-sub">— do previsto</div>
+      <div class="cr-barra"><span id="cr-k-barra" style="width:0%"></span></div>
+    </div>
+    <div class="cr-kpi aberto">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-hourglass-half"></i>Em aberto no mês</div>
+      <div class="cr-kpi-val" id="cr-k-aberto">R$ 0</div>
+      <div class="cr-kpi-sub" id="cr-k-aberto-sub">— títulos a receber</div>
+    </div>
+    <div class="cr-kpi atraso">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-triangle-exclamation"></i>Vencido em aberto</div>
+      <div class="cr-kpi-val" id="cr-k-atraso">R$ 0</div>
+      <div class="cr-kpi-sub" id="cr-k-atraso-sub">— títulos vencidos</div>
+    </div>
+  </div>
+
+  <div class="cr-posse">
+    <div class="cr-posse-top">
+      <span class="cr-posse-h"><i class="fa-solid fa-scale-balanced" style="color:var(--ant);margin-right:5px;"></i>De quem é a carteira em aberto</span>
+      <span class="cr-kpi-sub" id="cr-posse-total">—</span>
+    </div>
+    <div class="cr-posse-bar">
+      <span class="cr-posse-proprio" id="cr-posse-p" style="width:100%">100%</span>
+      <span class="cr-posse-ant" id="cr-posse-a" style="width:0%"></span>
+    </div>
+    <div class="cr-posse-leg">
+      <span style="color:var(--cr);"><i class="fa-solid fa-circle"></i><span id="cr-posse-p-txt">Próprio R$ 0</span></span>
+      <span style="color:var(--ant);"><i class="fa-solid fa-circle"></i><span id="cr-posse-a-txt">Antecipado R$ 0</span></span>
+      <span style="color:var(--risco);"><i class="fa-solid fa-circle"></i><span id="cr-posse-r-txt">Em risco R$ 0</span></span>
+    </div>
+    <p class="cr-ajuda" style="margin-top:8px;">
+      O antecipado já foi creditado em caixa, mas a cobrança continua sendo da
+      empresa: se o cliente não pagar, o título volta como recompra.
+    </p>
+  </div>
+
+  <div class="cr-ind">
+    <div class="cr-ind-item">
+      <div class="cr-ind-lbl"><i class="fa-solid fa-stopwatch"></i>PMR (DSO)</div>
+      <div class="cr-ind-val" id="cr-i-dso">—</div>
+      <div class="cr-ind-sub">dias médios até receber</div>
+    </div>
+    <div class="cr-ind-item">
+      <div class="cr-ind-lbl"><i class="fa-solid fa-calendar-day"></i>Prazo da carteira</div>
+      <div class="cr-ind-val" id="cr-i-prazo">—</div>
+      <div class="cr-ind-sub">dias médios do que está em aberto</div>
+    </div>
+    <div class="cr-ind-item">
+      <div class="cr-ind-lbl"><i class="fa-solid fa-percent"></i>Inadimplência</div>
+      <div class="cr-ind-val" id="cr-i-inad">—</div>
+      <div class="cr-ind-sub">vencido sobre carteira em aberto</div>
+    </div>
+    <div class="cr-ind-item">
+      <div class="cr-ind-lbl"><i class="fa-solid fa-users"></i>Concentração top 5</div>
+      <div class="cr-ind-val" id="cr-i-conc">—</div>
+      <div class="cr-ind-sub" id="cr-i-conc-sub">da carteira em aberto</div>
+    </div>
+    <div class="cr-ind-item">
+      <div class="cr-ind-lbl"><i class="fa-solid fa-receipt"></i>Ticket médio</div>
+      <div class="cr-ind-val" id="cr-i-ticket">—</div>
+      <div class="cr-ind-sub">por título emitido no mês</div>
+    </div>
+  </div>
+
+  <div class="cr-grid">
+    <div class="cr-card">
+      <div class="cr-card-h"><span><i class="fa-solid fa-chart-column"></i>Faturado x recebido — 6 meses</span></div>
+      <div class="cr-chart"><canvas id="cr-c-evolucao"></canvas></div>
+    </div>
+    <div class="cr-card">
+      <div class="cr-card-h"><span><i class="fa-solid fa-ranking-star"></i>Top 5 clientes em aberto</span><span class="cr-kpi-sub" id="cr-cli-conc">—</span></div>
+      <div class="cr-chart"><canvas id="cr-c-clientes"></canvas></div>
+    </div>
+  </div>
+
+  <div class="cr-grid">
+    <div class="cr-card">
+      <div class="cr-card-h"><span><i class="fa-solid fa-calendar-week"></i>Entradas previstas por semana</span><span class="cr-kpi-sub" id="cr-semana-total">—</span></div>
+      <div class="cr-chart"><canvas id="cr-c-semana"></canvas></div>
+    </div>
+    <div class="cr-card">
+      <div class="cr-card-h"><span><i class="fa-solid fa-gauge-high"></i>Régua de inadimplência</span><span class="cr-kpi-sub" id="cr-regua-total">—</span></div>
+      <div class="cr-regua" id="cr-regua"></div>
+    </div>
+  </div>
+
+  <div class="cr-grid">
+    <div class="cr-card">
+      <div class="cr-card-h">
+        <span><i class="fa-solid fa-magnifying-glass-chart"></i><span id="cr-detalhe-titulo">Detalhe da seleção</span></span>
+        <button class="cr-acao" id="cr-detalhe-limpar" onclick="crLimparSelecao()" title="Limpar seleção" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="cr-tbl-wrap" style="max-height:240px;overflow-y:auto;"><table class="cr-tbl"><tbody id="cr-tb-detalhe"></tbody></table></div>
+    </div>
+    <div class="cr-card">
+      <div class="cr-card-h"><span><i class="fa-solid fa-calendar-check"></i>Vencendo hoje</span><span class="cr-kpi-sub" id="cr-hoje-total">—</span></div>
+      <div class="cr-tbl-wrap" style="max-height:260px;overflow-y:auto;"><table class="cr-tbl"><tbody id="cr-tb-hoje"></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="cr-grid">
+    <div class="cr-card">
+      <div class="cr-card-h"><span><i class="fa-solid fa-triangle-exclamation" style="color:var(--risco);"></i>Títulos atrasados</span><span class="cr-kpi-sub" id="cr-atraso-total">—</span></div>
+      <div class="cr-tbl-wrap" style="max-height:330px;overflow-y:auto;"><table class="cr-tbl"><tbody id="cr-tb-atraso"></tbody></table></div>
+    </div>
+    <div class="cr-card">
+      <div class="cr-card-h"><span><i class="fa-solid fa-calendar-days"></i>Próximos vencimentos (30 dias)</span><span class="cr-kpi-sub" id="cr-prox-total">—</span></div>
+      <div class="cr-tbl-wrap" style="max-height:330px;overflow-y:auto;"><table class="cr-tbl"><tbody id="cr-tb-prox"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ TÍTULOS ══════════════════ -->
+<div class="cr-pane" id="cr-pane-titulos">
+  <div class="cr-filtros">
+    <input type="text" id="cr-f-busca" class="cr-inp busca" placeholder="Buscar cliente, NF, OS ou descrição..." oninput="crRenderTitulos()" />
+    <select id="cr-f-status" class="cr-inp" onchange="crRenderTitulos()">
+      <option value="">Todos os status</option>
+      <option value="ABERTO">Em aberto</option>
+      <option value="VENCIDO">Vencidos</option>
+      <option value="RECEBIDO">Recebidos</option>
+      <option value="PARCIAL">Parciais</option>
+    </select>
+    <select id="cr-f-antec" class="cr-inp" onchange="crRenderTitulos()">
+      <option value="">Antecipados e livres</option>
+      <option value="livre">Só os livres</option>
+      <option value="antecipado">Só os antecipados</option>
+      <option value="risco">Só os em risco</option>
+    </select>
+    <select id="cr-f-cliente" class="cr-inp" onchange="crRenderTitulos()"><option value="">Todos os clientes</option></select>
+    <select id="cr-f-periodo" class="cr-inp" onchange="crRenderTitulos()">
+      <option value="mes">Mês selecionado</option>
+      <option value="tudo">Todo o período</option>
+      <option value="aberto">Só o que está em aberto</option>
+    </select>
+    <span class="cr-spacer"></span>
+    <button class="cr-btn" onclick="crExportar()"><i class="fa-solid fa-file-arrow-down"></i>Exportar</button>
+  </div>
+
+  <div class="cr-lote" id="cr-lote">
+    <span><b id="cr-lote-qtd">0</b> título(s) · <b id="cr-lote-valor">R$ 0</b></span>
+    <span class="cr-spacer"></span>
+    <button class="cr-btn cr-btn-peq" onclick="crLimparLote()"><i class="fa-solid fa-xmark"></i>Limpar</button>
+    <button class="cr-btn cr-btn-peq rv-so-admin" onclick="crAbrirBaixaLote()"><i class="fa-solid fa-money-bill-transfer"></i>Dar baixa</button>
+  </div>
+
+  <div class="cr-tbl-wrap">
+    <table class="cr-tbl">
+      <thead><tr>
+        <th style="width:34px;"><input type="checkbox" id="cr-todos" onchange="crMarcarTodos(this.checked)" /></th>
+        <th>Vencimento</th><th>Cliente</th><th class="cr-col-apoio">NF</th><th class="cr-col-apoio">OS</th>
+        <th class="cr-num">Valor</th><th class="cr-num cr-col-apoio">Recebido</th>
+        <th>Status</th><th>Antecipação</th><th></th>
+      </tr></thead>
+      <tbody id="cr-tb-titulos"></tbody>
+    </table>
+  </div>
+  <div style="margin-top:10px;font-size:.75rem;color:var(--muted);font-weight:600;" id="cr-titulos-resumo"></div>
+</div>
+
+<!-- ══════════════════ ANTECIPAR ══════════════════ -->
+<div class="cr-pane" id="cr-pane-antecipar">
+  <div class="cr-notice info" style="display:block;margin:0 0 14px;">
+    <b>Como funciona.</b> Escolha o que vai no pacote — duplicatas já emitidas e/ou
+    ordens de serviço ainda em <b>AGUARDANDO PEDIDO</b> —, selecione o parceiro e
+    confira a simulação. O pré-borderô sai em PDF ou Excel para enviar ao fundo.
+    Quando uma OS antecipada for faturada, as notas que ela gerar já nascem
+    marcadas como antecipadas: o vínculo é o número da OS na nota.
+  </div>
+
+  <div class="cr-filtros">
+    <input type="text" id="cr-a-busca" class="cr-inp busca" placeholder="Filtrar por cliente, NF ou OS..." oninput="crRenderAntecipar()" />
+    <select id="cr-a-cliente" class="cr-inp" onchange="crRenderAntecipar()"><option value="">Todos os clientes</option></select>
+    <span style="display:inline-flex;align-items:center;gap:7px;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);white-space:nowrap;">
+      Vencer até <input type="date" id="cr-a-ate" class="cr-inp" onchange="crRenderAntecipar()" />
+    </span>
+    <span class="cr-spacer"></span>
+    <button class="cr-btn cr-btn-peq" onclick="crSelecionarTudoAntecipar()"><i class="fa-solid fa-check-double"></i>Selecionar tudo o que está visível</button>
+    <button class="cr-btn cr-btn-peq rv-so-admin" onclick="crAplicarRegrasNosVencimentos()" title="Joga cada vencimento para o dia em que o cliente realmente paga, pela regra cadastrada em Parceiros &amp; Políticas"><i class="fa-solid fa-calendar-check"></i>Aplicar regra dos clientes</button>
+    <button class="cr-btn cr-btn-peq rv-so-admin" onclick="crLimparVencimentos()" title="Volta todos os vencimentos ao que está gravado no título"><i class="fa-solid fa-rotate-left"></i>Desfazer correções</button>
+  </div>
+
+  <div class="cr-grid" style="align-items:start;">
+    <div class="cr-card" style="padding:0;overflow:hidden;">
+      <div class="cr-card-h" style="padding:13px 16px 10px;margin:0;">
+        <span><i class="fa-solid fa-file-invoice"></i>Duplicatas disponíveis</span>
+        <span class="cr-kpi-sub" id="cr-a-tit-resumo">—</span>
+      </div>
+      <div class="cr-tbl-wrap" style="border:none;border-top:1px solid var(--border);border-radius:0;max-height:430px;overflow-y:auto;">
+        <table class="cr-tbl">
+          <thead><tr>
+            <th style="width:32px;"></th><th>Venc.</th><th>Cliente</th>
+            <th class="cr-col-apoio">NF</th><th class="cr-num">Valor</th><th class="cr-num">Prazo</th>
+          </tr></thead>
+          <tbody id="cr-tb-a-titulos"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="cr-card" style="padding:0;overflow:hidden;">
+      <div class="cr-card-h" style="padding:13px 16px 10px;margin:0;">
+        <span><i class="fa-solid fa-clock-rotate-left" style="color:var(--ant);"></i>OS em Aguardando Pedido</span>
+        <span class="cr-kpi-sub" id="cr-a-os-resumo">—</span>
+      </div>
+      <div class="cr-tbl-wrap" style="border:none;border-top:1px solid var(--border);border-radius:0;max-height:430px;overflow-y:auto;">
+        <table class="cr-tbl">
+          <thead><tr>
+            <th style="width:32px;"></th><th>OS</th><th>Cliente</th>
+            <th class="cr-num">Valor OS</th><th class="cr-num">Antecipável</th><th class="cr-col-apoio">Venc. est.</th>
+          </tr></thead>
+          <tbody id="cr-tb-a-os"></tbody>
+        </table>
+      </div>
+      <div style="padding:10px 16px;font-size:.68rem;color:var(--muted);font-weight:600;line-height:1.5;border-top:1px solid var(--border);" id="cr-a-os-nota">
+        A lista sai do último export do Genesis.
+      </div>
+    </div>
+  </div>
+
+  <div class="cr-carrinho">
+    <div class="cr-carrinho-linha">
+      <div class="cr-campo" style="min-width:190px;">
+        <label class="cr-lbl">Parceiro financeiro</label>
+        <select id="cr-a-parceiro" class="cr-inp" onchange="crSimular()" style="min-width:190px;"></select>
+      </div>
+      <div class="cr-campo" style="min-width:140px;">
+        <label class="cr-lbl">Data da operação</label>
+        <input type="date" id="cr-a-data" class="cr-inp" onchange="crSimular()" />
+      </div>
+      <div class="cr-sim">
+        <div class="cr-sim-item bruto"><div class="cr-sim-lbl">Face</div><div class="cr-sim-val" id="cr-s-bruto">R$ 0</div></div>
+        <div class="cr-sim-item"><div class="cr-sim-lbl">Títulos</div><div class="cr-sim-val" id="cr-s-qtd">0</div></div>
+        <div class="cr-sim-item"><div class="cr-sim-lbl">Prazo médio</div><div class="cr-sim-val" id="cr-s-prazo">0d</div></div>
+        <div class="cr-sim-item custo"><div class="cr-sim-lbl">Deságio</div><div class="cr-sim-val" id="cr-s-desagio">R$ 0</div></div>
+        <div class="cr-sim-item liq"><div class="cr-sim-lbl">Líquido est.</div><div class="cr-sim-val" id="cr-s-liquido">R$ 0</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="cr-btn cr-btn-peq" id="cr-btn-pdf" onclick="crPreBordero('pdf')" disabled><i class="fa-solid fa-file-pdf"></i>Pré-borderô</button>
+        <button class="cr-btn cr-btn-peq" id="cr-btn-xls" onclick="crPreBordero('xlsx')" disabled><i class="fa-solid fa-file-excel"></i>Excel</button>
+        <button class="cr-btn cr-btn-ant rv-so-admin" id="cr-btn-registrar" onclick="crRegistrarOperacao()" disabled><i class="fa-solid fa-file-signature"></i>Registrar operação</button>
+      </div>
+    </div>
+    <div class="cr-alerta" id="cr-a-alerta"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ OPERAÇÕES ══════════════════ -->
+<div class="cr-pane" id="cr-pane-operacoes">
+  <div class="cr-kpis">
+    <div class="cr-kpi antecipado">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-hand-holding-dollar"></i>Exposição atual</div>
+      <div class="cr-kpi-val" id="cr-o-exposicao">R$ 0</div>
+      <div class="cr-kpi-sub" id="cr-o-exposicao-sub">— títulos com o parceiro</div>
+    </div>
+    <div class="cr-kpi atraso">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-triangle-exclamation"></i>Em risco de recompra</div>
+      <div class="cr-kpi-val" id="cr-o-risco">R$ 0</div>
+      <div class="cr-kpi-sub" id="cr-o-risco-sub">antecipado, vencido e não pago</div>
+    </div>
+    <div class="cr-kpi neutro">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-clock"></i>Vencendo em 7 dias</div>
+      <div class="cr-kpi-val" id="cr-o-7dias">R$ 0</div>
+      <div class="cr-kpi-sub" id="cr-o-7dias-sub">— títulos antecipados</div>
+    </div>
+    <div class="cr-kpi recebido">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-clock-rotate-left"></i>OS aguardando faturamento</div>
+      <div class="cr-kpi-val" id="cr-o-osaguard">R$ 0</div>
+      <div class="cr-kpi-sub" id="cr-o-osaguard-sub">— antecipadas sem nota</div>
+    </div>
+  </div>
+
+  <div class="cr-card" style="margin-bottom:14px;">
+    <div class="cr-card-h">
+      <span><i class="fa-solid fa-file-signature"></i>Operações registradas</span>
+      <button class="cr-btn cr-btn-peq rv-so-admin" onclick="crReconciliar()" title="Procura notas fiscais emitidas a partir de OSs antecipadas e marca os títulos"><i class="fa-solid fa-link"></i>Reconciliar OS → NF</button>
+    </div>
+    <div class="cr-tbl-wrap">
+      <table class="cr-tbl">
+        <thead><tr>
+          <th>Nº</th><th>Data</th><th>Parceiro</th><th class="cr-col-apoio">Itens</th>
+          <th class="cr-num">Face</th><th class="cr-num cr-col-apoio">Prazo</th>
+          <th class="cr-num">Deságio</th><th class="cr-num">Líquido</th>
+          <th class="cr-num cr-col-apoio">Taxa efet.</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody id="cr-tb-operacoes"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="cr-card">
+    <div class="cr-card-h">
+      <span><i class="fa-solid fa-calendar-xmark" style="color:var(--ant);"></i>Carteira antecipada por vencimento</span>
+      <span class="cr-kpi-sub" id="cr-carteira-resumo">—</span>
+    </div>
+    <p class="cr-ajuda" style="margin:-4px 0 11px;">
+      Toda baixa aqui é manual, de propósito. Enquanto o cliente não paga, a
+      responsabilidade é da empresa — marcar recebido sozinho no vencimento
+      esconderia exatamente o risco que esta tabela existe para mostrar.
+    </p>
+    <div class="cr-filtros" style="margin-bottom:10px;">
+      <select id="cr-c-parceiro" class="cr-inp" onchange="crRenderCarteira()"><option value="">Todos os parceiros</option></select>
+      <select id="cr-c-sit" class="cr-inp" onchange="crRenderCarteira()">
+        <option value="aberto">Em aberto com o parceiro</option>
+        <option value="risco">Só os vencidos (risco)</option>
+        <option value="tudo">Tudo, inclusive liquidados</option>
+      </select>
+    </div>
+    <div class="cr-lote" id="cr-lote-c">
+      <span><b id="cr-lote-c-qtd">0</b> título(s) · <b id="cr-lote-c-valor">R$ 0</b></span>
+      <span class="cr-spacer"></span>
+      <button class="cr-btn cr-btn-peq" onclick="crLimparLoteCarteira()"><i class="fa-solid fa-xmark"></i>Limpar</button>
+      <button class="cr-btn cr-btn-peq rv-so-admin" onclick="crAbrirRecompra()"><i class="fa-solid fa-rotate-left"></i>Marcar recompra</button>
+      <button class="cr-btn cr-btn-peq rv-so-admin" onclick="crAbrirBaixaCarteira()"><i class="fa-solid fa-money-bill-transfer"></i>Dar baixa</button>
+    </div>
+    <div class="cr-tbl-wrap">
+      <table class="cr-tbl">
+        <thead><tr>
+          <th style="width:32px;"></th><th>Vencimento</th><th>Cliente</th>
+          <th class="cr-col-apoio">NF</th><th class="cr-col-apoio">Operação</th><th>Parceiro</th>
+          <th class="cr-num">Valor</th><th>Situação</th>
+        </tr></thead>
+        <tbody id="cr-tb-carteira"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ BI DAS ANTECIPAÇÕES ══════════════════ -->
+<div class="cr-pane" id="cr-pane-bi">
+  <div class="cr-filtros">
+    <select id="cr-bi-periodo" class="cr-inp" onchange="crRenderBI()">
+      <option value="tudo">Todo o histórico</option>
+      <option value="ano">Ano corrente</option>
+      <option value="mes">Mês selecionado</option>
+    </select>
+    <span class="cr-spacer"></span>
+    <button class="cr-btn" onclick="crExportarBI()"><i class="fa-solid fa-file-arrow-down"></i>Exportar operações</button>
+  </div>
+
+  <div class="cr-kpis">
+    <div class="cr-kpi antecipado">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-money-bill-trend-up"></i>Volume antecipado</div>
+      <div class="cr-kpi-val" id="cr-bi-volume">R$ 0</div>
+      <div class="cr-kpi-sub" id="cr-bi-volume-sub">— operações liquidadas</div>
+    </div>
+    <div class="cr-kpi atraso">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-fire"></i>Custo financeiro</div>
+      <div class="cr-kpi-val" id="cr-bi-custo">R$ 0</div>
+      <div class="cr-kpi-sub" id="cr-bi-custo-sub">— do volume antecipado</div>
+    </div>
+    <div class="cr-kpi neutro">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-percent"></i>Taxa efetiva média</div>
+      <div class="cr-kpi-val" id="cr-bi-taxa">—</div>
+      <div class="cr-kpi-sub">ao mês, ponderada pelo volume</div>
+    </div>
+    <div class="cr-kpi recebido">
+      <div class="cr-kpi-lbl"><i class="fa-solid fa-wallet"></i>Líquido creditado</div>
+      <div class="cr-kpi-val" id="cr-bi-liquido">R$ 0</div>
+      <div class="cr-kpi-sub">entrou no caixa</div>
+    </div>
+  </div>
+
+  <div class="cr-grid">
+    <div class="cr-card">
+      <div class="cr-card-h"><span><i class="fa-solid fa-building-columns"></i>Volume por parceiro</span></div>
+      <div class="cr-chart"><canvas id="cr-c-bi-parceiro"></canvas></div>
+    </div>
+    <div class="cr-card">
+      <div class="cr-card-h"><span><i class="fa-solid fa-users"></i>Antecipado por cliente</span></div>
+      <div class="cr-chart"><canvas id="cr-c-bi-cliente"></canvas></div>
+    </div>
+  </div>
+
+  <div class="cr-grid">
+    <div class="cr-card">
+      <div class="cr-card-h"><span><i class="fa-solid fa-chart-line"></i>Custo x taxa efetiva por mês</span></div>
+      <div class="cr-chart"><canvas id="cr-c-bi-mes"></canvas></div>
+    </div>
+    <div class="cr-card">
+      <div class="cr-card-h"><span><i class="fa-solid fa-gauge"></i>Exposição por parceiro</span></div>
+      <div class="cr-tbl-wrap" style="max-height:280px;overflow-y:auto;">
+        <table class="cr-tbl">
+          <thead><tr><th>Parceiro</th><th class="cr-num">Em aberto</th><th class="cr-num cr-col-apoio">Limite</th><th class="cr-num">Uso</th></tr></thead>
+          <tbody id="cr-tb-bi-parceiros"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="cr-card" style="margin-bottom:14px;">
+    <div class="cr-card-h"><span><i class="fa-solid fa-user-shield"></i>Exposição por cliente contra o teto da política</span></div>
+    <div class="cr-tbl-wrap">
+      <table class="cr-tbl">
+        <thead><tr>
+          <th>Cliente</th><th class="cr-num">Antecipado em aberto</th><th class="cr-num cr-col-apoio">Teto</th>
+          <th class="cr-num">Uso</th><th class="cr-num">Em risco</th><th class="cr-col-apoio">Política</th>
+        </tr></thead>
+        <tbody id="cr-tb-bi-clientes"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="cr-card">
+    <div class="cr-card-h"><span><i class="fa-solid fa-scale-unbalanced"></i>Estimado x realizado por operação</span></div>
+    <p class="cr-ajuda" style="margin:-4px 0 11px;">
+      A diferença entre o deságio simulado e o que o parceiro descontou de fato.
+      Positivo quer dizer que veio mais barato do que a taxa de tabela.
+    </p>
+    <div class="cr-tbl-wrap">
+      <table class="cr-tbl">
+        <thead><tr>
+          <th>Nº</th><th>Parceiro</th><th class="cr-num">Face</th>
+          <th class="cr-num cr-col-apoio">Deságio est.</th><th class="cr-num">Deságio real</th>
+          <th class="cr-num">Diferença</th><th class="cr-num cr-col-apoio">Taxa efetiva</th>
+        </tr></thead>
+        <tbody id="cr-tb-bi-ops"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ PARCEIROS & POLÍTICAS ══════════════════ -->
+<div class="cr-pane" id="cr-pane-cadastros">
+  <div class="cr-filtros">
+    <span style="font-size:.85rem;font-weight:900;color:var(--ant);"><i class="fa-solid fa-building-columns" style="margin-right:6px;"></i>Parceiros financeiros</span>
+    <span class="cr-spacer"></span>
+    <button class="cr-btn cr-btn-ant rv-so-admin" onclick="crAbrirParceiro('')"><i class="fa-solid fa-plus"></i>Novo parceiro</button>
+  </div>
+  <div class="cr-parceiros" id="cr-parceiros"></div>
+
+  <div class="cr-filtros" style="margin-top:24px;">
+    <span style="font-size:.85rem;font-weight:900;color:var(--cr);"><i class="fa-solid fa-user-shield" style="margin-right:6px;"></i>Política de antecipação por cliente</span>
+    <span class="cr-spacer"></span>
+    <button class="cr-btn cr-btn-primary rv-so-admin" onclick="crAbrirPolitica('')"><i class="fa-solid fa-plus"></i>Nova política</button>
+  </div>
+  <p class="cr-ajuda" style="margin:-6px 0 11px;">
+    Cliente sem política cadastrada entra no padrão da casa: pode antecipar
+    duplicata já emitida, mas <b>não</b> pode antecipar OS ainda sem pedido —
+    porque antecipar recebível que ainda não existe depende de conhecer o
+    comportamento do cliente.
+  </p>
+  <div class="cr-tbl-wrap">
+    <table class="cr-tbl">
+      <thead><tr>
+        <th>Cliente</th><th class="cr-col-apoio">Código</th><th>Antecipa OS?</th>
+        <th class="cr-num">% máx.</th><th class="cr-num cr-col-apoio">Dias p/ faturar</th>
+        <th class="cr-num cr-col-apoio">Prazo venc.</th><th>Regra de pagamento</th><th class="cr-num">Teto</th><th></th>
+      </tr></thead>
+      <tbody id="cr-tb-politicas"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ MODAL: TÍTULO ══ -->
+<div class="cr-overlay" id="cr-modal-titulo">
+  <div class="cr-modal">
+    <div class="cr-modal-h">
+      <div><h3><i class="fa-solid fa-file-invoice"></i><span id="cr-mt-titulo">Novo título a receber</span></h3>
+      <div class="sub" id="cr-mt-sub">Lançamento manual — inclusive PIX, dinheiro ou serviço sem nota</div></div>
+      <button class="cr-fechar" onclick="crFechar('cr-modal-titulo')">&times;</button>
+    </div>
+    <div class="cr-modal-b">
+      <div class="cr-campo"><label class="cr-lbl">Cliente *</label>
+        <input type="text" id="cr-t-cliente" class="cr-inp" list="cr-lista-cli" placeholder="Razão social do cliente" onchange="crConferirRegraTitulo()" />
+        <datalist id="cr-lista-cli"></datalist>
+      </div>
+      <div class="cr-g3">
+        <div class="cr-campo"><label class="cr-lbl">Código do cliente</label><input type="text" id="cr-t-clicod" class="cr-inp" onchange="crConferirRegraTitulo()" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Emissão</label><input type="date" id="cr-t-emissao" class="cr-inp" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Vencimento *</label><input type="date" id="cr-t-vencimento" class="cr-inp" onchange="crConferirRegraTitulo()" /></div>
+      </div>
+      <div class="cr-g3">
+        <div class="cr-campo"><label class="cr-lbl">Número NF</label><input type="text" id="cr-t-nf" class="cr-inp" /></div>
+        <div class="cr-campo"><label class="cr-lbl">OS de origem</label><input type="text" id="cr-t-os" class="cr-inp" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Empresa</label>
+          <select id="cr-t-empresa" class="cr-inp"><option value="RENOVA">Renova</option><option value="VALE">Vale</option></select>
+        </div>
+      </div>
+      <div class="cr-g3">
+        <div class="cr-campo"><label class="cr-lbl">Parcela</label><input type="number" id="cr-t-parcela" class="cr-inp" min="1" value="1" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Total de parcelas</label><input type="number" id="cr-t-parcelas" class="cr-inp" min="1" value="1" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Forma de recebimento</label>
+          <select id="cr-t-forma" class="cr-inp"><option value="Boleto">Boleto</option><option value="PIX">PIX</option><option value="Transferência">Transferência</option><option value="Dinheiro">Dinheiro</option><option value="Cartão">Cartão</option></select>
+        </div>
+      </div>
+      <div class="cr-campo"><label class="cr-lbl">Descrição</label><input type="text" id="cr-t-descricao" class="cr-inp" placeholder="Ex.: Serviço de manutenção — OS 4753" /></div>
+      <div class="cr-g3">
+        <div class="cr-campo"><label class="cr-lbl">Valor total *</label><input type="text" id="cr-t-valor" class="cr-inp cr-num" placeholder="0,00" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Valor recebido</label><input type="text" id="cr-t-recebido" class="cr-inp cr-num" placeholder="0,00" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Data do recebimento</label><input type="date" id="cr-t-databaixa" class="cr-inp" /></div>
+      </div>
+      <div class="cr-campo"><label class="cr-lbl">Observação</label><input type="text" id="cr-t-obs" class="cr-inp" /></div>
+      <div class="cr-ajuda" id="cr-t-regra"></div>
+      <p class="cr-ajuda">
+        <b>Entrou dinheiro sem documento?</b> Deixe a NF em branco: PIX, transferência,
+        dinheiro ou serviço pedido sem nota entram por aqui e contam na carteira,
+        no fluxo de caixa e no BI como qualquer outro título. Sem NF, o título
+        não pode ir para borderô — fundo nenhum compra recebível sem documento.
+      </p>
+      <p class="cr-ajuda" id="cr-t-aviso-ant"></p>
+    </div>
+    <div class="cr-modal-f">
+      <button class="cr-btn cr-acao excluir" id="cr-t-cancelar" onclick="crCancelarTitulo()" style="display:none;"><i class="fa-solid fa-ban"></i>Cancelar título</button>
+      <span class="cr-spacer"></span>
+      <button class="cr-btn" onclick="crFechar('cr-modal-titulo')">Fechar</button>
+      <button class="cr-btn cr-btn-primary" id="cr-t-salvar" onclick="crSalvarTitulo()"><i class="fa-solid fa-floppy-disk"></i>Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: BAIXA ══ -->
+<div class="cr-overlay" id="cr-modal-baixa">
+  <div class="cr-modal" style="max-width:470px;">
+    <div class="cr-modal-h">
+      <div><h3><i class="fa-solid fa-money-bill-transfer"></i>Registrar recebimento</h3><div class="sub" id="cr-b-sub">—</div></div>
+      <button class="cr-fechar" onclick="crFechar('cr-modal-baixa')">&times;</button>
+    </div>
+    <div class="cr-modal-b">
+      <div class="cr-g2">
+        <div class="cr-campo"><label class="cr-lbl">Valor recebido</label><input type="text" id="cr-b-valor" class="cr-inp cr-num" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Data do recebimento</label><input type="date" id="cr-b-data" class="cr-inp" /></div>
+      </div>
+      <p class="cr-ajuda" id="cr-b-aviso"></p>
+    </div>
+    <div class="cr-modal-f">
+      <span class="cr-spacer"></span>
+      <button class="cr-btn" onclick="crFechar('cr-modal-baixa')">Fechar</button>
+      <button class="cr-btn cr-btn-primary" onclick="crConfirmarBaixa()"><i class="fa-solid fa-check"></i>Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: RECOMPRA ══ -->
+<div class="cr-overlay" id="cr-modal-recompra">
+  <div class="cr-modal" style="max-width:470px;">
+    <div class="cr-modal-h roxo">
+      <div><h3><i class="fa-solid fa-rotate-left"></i>Marcar recompra</h3><div class="sub" id="cr-r-sub">—</div></div>
+      <button class="cr-fechar" onclick="crFechar('cr-modal-recompra')">&times;</button>
+    </div>
+    <div class="cr-modal-b">
+      <div class="cr-campo"><label class="cr-lbl">Data da recompra</label><input type="date" id="cr-r-data" class="cr-inp" /></div>
+      <p class="cr-ajuda">
+        Use quando a empresa devolveu o dinheiro ao parceiro porque o cliente não
+        pagou. O título <b>continua em aberto</b> — a dívida do cliente não some —
+        mas sai da exposição do parceiro e para de contar como risco de
+        coobrigação.
+      </p>
+    </div>
+    <div class="cr-modal-f">
+      <span class="cr-spacer"></span>
+      <button class="cr-btn" onclick="crFechar('cr-modal-recompra')">Fechar</button>
+      <button class="cr-btn cr-btn-ant" onclick="crConfirmarRecompra()"><i class="fa-solid fa-check"></i>Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: LIQUIDAÇÃO DA OPERAÇÃO ══ -->
+<div class="cr-overlay" id="cr-modal-liquidar">
+  <div class="cr-modal" style="max-width:560px;">
+    <div class="cr-modal-h roxo">
+      <div><h3><i class="fa-solid fa-sack-dollar"></i>Informar crédito recebido</h3><div class="sub" id="cr-l-sub">—</div></div>
+      <button class="cr-fechar" onclick="crFechar('cr-modal-liquidar')">&times;</button>
+    </div>
+    <div class="cr-modal-b">
+      <div class="cr-resumo-box" id="cr-l-resumo"></div>
+      <div class="cr-g2">
+        <div class="cr-campo"><label class="cr-lbl">Valor líquido creditado *</label><input type="text" id="cr-l-liquido" class="cr-inp cr-num" placeholder="0,00" oninput="crPreverCusto()" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Data do crédito *</label><input type="date" id="cr-l-data" class="cr-inp" /></div>
+      </div>
+      <div class="cr-resumo-box" style="background:#fef3c7;">
+        <div class="cr-resumo-linha"><span>Custo da operação (face − líquido)</span><b id="cr-l-custo">R$ 0,00</b></div>
+        <div class="cr-resumo-linha"><span>Taxa efetiva no prazo médio</span><b id="cr-l-taxa">—</b></div>
+        <div class="cr-resumo-linha"><span>Diferença contra o simulado</span><b id="cr-l-dif">—</b></div>
+      </div>
+      <p class="cr-ajuda">
+        Ao confirmar, o custo entra no <b>Contas a Pagar</b> como
+        <b>3.07 Juros de Operações Financeiras</b>, já baixado — o dinheiro não
+        vai sair depois, ele já saiu descontado no crédito. O líquido fica
+        registrado como entrada de caixa na data informada.
+      </p>
+    </div>
+    <div class="cr-modal-f">
+      <span class="cr-spacer"></span>
+      <button class="cr-btn" onclick="crFechar('cr-modal-liquidar')">Fechar</button>
+      <button class="cr-btn cr-btn-ant" onclick="crConfirmarLiquidacao()"><i class="fa-solid fa-check"></i>Confirmar liquidação</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: DETALHE DA OPERAÇÃO ══ -->
+<div class="cr-overlay" id="cr-modal-operacao">
+  <div class="cr-modal largo">
+    <div class="cr-modal-h roxo">
+      <div><h3><i class="fa-solid fa-file-signature"></i><span id="cr-op-titulo">Operação</span></h3><div class="sub" id="cr-op-sub">—</div></div>
+      <button class="cr-fechar" onclick="crFechar('cr-modal-operacao')">&times;</button>
+    </div>
+    <div class="cr-modal-b">
+      <div class="cr-resumo-box" id="cr-op-resumo"></div>
+      <div class="cr-tbl-wrap">
+        <table class="cr-tbl">
+          <thead><tr><th>Tipo</th><th>Cliente</th><th>NF / OS</th><th>Vencimento</th><th class="cr-num">Prazo</th><th class="cr-num">Valor</th><th>Situação</th></tr></thead>
+          <tbody id="cr-tb-op-itens"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="cr-modal-f">
+      <button class="cr-btn cr-acao excluir rv-so-admin" id="cr-op-cancelar" onclick="crCancelarOperacao()"><i class="fa-solid fa-ban"></i>Cancelar operação</button>
+      <button class="cr-btn cr-acao excluir rv-so-admin" id="cr-op-excluir" onclick="crExcluirOperacao()" title="Apaga a operação do histórico e devolve os títulos"><i class="fa-solid fa-trash"></i>Excluir</button>
+      <span class="cr-spacer"></span>
+      <button class="cr-btn rv-so-admin" id="cr-op-editar" onclick="crAbrirEditarOperacao()"><i class="fa-solid fa-pen"></i>Editar</button>
+      <button class="cr-btn" onclick="crPreBorderoDaOperacao('pdf')"><i class="fa-solid fa-file-pdf"></i>Borderô</button>
+      <button class="cr-btn" onclick="crPreBorderoDaOperacao('xlsx')"><i class="fa-solid fa-file-excel"></i>Excel</button>
+      <button class="cr-btn" onclick="crFechar('cr-modal-operacao')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: EDITAR OPERAÇÃO ══ -->
+<div class="cr-overlay" id="cr-modal-op-editar">
+  <div class="cr-modal">
+    <div class="cr-modal-h roxo">
+      <div><h3><i class="fa-solid fa-pen"></i>Editar operação</h3>
+      <div class="sub" id="cr-oe-sub">—</div></div>
+      <button class="cr-fechar" onclick="crFechar('cr-modal-op-editar')">&times;</button>
+    </div>
+    <div class="cr-modal-b">
+      <div class="cr-g2">
+        <div class="cr-campo"><label class="cr-lbl">Parceiro financeiro</label>
+          <select id="cr-oe-parceiro" class="cr-inp"></select>
+        </div>
+        <div class="cr-campo"><label class="cr-lbl">Data da operação</label>
+          <input type="date" id="cr-oe-data" class="cr-inp" />
+        </div>
+      </div>
+      <div class="cr-g2" id="cr-oe-liq" style="display:none;">
+        <div class="cr-campo"><label class="cr-lbl">Líquido creditado (R$)</label>
+          <input type="text" id="cr-oe-liquido" class="cr-inp cr-num" placeholder="0,00" />
+        </div>
+        <div class="cr-campo"><label class="cr-lbl">Data do crédito</label>
+          <input type="date" id="cr-oe-credito" class="cr-inp" />
+        </div>
+      </div>
+      <div class="cr-campo"><label class="cr-lbl">Observação</label>
+        <input type="text" id="cr-oe-obs" class="cr-inp" />
+      </div>
+      <p class="cr-ajuda">
+        Trocar o <b>parceiro</b> ou a <b>data</b> refaz o deságio estimado: as condições
+        e o prazo médio mudam junto.
+        <br>A <b>lista de títulos</b> do borderô não se edita aqui — trocar o conteúdo de
+        uma operação em análise no fundo é outra operação. Cancele e monte de novo.
+      </p>
+    </div>
+    <div class="cr-modal-f">
+      <span class="cr-spacer"></span>
+      <button class="cr-btn" onclick="crFechar('cr-modal-op-editar')">Fechar</button>
+      <button class="cr-btn cr-btn-primary" onclick="crSalvarEdicaoOperacao()"><i class="fa-solid fa-floppy-disk"></i>Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: PARCEIRO ══ -->
+<div class="cr-overlay" id="cr-modal-parceiro">
+  <div class="cr-modal">
+    <div class="cr-modal-h roxo">
+      <div><h3><i class="fa-solid fa-building-columns"></i><span id="cr-p-titulo">Novo parceiro</span></h3>
+      <div class="sub">Fundo, banco, factoring ou parceiro financeiro</div></div>
+      <button class="cr-fechar" onclick="crFechar('cr-modal-parceiro')">&times;</button>
+    </div>
+    <div class="cr-modal-b">
+      <div class="cr-g2">
+        <div class="cr-campo"><label class="cr-lbl">Nome *</label><input type="text" id="cr-p-nome" class="cr-inp" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Tipo</label>
+          <select id="cr-p-tipo" class="cr-inp">
+            <option value="FIDC">FIDC</option><option value="FACTORING">Factoring</option>
+            <option value="BANCO">Banco</option><option value="SECURITIZADORA">Securitizadora</option>
+            <option value="PARCEIRO">Parceiro / Pessoa física</option>
+          </select>
+        </div>
+      </div>
+      <div class="cr-g2">
+        <div class="cr-campo"><label class="cr-lbl">CNPJ</label><input type="text" id="cr-p-cnpj" class="cr-inp" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Contato</label><input type="text" id="cr-p-contato" class="cr-inp" /></div>
+      </div>
+      <div class="cr-g2">
+        <div class="cr-campo"><label class="cr-lbl">E-mail</label><input type="email" id="cr-p-email" class="cr-inp" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Telefone</label><input type="text" id="cr-p-telefone" class="cr-inp" /></div>
+      </div>
+      <div style="height:1px;background:var(--border);margin:14px 0;"></div>
+      <div class="cr-g3">
+        <div class="cr-campo"><label class="cr-lbl">Taxa (% a.m.) *</label><input type="text" id="cr-p-taxa" class="cr-inp cr-num" placeholder="2,15" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Tarifa por título (R$)</label><input type="text" id="cr-p-tarifa" class="cr-inp cr-num" placeholder="0,00" /></div>
+        <div class="cr-campo"><label class="cr-lbl">TAC por operação (R$)</label><input type="text" id="cr-p-tac" class="cr-inp cr-num" placeholder="0,00" /></div>
+      </div>
+      <div class="cr-g3">
+        <div class="cr-campo"><label class="cr-lbl">Dias de float</label><input type="number" id="cr-p-float" class="cr-inp" value="0" min="0" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Limite concedido (R$)</label><input type="text" id="cr-p-limite" class="cr-inp cr-num" placeholder="0,00" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Situação</label>
+          <select id="cr-p-ativo" class="cr-inp"><option value="1">Ativo</option><option value="0">Inativo</option></select>
+        </div>
+      </div>
+      <div class="cr-campo"><label class="cr-lbl">Observação</label><input type="text" id="cr-p-obs" class="cr-inp" /></div>
+      <p class="cr-ajuda">
+        A taxa, a tarifa e o float alimentam a simulação do pré-borderô. Deixar em
+        branco não impede nada — só faz a simulação mostrar zero de deságio, e
+        você compara o borderô que voltar contra um custo estimado que não existe.
+      </p>
+    </div>
+    <div class="cr-modal-f">
+      <button class="cr-btn cr-acao excluir" id="cr-p-remover" onclick="crRemoverParceiro()" style="display:none;"><i class="fa-solid fa-trash"></i>Remover</button>
+      <span class="cr-spacer"></span>
+      <button class="cr-btn" onclick="crFechar('cr-modal-parceiro')">Fechar</button>
+      <button class="cr-btn cr-btn-ant" onclick="crSalvarParceiro()"><i class="fa-solid fa-floppy-disk"></i>Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: POLÍTICA ══ -->
+<div class="cr-overlay" id="cr-modal-politica">
+  <div class="cr-modal">
+    <div class="cr-modal-h">
+      <div><h3><i class="fa-solid fa-user-shield"></i><span id="cr-pol-titulo">Nova política</span></h3>
+      <div class="sub">Regras de antecipação para um cliente</div></div>
+      <button class="cr-fechar" onclick="crFechar('cr-modal-politica')">&times;</button>
+    </div>
+    <div class="cr-modal-b">
+      <div class="cr-campo"><label class="cr-lbl">Cliente *</label>
+        <select id="cr-pol-cliente" class="cr-inp" onchange="crPoliticaClienteMudou()"></select>
+        <div class="cr-ajuda" id="cr-pol-hist">—</div>
+      </div>
+      <div class="cr-g2">
+        <div class="cr-campo"><label class="cr-lbl">Pode antecipar OS sem pedido?</label>
+          <select id="cr-pol-permite" class="cr-inp">
+            <option value="1">Sim</option><option value="0">Não</option>
+          </select>
+        </div>
+        <div class="cr-campo"><label class="cr-lbl">% máximo antecipável da OS</label>
+          <input type="number" id="cr-pol-pct" class="cr-inp" min="1" max="100" value="100" />
+        </div>
+      </div>
+      <div class="cr-g3">
+        <div class="cr-campo"><label class="cr-lbl">Dias até faturar</label><input type="number" id="cr-pol-dias" class="cr-inp" min="0" value="30" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Prazo de vencimento (dias)</label><input type="number" id="cr-pol-prazo" class="cr-inp" min="0" value="30" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Teto de exposição (R$)</label><input type="text" id="cr-pol-teto" class="cr-inp cr-num" placeholder="0,00" /></div>
+      </div>
+      <div class="cr-sep-regra">
+        <div class="cr-sep-t"><i class="fa-solid fa-calendar-check"></i>Regra de pagamento do cliente</div>
+        <div class="cr-g2">
+          <div class="cr-campo"><label class="cr-lbl">Como este cliente paga</label>
+            <select id="cr-pol-regra" class="cr-inp" onchange="crPoliticaRegraMudou()">
+              <option value="">Vence pelo prazo, sem dia fixo</option>
+              <option value="DIAS_FIXOS">Só paga em dias fixos do mês</option>
+              <option value="DIA_SEMANA">Prazo em dias, caindo num dia da semana</option>
+            </select>
+          </div>
+          <div class="cr-campo" id="cr-pol-wrap-diasfixos" style="display:none;">
+            <label class="cr-lbl">Dias do mês em que paga</label>
+            <input type="text" id="cr-pol-diasfixos" class="cr-inp" placeholder="Ex.: 10, 25" />
+          </div>
+          <div class="cr-campo" id="cr-pol-wrap-diasemana" style="display:none;">
+            <label class="cr-lbl">Dia da semana</label>
+            <select id="cr-pol-diasemana" class="cr-inp">
+              <option value="1">Segunda-feira</option><option value="2">Terça-feira</option>
+              <option value="3">Quarta-feira</option><option value="4">Quinta-feira</option>
+              <option value="5">Sexta-feira</option><option value="6">Sábado</option>
+              <option value="0">Domingo</option>
+            </select>
+          </div>
+        </div>
+        <div class="cr-ajuda" id="cr-pol-regra-exemplo"></div>
+      </div>
+      <div class="cr-campo"><label class="cr-lbl">Observação</label><input type="text" id="cr-pol-obs" class="cr-inp" placeholder="Ex.: fundo exige carta de circularização assinada" /></div>
+      <p class="cr-ajuda">
+        <b>Dias até faturar + prazo de vencimento</b> é o que projeta o vencimento
+        da OS antecipada — é o número que o fundo usa para calcular o deságio de
+        um recebível que ainda não existe. O botão de sugestão lê o histórico real
+        deste cliente no Genesis.
+        <br><b>Teto</b> em zero significa sem limite.
+        <br><b>A regra de pagamento</b> entra depois do prazo: a data calculada anda
+        para a frente até o primeiro dia em que o cliente paga. É o que faz o borderô
+        e a projeção de caixa baterem com a realidade de quem só paga em dia certo.
+      </p>
+    </div>
+    <div class="cr-modal-f">
+      <button class="cr-btn cr-acao excluir" id="cr-pol-remover" onclick="crRemoverPolitica()" style="display:none;"><i class="fa-solid fa-trash"></i>Remover</button>
+      <span class="cr-spacer"></span>
+      <button class="cr-btn" id="cr-pol-sugerir" onclick="crSugerirPolitica()"><i class="fa-solid fa-wand-magic-sparkles"></i>Sugerir pelo histórico</button>
+      <button class="cr-btn cr-btn-primary" onclick="crSalvarPolitica()"><i class="fa-solid fa-floppy-disk"></i>Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: SINCRONIZAÇÃO ══ -->
+<div class="cr-overlay" id="cr-modal-sync">
+  <div class="cr-modal largo">
+    <div class="cr-modal-h">
+      <div><h3><i class="fa-solid fa-cloud-arrow-down"></i>Sincronizar Notas de Saída</h3>
+      <div class="sub" id="cr-sync-sub">Notas do Genesis aguardando sua aprovação</div></div>
+      <button class="cr-fechar" onclick="crFechar('cr-modal-sync')">&times;</button>
+    </div>
+    <div class="cr-modal-b">
+      <div class="cr-sync-resumo" id="cr-sync-resumo"></div>
+      <div class="cr-tbl-wrap">
+        <table class="cr-tbl">
+          <thead><tr>
+            <th style="width:34px;"><input type="checkbox" id="cr-sync-todos" onchange="crSyncMarcarTodos(this.checked)" /></th>
+            <th>Vencimento</th><th>Cliente</th><th>NF</th><th class="cr-col-apoio">OS</th>
+            <th class="cr-num">Valor</th><th>Situação</th>
+          </tr></thead>
+          <tbody id="cr-tb-sync"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="cr-modal-f">
+      <span style="font-size:.75rem;color:var(--muted);font-weight:700;" id="cr-sync-sel">Nenhuma nota selecionada</span>
+      <span class="cr-spacer"></span>
+      <button class="cr-btn" onclick="crFechar('cr-modal-sync')">Fechar</button>
+      <button class="cr-btn cr-btn-primary" id="cr-sync-aprovar" onclick="crSyncAprovar()" disabled><i class="fa-solid fa-check"></i>Aprovar selecionadas</button>
+    </div>
+  </div>
+</div>
+
+</div>

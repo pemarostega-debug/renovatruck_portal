@@ -1,0 +1,459 @@
+<div id="screen-contaspagar">
+
+<div class="cp-topbar">
+  <button class="cp-btn" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i>Início</button>
+  <img src="assets/logo-renova.jpg" style="height:30px;filter:drop-shadow(0 1px 4px rgba(0,0,0,.25));" alt="Renova" />
+  <span class="cp-title"><i class="fa-solid fa-file-invoice-dollar"></i>Contas a Pagar</span>
+  <span class="cp-spacer"></span>
+  <!-- Lê-se como frase junto do seletor de mês: "por emissão · setembro de 2026". -->
+  <div class="cp-eixo" role="group" aria-label="Base de data das análises">
+    <span class="cp-eixo-lbl">Analisar por</span>
+    <button type="button" class="cp-eixo-op active" id="cp-eixo-vencimento" aria-pressed="true"
+            onclick="cpTrocarEixo('vencimento')" title="Analisar pela data de vencimento — o eixo do caixa">
+      <i class="fa-solid fa-calendar-check"></i><span>Vencimento</span>
+    </button>
+    <button type="button" class="cp-eixo-op" id="cp-eixo-emissao" aria-pressed="false"
+            onclick="cpTrocarEixo('emissao')" title="Analisar pela data de emissão — o eixo da competência">
+      <i class="fa-solid fa-file-pen"></i><span>Emissão</span>
+    </button>
+  </div>
+  <input type="month" id="cp-competencia" class="cp-mes" onchange="cpTrocarMes()" />
+  <button class="cp-btn" onclick="cpCarregar(true)" title="Recarregar"><i class="fa-solid fa-rotate-right"></i></button>
+  <button class="cp-btn cp-btn-sync rv-so-admin" onclick="cpAbrirSync()"><i class="fa-solid fa-cloud-arrow-down"></i><span class="cp-rot-longo">Sincronizar Notas de Entrada</span><span class="cp-rot-curto">Sincronizar</span></button>
+  <button class="cp-btn cp-btn-primary rv-so-admin" onclick="cpAbrirTitulo()"><i class="fa-solid fa-plus"></i><span class="cp-rot-longo">Novo Título</span><span class="cp-rot-curto">Novo</span></button>
+</div>
+
+<div id="cp-notice" class="cp-notice"></div>
+
+<div class="cp-tabs">
+  <button class="cp-tab active" id="cp-tab-dash"   onclick="cpAba('dash')"><i class="fa-solid fa-chart-pie" style="margin-right:6px;"></i>Dashboard</button>
+  <button class="cp-tab"        id="cp-tab-titulos" onclick="cpAba('titulos')"><i class="fa-solid fa-list-ul" style="margin-right:6px;"></i>Títulos</button>
+  <button class="cp-tab"        id="cp-tab-fixas"  onclick="cpAba('fixas')"><i class="fa-solid fa-repeat" style="margin-right:6px;"></i>Contas Fixas</button>
+  <button class="cp-tab"        id="cp-tab-plano"  onclick="cpAba('plano')"><i class="fa-solid fa-sitemap" style="margin-right:6px;"></i>Plano de Contas</button>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div class="cp-pane active" id="cp-pane-dash">
+  <!-- Preenchido por cpRenderSemEixo(): só existe no eixo da emissão. -->
+  <div class="cp-sem-eixo" id="cp-sem-eixo" style="display:none;"></div>
+
+  <div class="cp-kpis">
+    <div class="cp-kpi previsto">
+      <div class="cp-kpi-lbl"><i class="fa-solid fa-calendar-day"></i><span id="cp-k-previsto-lbl">Saídas previstas</span></div>
+      <div class="cp-kpi-val" id="cp-k-previsto">R$ 0</div>
+      <div class="cp-kpi-sub" id="cp-k-previsto-sub">— títulos no mês</div>
+    </div>
+    <div class="cp-kpi realizado">
+      <div class="cp-kpi-lbl"><i class="fa-solid fa-circle-check"></i>Saídas realizadas</div>
+      <div class="cp-kpi-val" id="cp-k-realizado">R$ 0</div>
+      <div class="cp-kpi-sub" id="cp-k-realizado-sub">— do previsto</div>
+      <div class="cp-barra"><span id="cp-k-barra" style="width:0%"></span></div>
+    </div>
+    <div class="cp-kpi aberto">
+      <div class="cp-kpi-lbl"><i class="fa-solid fa-hourglass-half"></i><span id="cp-k-aberto-lbl">Em aberto no mês</span></div>
+      <div class="cp-kpi-val" id="cp-k-aberto">R$ 0</div>
+      <div class="cp-kpi-sub" id="cp-k-aberto-sub">— títulos a pagar</div>
+    </div>
+    <div class="cp-kpi atraso">
+      <div class="cp-kpi-lbl"><i class="fa-solid fa-triangle-exclamation"></i>Vencido em aberto
+        <span class="cp-selo-venc" title="Atraso é sempre vencimento contra hoje, independente do eixo escolhido">venc.</span>
+      </div>
+      <div class="cp-kpi-val" id="cp-k-atraso">R$ 0</div>
+      <div class="cp-kpi-sub" id="cp-k-atraso-sub">— títulos vencidos</div>
+    </div>
+  </div>
+
+  <div class="cp-grid">
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-chart-pie"></i>Concentração por macro-natureza</span></div>
+      <div class="cp-chart"><canvas id="cp-c-macro"></canvas></div>
+    </div>
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-ranking-star"></i>Top 5 fornecedores</span><span class="cp-kpi-sub" id="cp-forn-conc">—</span></div>
+      <div class="cp-chart"><canvas id="cp-c-forn"></canvas></div>
+    </div>
+  </div>
+
+  <div class="cp-grid">
+    <div class="cp-card">
+      <div class="cp-card-h" id="cp-burn-ajuda"><span><i class="fa-solid fa-fire"></i><span id="cp-burn-titulo">Queima de caixa semanal</span></span></div>
+      <div class="cp-chart"><canvas id="cp-c-burn"></canvas></div>
+    </div>
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-gauge-high"></i>Régua de inadimplência
+        <span class="cp-selo-venc" title="Sempre por vencimento: atraso não depende do eixo escolhido">venc.</span></span><span class="cp-kpi-sub" id="cp-regua-total">—</span></div>
+      <div class="cp-regua" id="cp-regua"></div>
+    </div>
+  </div>
+
+  <div class="cp-grid">
+    <div class="cp-card">
+      <div class="cp-card-h">
+        <span><i class="fa-solid fa-magnifying-glass-chart"></i><span id="cp-detalhe-titulo">Detalhe da seleção</span></span>
+        <button class="cp-acao" id="cp-detalhe-limpar" onclick="cpLimparSelecaoBI()" title="Limpar seleção" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="cp-tbl-wrap" style="max-height:230px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-detalhe"></tbody></table></div>
+    </div>
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-calendar-check"></i>Vencendo hoje
+        <span class="cp-selo-venc" title="Sempre por vencimento: é a data em que o dinheiro sai">venc.</span></span><span class="cp-kpi-sub" id="cp-hoje-total">—</span></div>
+      <div class="cp-tbl-wrap" style="max-height:260px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-hoje"></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="cp-grid">
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i>Contas atrasadas
+        <span class="cp-selo-venc" title="Sempre por vencimento: atraso não depende do eixo escolhido">venc.</span></span><span class="cp-kpi-sub" id="cp-atraso-total">—</span></div>
+      <div class="cp-tbl-wrap" style="max-height:330px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-atraso"></tbody></table></div>
+    </div>
+    <div class="cp-card">
+      <div class="cp-card-h"><span><i class="fa-solid fa-calendar-days"></i>Próximos vencimentos (30 dias)
+        <span class="cp-selo-venc" title="Sempre por vencimento: é a data em que o dinheiro sai">venc.</span></span><span class="cp-kpi-sub" id="cp-prox-total">—</span></div>
+      <div class="cp-tbl-wrap" style="max-height:330px;overflow-y:auto;"><table class="cp-tbl"><tbody id="cp-tb-prox"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TÍTULOS ══ -->
+<div class="cp-pane" id="cp-pane-titulos">
+  <div class="cp-filtros">
+    <input type="text" id="cp-f-busca" class="cp-inp busca" placeholder="Buscar fornecedor, NF, boleto ou descrição..." oninput="cpRenderTitulos()" />
+    <select id="cp-f-status" class="cp-inp" onchange="cpRenderTitulos()">
+      <option value="">Todos os status</option>
+      <option value="ABERTO">Em aberto</option>
+      <option value="VENCIDO">Vencidos</option>
+      <option value="PAGO">Pagos</option>
+      <option value="PARCIAL">Parciais</option>
+    </select>
+    <select id="cp-f-macro" class="cp-inp" onchange="cpRenderTitulos()"><option value="">Todas as macro-naturezas</option></select>
+    <select id="cp-f-natureza" class="cp-inp" onchange="cpRenderTitulos()"><option value="">Todas as naturezas</option></select>
+    <select id="cp-f-periodo" class="cp-inp" onchange="cpRenderTitulos()">
+      <option value="mes">Mês selecionado</option>
+      <option value="tudo">Todo o período</option>
+      <option value="aberto">Só o que está em aberto</option>
+    </select>
+    <span class="cp-spacer"></span>
+    <button class="cp-btn" onclick="cpExportar()"><i class="fa-solid fa-file-arrow-down"></i>Exportar</button>
+  </div>
+  <div class="cp-tbl-wrap">
+    <table class="cp-tbl">
+      <thead><tr>
+        <th id="cp-th-data">Vencimento</th><th>Fornecedor</th><th class="cp-col-apoio">NF</th><th>Natureza</th>
+        <th class="cp-num">Valor</th><th class="cp-num cp-col-apoio">Pago</th><th>Status</th>
+        <th class="cp-col-apoio">Baixa</th><th></th>
+      </tr></thead>
+      <tbody id="cp-tb-titulos"></tbody>
+    </table>
+  </div>
+  <div style="margin-top:10px;font-size:.75rem;color:var(--muted);font-weight:600;" id="cp-titulos-resumo"></div>
+</div>
+
+<!-- ══ PLANO DE CONTAS ══ -->
+<div class="cp-pane" id="cp-pane-plano">
+  <div class="cp-filtros">
+    <span style="font-size:.78rem;color:var(--muted);font-weight:600;" id="cp-plano-ajuda">
+      Os valores ao lado somam os títulos que vencem no mês selecionado.
+    </span>
+    <span class="cp-spacer"></span>
+    <button class="cp-btn rv-so-admin" onclick="cpAbrirConta('')"><i class="fa-solid fa-plus"></i>Nova conta</button>
+    <button class="cp-btn cp-btn-primary rv-so-admin" id="cp-btn-plano-salvar" onclick="cpSalvarPlano()" disabled><i class="fa-solid fa-floppy-disk"></i>Salvar alterações</button>
+  </div>
+  <div class="cp-arvore" id="cp-arvore"></div>
+</div>
+
+<!-- ══ CONTAS FIXAS ══ -->
+<div class="cp-pane" id="cp-pane-fixas">
+  <div class="cp-filtros">
+    <span style="font-size:.78rem;color:var(--muted);font-weight:600;">
+      O que se repete todo mês. O sistema gera os títulos da competência a partir daqui.
+    </span>
+    <span class="cp-spacer"></span>
+    <button class="cp-btn rv-so-admin" onclick="cpAbrirFixa('')"><i class="fa-solid fa-plus"></i>Nova conta fixa</button>
+    <button class="cp-btn cp-btn-primary rv-so-admin" onclick="cpAbrirGerarFixas()"><i class="fa-solid fa-calendar-plus"></i>Gerar títulos do mês</button>
+  </div>
+
+  <div class="cp-fixas-resumo" id="cp-fixas-resumo"></div>
+
+  <div class="cp-tbl-wrap">
+    <table class="cp-tbl">
+      <thead><tr>
+        <th>Conta</th><th>Fornecedor</th><th>Natureza</th>
+        <th class="cp-num">Dia</th><th class="cp-num">Valor previsto</th>
+        <th>Vigência</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody id="cp-tb-fixas"></tbody>
+    </table>
+  </div>
+
+  <p style="font-size:.76rem;color:var(--muted);margin-top:12px;line-height:1.55;">
+    <b>Como funciona.</b> Cada linha é um molde, não um título. Ao gerar a competência,
+    o sistema cria um título comum para cada conta vigente — que se edita, baixa e
+    cancela como qualquer outro. Gerar o mesmo mês de novo <b>não duplica nada</b>:
+    conta já gerada é pulada.
+    <br><b>Mudou o valor?</b> Edite o molde: vale do próximo mês gerado em diante, e o
+    que já foi pago continua como está. Para corrigir um mês já gerado, edite o título.
+    <br><b>Dia 31</b> em mês de 30 cai no último dia do mês — nunca escorrega para o mês seguinte.
+  </p>
+</div>
+
+<!-- ══ MODAL: CONTA FIXA ══ -->
+<div class="cp-overlay" id="cp-modal-fixa">
+  <div class="cp-modal">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-repeat"></i><span id="cp-fx-titulo">Nova conta fixa</span></h3>
+      <div class="sub">Molde do que se repete mês a mês</div></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-fixa')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-campo"><label class="cp-lbl">Descrição *</label>
+        <input type="text" id="cp-fx-descricao" class="cp-inp" placeholder="Ex.: Aluguel do galpão" />
+      </div>
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Fornecedor</label>
+          <input type="text" id="cp-fx-fornecedor" class="cp-inp" list="cp-lista-forn" />
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Natureza *</label>
+          <select id="cp-fx-natureza" class="cp-inp"></select>
+        </div>
+      </div>
+      <div class="cp-g3">
+        <div class="cp-campo"><label class="cp-lbl">Valor previsto *</label>
+          <input type="text" id="cp-fx-valor" class="cp-inp cp-num" placeholder="0,00" />
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Dia do vencimento *</label>
+          <input type="number" id="cp-fx-dia" class="cp-inp" min="1" max="31" value="10" />
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Empresa</label>
+          <select id="cp-fx-empresa" class="cp-inp"><option value="RENOVA">Renova</option><option value="VALE">Vale</option></select>
+        </div>
+      </div>
+      <div class="cp-g3">
+        <div class="cp-campo"><label class="cp-lbl">Começa em *</label>
+          <input type="month" id="cp-fx-inicio" class="cp-inp" />
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Termina em</label>
+          <input type="month" id="cp-fx-fim" class="cp-inp" />
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Forma de pagamento</label>
+          <select id="cp-fx-forma" class="cp-inp">
+            <option value="Boleto">Boleto</option><option value="Débito automático">Débito automático</option>
+            <option value="PIX">PIX</option><option value="Transferência">Transferência</option>
+            <option value="Dinheiro">Dinheiro</option><option value="Cartão">Cartão</option>
+          </select>
+        </div>
+      </div>
+      <div class="cp-campo"><label class="cp-lbl">Observação</label>
+        <input type="text" id="cp-fx-obs" class="cp-inp" placeholder="Ex.: contrato reajusta pelo IGP-M em janeiro" />
+      </div>
+      <div class="cp-campo"><label class="cp-lbl">Situação</label>
+        <select id="cp-fx-ativo" class="cp-inp">
+          <option value="1">Ativa — gera título todo mês</option>
+          <option value="0">Pausada — não gera</option>
+        </select>
+      </div>
+      <p style="font-size:.76rem;color:var(--muted);line-height:1.5;margin-top:6px;">
+        <b>Termina em</b> vazio = contrato sem prazo. Preencher é o que faz a conta parar
+        sozinha no fim do contrato, em vez de virar cobrança fantasma no mês seguinte.
+      </p>
+    </div>
+    <div class="cp-modal-f">
+      <button class="cp-btn cp-acao" id="cp-fx-remover" onclick="cpRemoverFixa()" style="display:none;"><i class="fa-solid fa-trash"></i>Remover</button>
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-fixa')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" onclick="cpSalvarFixa()"><i class="fa-solid fa-floppy-disk"></i>Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: GERAR CONTAS FIXAS ══ -->
+<div class="cp-overlay" id="cp-modal-gerar-fixas">
+  <div class="cp-modal">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-calendar-plus"></i>Gerar títulos do mês</h3>
+      <div class="sub" id="cp-gf-sub">—</div></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-gerar-fixas')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-campo"><label class="cp-lbl">Competência</label>
+        <input type="month" id="cp-gf-competencia" class="cp-inp" onchange="cpPreviaFixas()" />
+      </div>
+      <div class="cp-tbl-wrap" style="margin-top:10px;">
+        <table class="cp-tbl">
+          <thead><tr><th style="width:30px;"></th><th>Conta</th><th>Vencimento</th><th class="cp-num">Valor</th><th>Situação</th></tr></thead>
+          <tbody id="cp-tb-gf"></tbody>
+        </table>
+      </div>
+      <p style="font-size:.76rem;color:var(--muted);margin-top:10px;line-height:1.5;">
+        Só as contas marcadas viram título. O que já foi gerado aparece travado —
+        rodar de novo não duplica.
+      </p>
+    </div>
+    <div class="cp-modal-f">
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-gerar-fixas')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" id="cp-gf-btn" onclick="cpGerarFixas()"><i class="fa-solid fa-check"></i>Gerar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: TÍTULO ══ -->
+<div class="cp-overlay" id="cp-modal-titulo">
+  <div class="cp-modal">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-file-invoice"></i><span id="cp-mt-titulo">Novo título</span></h3>
+      <div class="sub" id="cp-mt-sub">Lançamento manual</div></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-titulo')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-campo"><label class="cp-lbl">Fornecedor *</label>
+        <input type="text" id="cp-t-fornecedor" class="cp-inp" list="cp-lista-forn" placeholder="Nome do fornecedor" />
+        <datalist id="cp-lista-forn"></datalist>
+      </div>
+      <div class="cp-g3">
+        <div class="cp-campo"><label class="cp-lbl">Emissão</label>
+          <input type="date" id="cp-t-emissao" class="cp-inp" oninput="cpDicaEmissao()" />
+          <div class="cp-dica-emissao" id="cp-t-emissao-dica">Sem emissão, o título fica fora das análises por emissão.</div>
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Vencimento *</label><input type="date" id="cp-t-vencimento" class="cp-inp" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Empresa</label>
+          <select id="cp-t-empresa" class="cp-inp"><option value="RENOVA">Renova</option><option value="VALE">Vale</option></select>
+        </div>
+      </div>
+      <div class="cp-g3">
+        <div class="cp-campo"><label class="cp-lbl">Número NF</label><input type="text" id="cp-t-nf" class="cp-inp" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Número boleto</label><input type="text" id="cp-t-boleto" class="cp-inp" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Tipo docto</label>
+          <select id="cp-t-tipo" class="cp-inp">
+            <option value="Boleto">Boleto</option><option value="A vista">A vista</option>
+            <option value="Folha de pagamento">Folha de pagamento</option><option value="Custo fixo">Custo fixo</option>
+          </select>
+        </div>
+      </div>
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Parcela</label><input type="number" id="cp-t-parcela" class="cp-inp" min="1" value="1" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Total de parcelas</label><input type="number" id="cp-t-parcelas" class="cp-inp" min="1" value="1" /></div>
+      </div>
+      <div class="cp-campo"><label class="cp-lbl">Natureza *</label><select id="cp-t-natureza" class="cp-inp"></select></div>
+      <div class="cp-campo"><label class="cp-lbl">Descrição</label><input type="text" id="cp-t-descricao" class="cp-inp" placeholder="Ex.: PEÇAS, Custo fixo, REEMBOLSO" /></div>
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Observação 1</label><input type="text" id="cp-t-obs1" class="cp-inp" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Observação 2</label><input type="text" id="cp-t-obs2" class="cp-inp" /></div>
+      </div>
+      <div class="cp-g3">
+        <div class="cp-campo"><label class="cp-lbl">Forma de pagamento</label>
+          <select id="cp-t-forma" class="cp-inp"><option value="PIX">PIX</option><option value="Boleto">Boleto</option><option value="Transferência">Transferência</option><option value="Dinheiro">Dinheiro</option><option value="Cartão">Cartão</option></select>
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Valor total *</label><input type="text" id="cp-t-valor" class="cp-inp cp-num" placeholder="0,00" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Valor pago</label><input type="text" id="cp-t-pago" class="cp-inp cp-num" placeholder="0,00" /></div>
+      </div>
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Status</label>
+          <select id="cp-t-status" class="cp-inp"><option value="ABERTO">Em aberto</option><option value="PAGO">Pago</option><option value="PARCIAL">Parcial</option></select>
+        </div>
+        <div class="cp-campo"><label class="cp-lbl">Data da baixa</label><input type="date" id="cp-t-baixa" class="cp-inp" /></div>
+      </div>
+      <p style="font-size:.7rem;color:var(--muted);line-height:1.5;">
+        A data da baixa é preenchida sozinha quando o título é marcado como pago:
+        vale o que você informar aqui e, se ficar em branco, o vencimento.
+      </p>
+    </div>
+    <div class="cp-modal-f">
+      <button class="cp-btn cp-acao excluir" id="cp-t-excluir" onclick="cpCancelarTitulo()" style="display:none;"><i class="fa-solid fa-ban"></i>Cancelar título</button>
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-titulo')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" id="cp-t-salvar" onclick="cpSalvarTitulo()"><i class="fa-solid fa-floppy-disk"></i>Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: SINCRONIZAÇÃO ══ -->
+<div class="cp-overlay" id="cp-modal-sync">
+  <div class="cp-modal largo">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-cloud-arrow-down"></i>Sincronizar Notas de Entrada</h3>
+      <div class="sub" id="cp-sync-sub">Notas do Genesis aguardando sua aprovação</div></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-sync')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-sync-resumo" id="cp-sync-resumo"></div>
+      <div id="cp-sync-aviso"></div>
+      <div class="cp-tbl-wrap">
+        <table class="cp-tbl">
+          <thead><tr>
+            <th style="width:34px;"><input type="checkbox" id="cp-sync-todos" onchange="cpSyncMarcarTodos(this.checked)" /></th>
+            <th>Vencimento</th><th>Fornecedor</th><th>NF</th><th>Natureza</th>
+            <th class="cp-num">Valor</th><th>Situação</th>
+          </tr></thead>
+          <tbody id="cp-tb-sync"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="cp-modal-f">
+      <span style="font-size:.75rem;color:var(--muted);font-weight:700;" id="cp-sync-sel">Nenhuma nota selecionada</span>
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-sync')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" id="cp-sync-aprovar" onclick="cpSyncAprovar()" disabled><i class="fa-solid fa-check"></i>Aprovar selecionadas</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: BAIXA ══ -->
+<div class="cp-overlay" id="cp-modal-baixa">
+  <div class="cp-modal" style="max-width:430px;">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-money-check-dollar"></i>Dar baixa</h3><div class="sub" id="cp-b-sub">—</div></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-baixa')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Valor pago</label><input type="text" id="cp-b-valor" class="cp-inp cp-num" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Data da baixa</label><input type="date" id="cp-b-data" class="cp-inp" /></div>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);line-height:1.5;" id="cp-b-aviso"></p>
+    </div>
+    <div class="cp-modal-f">
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-baixa')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" onclick="cpConfirmarBaixa()"><i class="fa-solid fa-check"></i>Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: CONTA DO PLANO ══ -->
+<div class="cp-overlay" id="cp-modal-conta">
+  <div class="cp-modal" style="max-width:470px;">
+    <div class="cp-modal-h">
+      <div><h3><i class="fa-solid fa-sitemap"></i><span id="cp-c-titulo">Nova conta</span></h3></div>
+      <button class="cp-fechar" onclick="cpFechar('cp-modal-conta')">&times;</button>
+    </div>
+    <div class="cp-modal-b">
+      <div class="cp-g2">
+        <div class="cp-campo"><label class="cp-lbl">Código *</label><input type="text" id="cp-c-codigo" class="cp-inp" placeholder="Ex.: 1.07" /></div>
+        <div class="cp-campo"><label class="cp-lbl">Conta pai</label><select id="cp-c-pai" class="cp-inp"></select></div>
+      </div>
+      <div class="cp-campo"><label class="cp-lbl">Nome *</label><input type="text" id="cp-c-nome" class="cp-inp" /></div>
+      <div class="cp-campo"><label class="cp-lbl">Macro-natureza</label>
+        <select id="cp-c-macronat" class="cp-inp">
+          <option value="OPERACIONAL">Operacional</option>
+          <option value="FIXO">Fixo / Administrativo</option>
+          <option value="FINANCEIRO">Financeiro</option>
+          <option value="CAPEX">CAPEX / Investimentos</option>
+          <option value="NAO_CLASSIFICADO">Não classificado</option>
+        </select>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);line-height:1.5;">
+        Contas de primeiro nível (sem pai) são sintéticas: servem para agrupar e
+        não recebem lançamento direto.
+      </p>
+    </div>
+    <div class="cp-modal-f">
+      <button class="cp-btn cp-acao excluir" id="cp-c-remover" onclick="cpRemoverConta()" style="display:none;"><i class="fa-solid fa-trash"></i>Remover</button>
+      <span class="cp-spacer"></span>
+      <button class="cp-btn" onclick="cpFechar('cp-modal-conta')">Fechar</button>
+      <button class="cp-btn cp-btn-primary" onclick="cpAplicarConta()"><i class="fa-solid fa-check"></i>Aplicar</button>
+    </div>
+  </div>
+</div>
+
+</div>

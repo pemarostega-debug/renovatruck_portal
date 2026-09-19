@@ -1,0 +1,221 @@
+<div id="screen-prec">
+  <div class="tool-nav">
+    <button class="back-btn" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i>Início</button>
+    <img src="assets/logo-renova.jpg" style="height:32px;filter:drop-shadow(0 1px 4px rgba(0,0,0,.4));" />
+    <span style="font-size:.85rem;font-weight:800;">Precificação</span>
+    <div style="margin-left:auto;display:flex;gap:5px;flex-wrap:wrap;">
+      <button class="back-btn" onclick="openSaved()">📂 Salvos</button>
+      <button class="back-btn" onclick="newForm()">＋ Novo</button>
+      <button class="back-btn" onclick="openCfg()">⚙️ Config</button>
+    </div>
+  </div>
+<!-- MAIN GRID -->
+<div style="max-width:1260px;margin:1rem auto 0;padding:0 1.2rem;">
+  <div class="card" style="padding:1rem 1.2rem;">
+    <div style="font-size:.69rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.7rem;display:flex;align-items:center;gap:7px;">
+      <i class="fa-solid fa-file-invoice" style="color:var(--primary);"></i>Identificação da Ordem de Serviço
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.7rem;">
+      <div class="field"><label class="lbl">Nº OS</label><input id="f-os" class="inp" placeholder="Ex: 4169" /></div>
+      <div class="field"><label class="lbl">Placa do Veículo</label><input id="f-placa" class="inp" placeholder="Ex: ABC-1234" /></div>
+      <div class="field"><label class="lbl">Tipo de Equipamento</label><input id="f-equip" class="inp" placeholder="Ex: Carreta Frigorífica" /></div>
+      <div class="field"><label class="lbl">Cliente</label><input id="f-cliente-prec" class="inp" placeholder="Razão social" /></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ══ SERVIÇOS ══ -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="fa-solid fa-wrench"></i>Serviços / Mão de Obra</div>
+      <div class="rent-wrap">
+        <label for="rent-serv">Rentab. Alvo:</label>
+        <div class="pct-wrap"><input type="number" id="rent-serv" class="rent-input" value="15" step="0.5" min="0" oninput="calcAll()" /></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="lbl">Descrição do Serviço</label>
+      <textarea id="desc-serv" class="inp" placeholder="Descreva o serviço a ser executado..."></textarea>
+    </div>
+
+    <div class="g3" style="margin-bottom:.5rem;">
+      <div class="field">
+        <label class="lbl">Qtd. Dias</label>
+        <input type="number" id="s-dias" class="inp" value="1" min="0" step="0.5" oninput="calcAll()" />
+      </div>
+      <div class="field">
+        <label class="lbl">Qtd. Oficiais</label>
+        <input type="number" id="s-ofic" class="inp" value="1" min="0" oninput="calcAll()" />
+      </div>
+      <div class="field">
+        <label class="lbl">Qtd. 1/2 Oficiais</label>
+        <input type="number" id="s-meio" class="inp" value="0" min="0" oninput="calcAll()" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="lbl">KM Leva/Traz <span style="font-weight:400;text-transform:none;">(opcional)</span></label>
+      <input type="number" id="s-km" class="inp" value="0" min="0" oninput="calcAll()" />
+    </div>
+
+    <div class="mo-info" id="mo-info">
+      Custo/dia Oficial: <b id="info-ofic">R$ 0,00</b> &nbsp;|&nbsp;
+      Custo/dia 1/2 Of.: <b id="info-meio">R$ 0,00</b>
+    </div>
+
+    <div class="results">
+      <div class="res-row"><span class="lf">Custo Mão de Obra</span><span class="rt" id="r-custo-mo">R$ 0,00</span></div>
+      <div class="res-row"><span class="lf">Custo Leva/Traz</span><span class="rt" id="r-custo-km">R$ 0,00</span></div>
+      <div class="res-row" style="font-weight:700;border-bottom:2px solid var(--border);"><span class="lf">Custo Total Serviço</span><span class="rt" id="r-custo-serv">R$ 0,00</span></div>
+      <div class="res-row" style="font-size:.74rem;"><span class="lf" style="color:#f59e0b;">Impostos</span><span class="rt" style="color:#f59e0b;" id="r-imp-serv-val">R$ 0,00 (0%)</span></div>
+      <div class="res-row" style="font-size:.74rem;"><span class="lf" style="color:#8b5cf6;">Desp. Administrativa</span><span class="rt" style="color:#8b5cf6;" id="r-adm-serv-val">R$ 0,00 (0%)</span></div>
+      <div class="res-row" style="font-size:.74rem;" id="r-row-com-serv"><span class="lf" style="color:#6366f1;">Comissão Vendedor</span><span class="rt" style="color:#6366f1;" id="r-com-serv-val">R$ 0,00 (0%)</span></div>
+      <div class="res-row" style="font-size:.74rem;" id="r-row-fin-serv"><span class="lf" style="color:#0ea5e9;">Desp. Financeira</span><span class="rt" style="color:#0ea5e9;" id="r-fin-serv-val">R$ 0,00 (0%)</span></div>
+      <div class="res-row" style="font-size:.74rem;"><span class="lf" style="color:var(--success);">Rentabilidade Alvo</span><span class="rt" style="color:var(--success);" id="r-rent-serv-val">R$ 0,00 (0%)</span></div>
+      <div class="res-row hl"><span class="lf">Preço Mínimo — Serviços</span><span class="rt" id="r-preco-serv">R$ 0,00</span></div>
+    </div>
+  </div>
+
+  <!-- ══ PEÇAS ══ -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i class="fa-solid fa-screwdriver-wrench"></i>Peças e Insumos</div>
+      <div class="rent-wrap">
+        <label for="rent-pecas">Rentab. Alvo:</label>
+        <div class="pct-wrap"><input type="number" id="rent-pecas" class="rent-input" value="40" step="0.5" min="0" oninput="calcAll()" /></div>
+      </div>
+    </div>
+
+    <table class="tbl" id="tbl-pecas">
+      <thead><tr>
+        <th style="width:46%;">Descrição</th>
+        <th style="width:14%;">Qtd</th>
+        <th style="width:24%;">R$ Unit.</th>
+        <th style="width:12%;text-align:right;">Total</th>
+        <th style="width:4%;"></th>
+      </tr></thead>
+      <tbody id="pecas-body"></tbody>
+    </table>
+    <button class="add-btn" onclick="addPeca()"><i class="fa-solid fa-plus" style="margin-right:4px;"></i>Adicionar Item</button>
+
+    <div class="results" style="margin-top:.8rem;">
+      <div class="res-row" style="font-weight:700;border-bottom:2px solid var(--border);"><span class="lf">Total de Compra</span><span class="rt" id="r-compra">R$ 0,00</span></div>
+      <div class="res-row" style="font-size:.74rem;" id="icms-row"><span class="lf" style="color:#f59e0b;">Impostos<span id="r-icms-label"> (c/ ICMS)</span></span><span class="rt" style="color:#f59e0b;" id="r-imp-pec-val">R$ 0,00 (0%)</span></div>
+      <div class="res-row" style="font-size:.74rem;"><span class="lf" style="color:#8b5cf6;">Desp. Administrativa</span><span class="rt" style="color:#8b5cf6;" id="r-adm-pec-val">R$ 0,00 (0%)</span></div>
+      <div class="res-row" style="font-size:.74rem;" id="r-row-com-pec"><span class="lf" style="color:#6366f1;">Comissão Vendedor</span><span class="rt" style="color:#6366f1;" id="r-com-pec-val">R$ 0,00 (0%)</span></div>
+      <div class="res-row" style="font-size:.74rem;" id="r-row-fin-pec"><span class="lf" style="color:#0ea5e9;">Desp. Financeira</span><span class="rt" style="color:#0ea5e9;" id="r-fin-pec-val">R$ 0,00 (0%)</span></div>
+      <div class="res-row" style="font-size:.74rem;"><span class="lf" style="color:var(--success);">Rentabilidade Alvo</span><span class="rt" style="color:var(--success);" id="r-rent-pec-val">R$ 0,00 (0%)</span></div>
+      <div class="res-row hl"><span class="lf">Preço Mínimo — Peças</span><span class="rt" id="r-preco-pecas">R$ 0,00</span></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER FIXO -->
+<div id="footer">
+  <div class="foot-totals">
+    <div class="foot-block">
+      <label>Total Serviços</label>
+      <span id="ft-serv">R$ 0,00</span>
+    </div>
+    <div class="foot-block">
+      <label>Total Peças</label>
+      <span id="ft-pecas">R$ 0,00</span>
+    </div>
+    <div class="foot-block">
+      <label>TOTAL GERAL</label>
+      <span id="ft-total" class="total">R$ 0,00</span>
+    </div>
+    <div><span id="viab-pill" class="viab-pill"></span></div>
+  </div>
+  <div style="display:flex;gap:.6rem;">
+    <button class="btn btn-success" onclick="saveStudy()">💾 Salvar</button>
+    <button class="btn btn-primary" onclick="window.print()">🖨 Imprimir</button>
+  </div>
+</div>
+</div>
+
+
+<!-- MODAL CONFIG -->
+<div class="overlay" id="modal-cfg">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3><i class="fa-solid fa-gear" style="margin-right:8px;"></i>Configurações de Precificação</h3>
+      <button class="close-btn" onclick="closeCfg()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="cfg-sec">
+        <h4>Regime Tributário</h4>
+        <div class="regime-toggle">
+          <button class="reg-btn active-s" id="reg-s" onclick="setRegime('simples')">Simples Nacional</button>
+          <button class="reg-btn" id="reg-p" onclick="setRegime('presumido')">Lucro Presumido</button>
+        </div>
+        <div id="bloco-simples">
+          <div class="field pct-wrap"><label class="lbl">Alíquota Simples (%)</label>
+            <input type="number" id="c-simples" class="inp" value="12" step="0.01"  oninput="readCfgFromModal()" /></div>
+        </div>
+        <div id="bloco-presumido" style="display:none;">
+          <div class="g3">
+            <div class="field pct-wrap"><label class="lbl">PIS (%)</label><input type="number" id="c-pis" class="inp" value="0.65" step="0.01"  oninput="readCfgFromModal()" /></div>
+            <div class="field pct-wrap"><label class="lbl">COFINS (%)</label><input type="number" id="c-cofins" class="inp" value="3" step="0.01"  oninput="readCfgFromModal()" /></div>
+            <div class="field pct-wrap"><label class="lbl">CSLL (%)</label><input type="number" id="c-csll" class="inp" value="2.88" step="0.01"  oninput="readCfgFromModal()" /></div>
+            <div class="field pct-wrap"><label class="lbl">IRPJ (%)</label><input type="number" id="c-irpj" class="inp" value="4.8" step="0.01"  oninput="readCfgFromModal()" /></div>
+            <div class="field pct-wrap"><label class="lbl">ISS Serviços (%)</label><input type="number" id="c-iss" class="inp" value="5" step="0.01"  oninput="readCfgFromModal()" /></div>
+            <div class="field pct-wrap"><label class="lbl">ICMS Peças (%)</label><input type="number" id="c-icms" class="inp" value="18" step="0.01"  oninput="readCfgFromModal()" /></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-sec">
+        <h4>Custos de Mão de Obra</h4>
+        <div class="g3">
+          <div class="field"><label class="lbl">Salário Oficial (R$)</label><input type="number" id="c-sal-ofic" class="inp" value="7000" step="100"  oninput="readCfgFromModal()" /></div>
+          <div class="field"><label class="lbl">Salário 1/2 Oficial (R$)</label><input type="number" id="c-sal-meio" class="inp" value="3500" step="100"  oninput="readCfgFromModal()" /></div>
+          <div class="field"><label class="lbl">Dias Trabalhados/Mês</label><input type="number" id="c-dias-mes" class="inp" value="22" step="1"  oninput="readCfgFromModal()" /></div>
+        </div>
+        <div class="field"><label class="lbl">Custo por KM — Leva/Traz (R$)</label><input type="number" id="c-km" class="inp" value="4.00" step="0.10"  oninput="readCfgFromModal()" /></div>
+      </div>
+
+      <div class="cfg-sec">
+        <h4>Despesas (incidem em Serviços e Peças)</h4>
+        <div class="g3">
+          <div class="field pct-wrap"><label class="lbl">Desp. Administrativa (%)</label><input type="number" id="c-adm" class="inp" value="5" step="0.5"  oninput="readCfgFromModal()" /></div>
+          <div class="field pct-wrap"><label class="lbl">Comissão do Vendedor (%)</label><input type="number" id="c-comissao" class="inp" value="0" step="0.5"  oninput="readCfgFromModal()" /></div>
+          <div class="field pct-wrap"><label class="lbl">Desp. Financeira / Antecipação (%)</label><input type="number" id="c-fin" class="inp" value="0" step="0.1"  oninput="readCfgFromModal()" /></div>
+        </div>
+        <div style="background:#f0f9ff;border-radius:8px;padding:.6rem .8rem;font-size:.72rem;color:var(--muted);">
+          <b>Antecipação de recebíveis:</b> calcule a despesa financeira e informe aqui o percentual mensal efetivo.
+          A ferramenta aplica esse % sobre o preço de venda para cobrir o custo de antecipação.
+        </div>
+      </div>
+
+      <div class="cfg-sec">
+        <h4>Rentabilidade Padrão (ao abrir novo orçamento)</h4>
+        <div class="g2">
+          <div class="field pct-wrap"><label class="lbl">Rentab. Padrão Serviços (%)</label><input type="number" id="c-rent-serv" class="inp" value="15" step="0.5"  oninput="readCfgFromModal()" /></div>
+          <div class="field pct-wrap"><label class="lbl">Rentab. Padrão Peças (%)</label><input type="number" id="c-rent-pec" class="inp" value="40" step="0.5"  oninput="readCfgFromModal()" /></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:#f1f5f9;color:var(--muted);" onclick="resetCfg()"><i class="fa-solid fa-rotate-left"></i> Restaurar Padrões</button>
+      <button class="btn btn-primary" onclick="saveCfg()"><i class="fa-solid fa-check"></i> Salvar e Recalcular</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ESTUDOS SALVOS -->
+<div class="overlay" id="modal-saved">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3><i class="fa-solid fa-folder-open" style="margin-right:8px;"></i>Estudos Salvos</h3>
+      <button class="close-btn" onclick="document.getElementById('modal-saved').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="saved-list" style="display:block;padding:1rem 1.4rem;"></div>
+  </div>
+</div>

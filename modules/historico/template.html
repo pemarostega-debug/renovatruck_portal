@@ -1,0 +1,41 @@
+<div id="screen-historico">
+
+  <div class="hi-topbar">
+    <button class="hi-back" onclick="goHome()"><i class="fa-solid fa-chevron-left"></i> Início</button>
+    <div class="hi-title"><i class="fa-solid fa-clock-rotate-left"></i> Histórico de Entrada/Saída de Veículos</div>
+    <div class="hi-spacer"></div>
+    <button class="hi-refresh" onclick="hiBuscar()"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+  </div>
+
+  <div id="hi-notice" class="hi-notice"></div>
+
+  <div class="hi-filters">
+    <div class="hi-field">
+      <label for="hi-data-inicio">De</label>
+      <input type="date" id="hi-data-inicio">
+    </div>
+    <div class="hi-field">
+      <label for="hi-data-fim">Até</label>
+      <input type="date" id="hi-data-fim">
+    </div>
+    <div class="hi-field">
+      <label for="hi-placa">Placa</label>
+      <input type="text" id="hi-placa" placeholder="Ex: ABC1D23" maxlength="8" oninput="hiFormatarPlaca(this)" onkeydown="if(event.key==='Enter')hiBuscar()">
+    </div>
+    <button class="hi-btn" onclick="hiBuscar()"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+    <button class="hi-btn hi-btn-clear" onclick="hiLimpar()"><i class="fa-solid fa-eraser"></i> Limpar</button>
+  </div>
+
+  <div class="hi-count" id="hi-count"></div>
+
+  <div class="hi-wrap">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>ID</th><th>Tipo</th><th>Placa Cavalo</th><th>Placa Carreta</th><th>Motorista</th><th>Cliente/Destino</th><th>Entrada</th><th>Saída Cavalo</th><th>Saída Carreta</th><th>Situação</th>
+        </tr></thead>
+        <tbody id="hi-tbody"><tr><td colspan="10" class="empty-state">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>

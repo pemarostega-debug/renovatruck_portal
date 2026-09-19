@@ -1,0 +1,293 @@
+/* Contas a Receber & Operações Financeiras. Todo seletor é escopado em #screen-… — carregado só quando o módulo abre. */
+/* ── Sistema de cor do módulo ──
+   Verde = dinheiro que ainda é nosso. Roxo = título que já foi vendido a um
+   parceiro financeiro. Vermelho = risco de coobrigação (antecipado, vencido e
+   não pago). Essa leitura de cor é a mesma em toda tabela, pílula e gráfico do
+   módulo — quem bate o olho num número sabe de quem ele é sem ler legenda. */
+#screen-contasreceber{min-height:100vh;background:var(--bg);padding-bottom:3rem;font-family:"DM Sans",sans-serif;color:var(--text);
+  --cr:#059669; --cr-esc:#047857; --ant:#7c3aed; --ant-bg:#ede9fe; --risco:#dc2626;}
+#screen-contasreceber .cr-topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:25;}
+#screen-contasreceber .cr-title{font-size:1.05rem;font-weight:900;color:var(--cr);display:flex;align-items:center;gap:8px;}
+#screen-contasreceber .cr-spacer{flex:1;}
+#screen-contasreceber .cr-btn{border:1.5px solid var(--border);background:#fff;color:var(--text);border-radius:9px;padding:7px 13px;font-size:.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s;font-family:"DM Sans",sans-serif;white-space:nowrap;}
+#screen-contasreceber .cr-btn:hover{border-color:var(--cr);color:var(--cr);}
+#screen-contasreceber .cr-btn:disabled{opacity:.45;cursor:not-allowed;}
+#screen-contasreceber .cr-btn-primary{background:var(--cr);border-color:var(--cr);color:#fff;}
+#screen-contasreceber .cr-btn-primary:hover{background:var(--cr-esc);border-color:var(--cr-esc);color:#fff;}
+#screen-contasreceber .cr-btn-ant{background:var(--ant);border-color:var(--ant);color:#fff;}
+#screen-contasreceber .cr-btn-ant:hover{background:#6d28d9;border-color:#6d28d9;color:#fff;}
+#screen-contasreceber .cr-btn-sync{background:#0284c7;border-color:#0284c7;color:#fff;}
+#screen-contasreceber .cr-btn-sync:hover{background:#0369a1;border-color:#0369a1;color:#fff;}
+#screen-contasreceber .cr-btn-peq{padding:5px 10px;font-size:.73rem;}
+#screen-contasreceber .cr-mes{border:1.5px solid var(--border);border-radius:9px;padding:6px 10px;font-size:.82rem;font-weight:700;font-family:"DM Sans",sans-serif;outline:none;background:#fff;color:var(--text);}
+#screen-contasreceber .cr-mes:focus{border-color:var(--cr);}
+
+#screen-contasreceber .cr-notice{display:none;margin:12px 20px 0;padding:10px 14px;border-radius:10px;font-size:.8rem;font-weight:600;line-height:1.5;}
+#screen-contasreceber .cr-notice.info{display:block;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;}
+#screen-contasreceber .cr-notice.erro{display:block;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;}
+#screen-contasreceber .cr-notice.ok{display:block;background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;}
+#screen-contasreceber .cr-notice.aviso{display:block;background:#fffbeb;color:#92400e;border:1px solid #fde68a;}
+
+#screen-contasreceber .cr-tabs{display:flex;gap:2px;padding:0 20px;background:#fff;border-bottom:1px solid var(--border);overflow-x:auto;position:sticky;top:57px;z-index:24;}
+#screen-contasreceber .cr-tab{padding:11px 15px;font-size:.82rem;font-weight:700;color:var(--muted);cursor:pointer;border:none;background:none;white-space:nowrap;border-bottom:3px solid transparent;font-family:"DM Sans",sans-serif;transition:all .15s;display:inline-flex;align-items:center;gap:6px;}
+#screen-contasreceber .cr-tab:hover{color:var(--cr);}
+#screen-contasreceber .cr-tab.active{border-bottom-color:var(--cr);color:var(--cr);}
+#screen-contasreceber .cr-tab .cr-badge{background:var(--risco);color:#fff;font-size:.6rem;font-weight:900;border-radius:20px;padding:1px 6px;min-width:17px;text-align:center;}
+#screen-contasreceber .cr-tab.active .cr-badge{background:var(--risco);}
+#screen-contasreceber .cr-pane{display:none;padding:16px 20px;}
+#screen-contasreceber .cr-pane.active{display:block;}
+
+/* ── KPIs ── */
+#screen-contasreceber .cr-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:12px;}
+#screen-contasreceber .cr-kpi{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05);border-left:4px solid var(--border);min-width:0;}
+#screen-contasreceber .cr-kpi-lbl{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:flex;align-items:center;gap:6px;}
+#screen-contasreceber .cr-kpi-val{font-size:1.5rem;font-weight:900;line-height:1.15;margin-top:7px;letter-spacing:-.02em;}
+#screen-contasreceber .cr-kpi-sub{font-size:.7rem;color:var(--muted);margin-top:4px;font-weight:600;}
+#screen-contasreceber .cr-kpi.faturado{border-left-color:var(--cr);} #screen-contasreceber .cr-kpi.faturado .cr-kpi-val{color:var(--cr);}
+#screen-contasreceber .cr-kpi.recebido{border-left-color:#16a34a;} #screen-contasreceber .cr-kpi.recebido .cr-kpi-val{color:#16a34a;}
+#screen-contasreceber .cr-kpi.aberto{border-left-color:#0284c7;} #screen-contasreceber .cr-kpi.aberto .cr-kpi-val{color:#0284c7;}
+#screen-contasreceber .cr-kpi.atraso{border-left-color:var(--risco);} #screen-contasreceber .cr-kpi.atraso .cr-kpi-val{color:var(--risco);}
+#screen-contasreceber .cr-kpi.antecipado{border-left-color:var(--ant);} #screen-contasreceber .cr-kpi.antecipado .cr-kpi-val{color:var(--ant);}
+#screen-contasreceber .cr-kpi.neutro{border-left-color:#94a3b8;} #screen-contasreceber .cr-kpi.neutro .cr-kpi-val{color:#334155;}
+
+#screen-contasreceber .cr-barra{height:7px;border-radius:20px;background:#e2e8f0;overflow:hidden;margin-top:9px;}
+#screen-contasreceber .cr-barra span{display:block;height:100%;background:#16a34a;border-radius:20px;transition:width .4s;}
+
+/* Indicadores secundários: linha compacta, porque são leitura de apoio. */
+#screen-contasreceber .cr-ind{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;}
+#screen-contasreceber .cr-ind-item{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 13px;min-width:0;}
+#screen-contasreceber .cr-ind-lbl{font-size:.61rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);display:flex;align-items:center;gap:5px;}
+#screen-contasreceber .cr-ind-val{font-size:1.05rem;font-weight:900;margin-top:3px;letter-spacing:-.01em;}
+#screen-contasreceber .cr-ind-sub{font-size:.64rem;color:var(--muted);font-weight:600;margin-top:1px;}
+
+/* Barra de propriedade da carteira: próprio x antecipado, lado a lado.
+   É o número que o dono da empresa mais precisa ver e o que some quando os
+   dois módulos ficam separados. */
+#screen-contasreceber .cr-posse{background:#fff;border:1px solid var(--border);border-radius:14px;padding:13px 16px;margin-bottom:14px;}
+#screen-contasreceber .cr-posse-top{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:9px;}
+#screen-contasreceber .cr-posse-h{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);}
+#screen-contasreceber .cr-posse-bar{display:flex;height:22px;border-radius:8px;overflow:hidden;background:#f1f5f9;}
+#screen-contasreceber .cr-posse-bar span{display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:#fff;transition:width .4s;white-space:nowrap;overflow:hidden;}
+#screen-contasreceber .cr-posse-proprio{background:var(--cr);}
+#screen-contasreceber .cr-posse-ant{background:var(--ant);}
+#screen-contasreceber .cr-posse-leg{display:flex;gap:16px;flex-wrap:wrap;margin-top:9px;font-size:.72rem;font-weight:700;}
+#screen-contasreceber .cr-posse-leg i{font-size:.6rem;margin-right:5px;}
+
+/* ── Cards ── */
+#screen-contasreceber .cr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+#screen-contasreceber .cr-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:980px){#screen-contasreceber .cr-grid-3{grid-template-columns:1fr 1fr;}}
+@media(max-width:820px){#screen-contasreceber .cr-grid,#screen-contasreceber .cr-grid-3{grid-template-columns:1fr;}}
+/* min-width:0 é obrigatório: item de grid nasce com min-width:auto, que
+   resolve para o min-content do conteúdo — e o min-content de uma tabela com
+   células nowrap é a largura inteira dela. Sem isto a coluna 1fr estica e a
+   página inteira ganha rolagem horizontal. */
+#screen-contasreceber .cr-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;flex-direction:column;min-width:0;}
+#screen-contasreceber .cr-card-h{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+#screen-contasreceber .cr-card-h i{color:var(--cr);margin-right:5px;}
+#screen-contasreceber .cr-chart{position:relative;width:100%;height:230px;}
+#screen-contasreceber .cr-chart.alto{height:280px;}
+
+/* ── Régua de atraso ── */
+#screen-contasreceber .cr-regua{display:flex;flex-direction:column;gap:11px;}
+#screen-contasreceber .cr-regua > div{cursor:pointer;transition:opacity .15s;border-radius:8px;}
+#screen-contasreceber .cr-regua > div:hover{opacity:.7;}
+#screen-contasreceber .cr-faixa-top{display:flex;justify-content:space-between;align-items:baseline;font-size:.75rem;margin-bottom:4px;gap:8px;}
+#screen-contasreceber .cr-faixa-nome{font-weight:800;}
+#screen-contasreceber .cr-faixa-val{font-weight:900;}
+#screen-contasreceber .cr-faixa-qtd{font-size:.68rem;color:var(--muted);font-weight:700;}
+#screen-contasreceber .cr-faixa-bar{height:10px;border-radius:20px;background:#f1f5f9;overflow:hidden;}
+#screen-contasreceber .cr-faixa-bar span{display:block;height:100%;border-radius:20px;transition:width .4s;}
+#screen-contasreceber .cr-f1 .cr-faixa-nome,#screen-contasreceber .cr-f1 .cr-faixa-val{color:#d97706;}
+#screen-contasreceber .cr-f1 .cr-faixa-bar span{background:#f59e0b;}
+#screen-contasreceber .cr-f2 .cr-faixa-nome,#screen-contasreceber .cr-f2 .cr-faixa-val{color:#ea580c;}
+#screen-contasreceber .cr-f2 .cr-faixa-bar span{background:#f97316;}
+#screen-contasreceber .cr-f3 .cr-faixa-nome,#screen-contasreceber .cr-f3 .cr-faixa-val{color:#dc2626;}
+#screen-contasreceber .cr-f3 .cr-faixa-bar span{background:#ef4444;}
+#screen-contasreceber .cr-f4 .cr-faixa-nome,#screen-contasreceber .cr-f4 .cr-faixa-val{color:#991b1b;}
+#screen-contasreceber .cr-f4 .cr-faixa-bar span{background:#991b1b;}
+
+/* ── Tabelas ── */
+#screen-contasreceber .cr-tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:#fff;max-width:100%;}
+#screen-contasreceber table.cr-tbl{width:100%;border-collapse:collapse;font-size:.79rem;}
+#screen-contasreceber .cr-tbl thead th{background:#f8fafc;color:var(--muted);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:9px 11px;text-align:left;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2;white-space:nowrap;}
+#screen-contasreceber .cr-tbl tbody tr{border-bottom:1px solid #f1f5f9;}
+#screen-contasreceber .cr-tbl tbody tr:hover{background:#f8fafc;}
+#screen-contasreceber .cr-tbl td{padding:7px 11px;vertical-align:middle;}
+#screen-contasreceber .cr-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+#screen-contasreceber .cr-cli{font-weight:700;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#screen-contasreceber .cr-vazio{padding:2rem;text-align:center;color:var(--muted);font-size:.82rem;line-height:1.6;}
+#screen-contasreceber .cr-tbl tr.sel{background:#ecfdf5;}
+#screen-contasreceber .cr-tbl tr.sel:hover{background:#d1fae5;}
+#screen-contasreceber .cr-tbl tr.risco td{background:#fef2f2;}
+#screen-contasreceber .cr-tbl tr.bloq{opacity:.5;}
+#screen-contasreceber .cr-sub{font-size:.62rem;font-weight:600;color:var(--muted);margin-top:2px;}
+
+/* ── Pílulas ── */
+#screen-contasreceber .cr-pill{font-size:.62rem;font-weight:800;padding:2px 8px;border-radius:20px;display:inline-block;white-space:nowrap;}
+#screen-contasreceber .cr-pill-ABERTO{background:#e0f2fe;color:#0369a1;}
+#screen-contasreceber .cr-pill-RECEBIDO{background:#dcfce7;color:#15803d;}
+#screen-contasreceber .cr-pill-PARCIAL{background:#fef3c7;color:#b45309;}
+#screen-contasreceber .cr-pill-CANCELADO{background:#f1f5f9;color:#64748b;}
+#screen-contasreceber .cr-pill-atraso{background:#fee2e2;color:#b91c1c;}
+#screen-contasreceber .cr-pill-hoje{background:#fef3c7;color:#b45309;}
+#screen-contasreceber .cr-pill-ant{background:var(--ant-bg);color:#6d28d9;}
+#screen-contasreceber .cr-pill-risco{background:#fee2e2;color:#991b1b;}
+#screen-contasreceber .cr-pill-recompra{background:#e2e8f0;color:#475569;}
+#screen-contasreceber .cr-pill-livre{background:#f0fdf4;color:#15803d;}
+#screen-contasreceber .cr-pill-RASCUNHO{background:#f1f5f9;color:#475569;}
+#screen-contasreceber .cr-pill-ENVIADA{background:#e0f2fe;color:#0369a1;}
+#screen-contasreceber .cr-pill-APROVADA{background:var(--ant-bg);color:#6d28d9;}
+#screen-contasreceber .cr-pill-LIQUIDADA{background:#dcfce7;color:#15803d;}
+#screen-contasreceber .cr-pill-CANCELADA{background:#fee2e2;color:#b91c1c;}
+#screen-contasreceber .cr-pill-nova{background:#dcfce7;color:#15803d;}
+#screen-contasreceber .cr-pill-existe{background:#f1f5f9;color:#64748b;}
+
+#screen-contasreceber .cr-acao{background:none;border:none;cursor:pointer;color:var(--muted);padding:4px 6px;border-radius:6px;font-size:.82rem;transition:all .15s;}
+#screen-contasreceber .cr-acao:hover{background:#ecfdf5;color:var(--cr);}
+#screen-contasreceber .cr-acao.baixar:hover{background:#dcfce7;color:#16a34a;}
+#screen-contasreceber .cr-acao.excluir:hover{background:#fee2e2;color:#ef4444;}
+#screen-contasreceber .cr-acao.ant:hover{background:var(--ant-bg);color:var(--ant);}
+
+/* ── Filtros ── */
+#screen-contasreceber .cr-filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+#screen-contasreceber .cr-inp{border:1.5px solid var(--border);border-radius:9px;padding:7px 11px;font-size:.8rem;font-family:"DM Sans",sans-serif;outline:none;background:#fff;color:var(--text);transition:border-color .15s;}
+#screen-contasreceber .cr-inp:focus{border-color:var(--cr);}
+#screen-contasreceber .cr-inp.busca{min-width:230px;flex:1;max-width:380px;}
+#screen-contasreceber .cr-campo{margin-bottom:11px;}
+#screen-contasreceber .cr-campo .cr-inp{width:100%;}
+#screen-contasreceber .cr-lbl{display:block;font-size:.66rem;font-weight:800;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;}
+#screen-contasreceber .cr-ajuda{font-size:.68rem;color:var(--muted);font-weight:600;line-height:1.45;margin-top:3px;}
+#screen-contasreceber .cr-g2{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+#screen-contasreceber .cr-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;}
+@media(max-width:560px){#screen-contasreceber .cr-g2,#screen-contasreceber .cr-g3{grid-template-columns:1fr;}}
+
+/* ── Barra de seleção em lote ── */
+#screen-contasreceber .cr-lote{display:none;align-items:center;gap:12px;flex-wrap:wrap;background:#064e3b;color:#fff;border-radius:12px;padding:10px 16px;margin-bottom:12px;font-size:.8rem;font-weight:700;}
+#screen-contasreceber .cr-lote.on{display:flex;}
+#screen-contasreceber .cr-lote b{font-size:1rem;}
+#screen-contasreceber .cr-lote .cr-btn{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.25);color:#fff;}
+#screen-contasreceber .cr-lote .cr-btn:hover{background:rgba(255,255,255,.26);border-color:#fff;color:#fff;}
+
+/* ── Carrinho da antecipação ──
+   Fica grudado embaixo porque a escolha dos títulos acontece rolando uma
+   tabela longa: o total precisa estar visível no momento da decisão, não
+   depois de rolar de volta ao topo. */
+#screen-contasreceber .cr-carrinho{position:sticky;bottom:0;z-index:20;background:#fff;border:1px solid var(--border);
+  border-top:3px solid var(--ant);border-radius:14px 14px 0 0;box-shadow:0 -8px 28px rgba(15,23,42,.13);
+  padding:13px 16px;margin:14px -20px 0;}
+#screen-contasreceber .cr-carrinho-linha{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+#screen-contasreceber .cr-carrinho .cr-campo{margin-bottom:0;}
+#screen-contasreceber .cr-sim{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:10px;flex:1 1 420px;min-width:0;}
+#screen-contasreceber .cr-sim-item{background:var(--bg);border-radius:10px;padding:8px 11px;min-width:0;}
+#screen-contasreceber .cr-sim-lbl{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+#screen-contasreceber .cr-sim-val{font-size:1rem;font-weight:900;margin-top:2px;letter-spacing:-.01em;}
+#screen-contasreceber .cr-sim-item.bruto .cr-sim-val{color:var(--text);}
+#screen-contasreceber .cr-sim-item.custo .cr-sim-val{color:#d97706;}
+#screen-contasreceber .cr-sim-item.liq .cr-sim-val{color:var(--ant);}
+#screen-contasreceber .cr-alerta{display:none;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;
+  padding:9px 13px;font-size:.75rem;font-weight:600;line-height:1.5;margin-top:10px;}
+#screen-contasreceber .cr-alerta.on{display:block;}
+#screen-contasreceber .cr-alerta.grave{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
+
+/* ── Cadastro de parceiros: cartões ── */
+#screen-contasreceber .cr-parceiros{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:12px;}
+#screen-contasreceber .cr-parc{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px;position:relative;transition:all .15s;min-width:0;}
+#screen-contasreceber .cr-parc:hover{border-color:var(--ant);box-shadow:0 6px 22px rgba(124,58,237,.10);}
+#screen-contasreceber .cr-parc.inativo{opacity:.55;}
+#screen-contasreceber .cr-parc-nome{font-weight:900;font-size:.92rem;display:flex;align-items:center;gap:7px;margin-bottom:2px;}
+#screen-contasreceber .cr-parc-tipo{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;background:var(--ant-bg);color:#6d28d9;padding:2px 7px;border-radius:5px;}
+#screen-contasreceber .cr-parc-sub{font-size:.7rem;color:var(--muted);font-weight:600;margin-bottom:11px;}
+#screen-contasreceber .cr-parc-nums{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+#screen-contasreceber .cr-parc-n{background:var(--bg);border-radius:8px;padding:6px 9px;min-width:0;}
+#screen-contasreceber .cr-parc-n b{display:block;font-size:.88rem;font-weight:900;}
+#screen-contasreceber .cr-parc-n span{font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+#screen-contasreceber .cr-parc-uso{margin-top:11px;}
+#screen-contasreceber .cr-parc-acoes{position:absolute;top:11px;right:11px;display:flex;gap:2px;opacity:0;transition:opacity .15s;}
+#screen-contasreceber .cr-parc:hover .cr-parc-acoes{opacity:1;}
+
+/* ── Modais ── */
+#screen-contasreceber .cr-overlay{display:none;position:fixed;inset:0;z-index:120;background:rgba(15,23,42,.55);justify-content:center;align-items:center;padding:1rem;}
+#screen-contasreceber .cr-overlay.open{display:flex;}
+#screen-contasreceber .cr-modal{background:#fff;border-radius:16px;width:100%;max-width:620px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.3);}
+#screen-contasreceber .cr-modal.largo{max-width:1120px;}
+#screen-contasreceber .cr-modal-h{padding:14px 20px;background:linear-gradient(135deg,#0f172a,#065f46);color:#fff;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+#screen-contasreceber .cr-modal-h.roxo{background:linear-gradient(135deg,#0f172a,#4c1d95);}
+#screen-contasreceber .cr-modal-h h3{font-size:.95rem;font-weight:900;display:flex;align-items:center;gap:8px;}
+#screen-contasreceber .cr-modal-h .sub{font-size:.7rem;color:#a7f3d0;font-weight:600;margin-top:2px;}
+#screen-contasreceber .cr-modal-h.roxo .sub{color:#ddd6fe;}
+#screen-contasreceber .cr-fechar{background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#screen-contasreceber .cr-fechar:hover{background:rgba(255,255,255,.3);}
+#screen-contasreceber .cr-modal-b{padding:16px 20px;overflow-y:auto;flex:1;}
+#screen-contasreceber .cr-modal-f{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8fafc;border-radius:0 0 16px 16px;flex-wrap:wrap;}
+
+#screen-contasreceber .cr-resumo-box{background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:14px;}
+#screen-contasreceber .cr-resumo-linha{display:flex;justify-content:space-between;gap:12px;font-size:.8rem;padding:4px 0;}
+#screen-contasreceber .cr-resumo-linha b{font-variant-numeric:tabular-nums;}
+#screen-contasreceber .cr-resumo-linha.destaque{border-top:1px solid var(--border);margin-top:5px;padding-top:9px;font-size:.92rem;font-weight:900;}
+
+#screen-contasreceber .cr-sync-resumo{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+#screen-contasreceber .cr-sync-chip{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 13px;font-size:.72rem;font-weight:700;color:var(--muted);}
+#screen-contasreceber .cr-sync-chip b{display:block;font-size:1.05rem;color:var(--text);font-weight:900;margin-top:2px;}
+#screen-contasreceber .cr-sync-linha.existe{opacity:.5;}
+
+#screen-contasreceber .cr-rot-curto{display:none;}
+
+/* ══ TABLET E CELULAR ══ */
+@media(max-width:820px){
+  /* A topbar quebra em várias linhas no celular, então a altura dela deixa de
+     ser previsível. Duas barras grudadas com alturas variáveis se escondem uma
+     atrás da outra: aqui só as abas continuam grudadas, no topo. */
+  #screen-contasreceber .cr-topbar{position:static;padding:10px 14px;gap:8px;}
+  #screen-contasreceber .cr-tabs{top:0;padding:0 10px;}
+  #screen-contasreceber .cr-pane{padding:14px;}
+  #screen-contasreceber .cr-notice{margin:12px 14px 0;}
+  #screen-contasreceber .cr-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  #screen-contasreceber .cr-kpi{padding:12px;}
+  #screen-contasreceber .cr-kpi-val{font-size:1.15rem;}
+  #screen-contasreceber .cr-ind{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #screen-contasreceber .cr-chart{height:210px;}
+  #screen-contasreceber .cr-card{padding:12px 13px;}
+  #screen-contasreceber .cr-filtros{gap:7px;}
+  #screen-contasreceber .cr-inp.busca{min-width:0;max-width:none;flex:1 1 100%;}
+  #screen-contasreceber .cr-filtros .cr-inp{flex:1 1 45%;}
+  #screen-contasreceber .cr-spacer{display:none;}
+  #screen-contasreceber .cr-carrinho{margin:14px -14px 0;}
+  /* Modal vira folha de baixo para cima: aproveita a tela toda. */
+  #screen-contasreceber .cr-overlay{padding:0;align-items:flex-end;}
+  #screen-contasreceber .cr-modal,
+  #screen-contasreceber .cr-modal.largo{max-width:none;max-height:94vh;border-radius:16px 16px 0 0;}
+  #screen-contasreceber .cr-modal-h{border-radius:16px 16px 0 0;padding:13px 16px;}
+  #screen-contasreceber .cr-modal-b{padding:14px 16px;}
+  #screen-contasreceber .cr-modal-f{padding:11px 16px;border-radius:0;}
+  #screen-contasreceber .cr-modal-f button{flex:1;justify-content:center;}
+}
+
+@media(max-width:560px){
+  #screen-contasreceber .cr-topbar img{display:none;}
+  #screen-contasreceber .cr-rot-longo{display:none;}
+  #screen-contasreceber .cr-rot-curto{display:inline;}
+  #screen-contasreceber .cr-btn{padding:7px 11px;font-size:.76rem;}
+  #screen-contasreceber .cr-mes{flex:0 0 auto;min-width:162px;}
+  #screen-contasreceber .cr-title{font-size:.92rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #screen-contasreceber .cr-tab{padding:10px 10px;font-size:.75rem;}
+  #screen-contasreceber .cr-tbl{font-size:.74rem;}
+  #screen-contasreceber .cr-tbl thead th{padding:8px;font-size:.6rem;}
+  #screen-contasreceber .cr-tbl td{padding:7px 8px;}
+  #screen-contasreceber .cr-cli{max-width:140px;}
+  /* Colunas de apoio saem para a tabela caber sem virar rolagem lateral. */
+  #screen-contasreceber .cr-col-apoio{display:none;}
+  #screen-contasreceber .cr-parc-acoes{opacity:1;}
+  #screen-contasreceber .cr-sync-chip{flex:1 1 45%;}
+}
+
+/* ══ BORDERÔ IMPRESSO ══
+   O pré-borderô abre numa janela própria e usa esta folha por injeção; fica
+   aqui para viver no mesmo arquivo que o resto do módulo. */
+#cr-modal-politica .cr-sep-regra{border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin:4px 0 12px;background:#f8fafc;}
+#cr-modal-politica .cr-sep-t{font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#0284c7;margin-bottom:9px;display:flex;align-items:center;gap:7px;}
+body.rv-admin .rv-so-admin.cr-oculto,
+body.cp-admin .rv-so-admin.cr-oculto{display:none!important;}
+.cr-venc-inp{border:1px solid var(--border);border-radius:6px;padding:3px 5px;font-family:inherit;font-size:.74rem;background:#fff;color:inherit;max-width:130px;}
+.cr-venc-inp:focus{outline:none;border-color:#0284c7;}
+.cr-venc-inp.mudou{border-color:#b45309;background:#fffbeb;font-weight:800;}
