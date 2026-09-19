@@ -1,0 +1,43 @@
+/* Base do portal: variáveis, reset e a "casca" (login, home, navegação, loading).
+   Carregado sempre, antes de qualquer módulo. */
+:root{--bg:#f1f5f9;--surface:#fff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;--dark:#0f172a;--primary:#1d4ed8;--primary-light:#dbeafe;--success:#16a34a;--success-bg:#dcfce7;--warning:#d97706;--warning-bg:#fef3c7;--danger:#ef4444;--danger-bg:#fee2e2;--renova:#16a34a;--renova-bg:#dcfce7;--vale:#d97706;--vale-bg:#fef3c7;}
+*{box-sizing:border-box;margin:0;padding:0;}
+/* padding-bottom: reserva o rodapé fixo da Precificação; historicamente vale para o portal todo. */
+body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);padding-bottom:90px;}
+#screen-login{position:fixed;inset:0;z-index:200;background:linear-gradient(135deg,#0f172a,#1e3a5f);display:flex;align-items:center;justify-content:center;}
+.login-card{background:#fff;border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:360px;margin:1rem;box-shadow:0 30px 80px rgba(0,0,0,.4);}
+.login-input{width:100%;border:2px solid var(--border);border-radius:10px;padding:.75rem 1rem;font-size:.9rem;font-family:"DM Sans",sans-serif;color:var(--text);outline:none;transition:border-color .2s;}
+.login-input:focus{border-color:var(--primary);}
+.login-btn{width:100%;background:linear-gradient(135deg,#1d4ed8,#1e40af);color:#fff;font-weight:800;font-size:.9rem;padding:.8rem;border-radius:10px;border:none;cursor:pointer;font-family:"DM Sans",sans-serif;margin-top:.6rem;}
+#screen-home{display:none;min-height:100vh;}
+.home-header{background:linear-gradient(135deg,#0f172a,#1e3a5f);padding:1.2rem 2rem;display:flex;align-items:center;justify-content:space-between;}
+.home-header img{height:44px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.4));}
+.home-body{max-width:1100px;margin:0 auto;padding:2.5rem 1.5rem;}
+.module-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1.2rem;margin-bottom:2.5rem;}
+.module-card{background:#fff;border-radius:16px;padding:1.5rem;border:2px solid var(--border);cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:.8rem;position:relative;}
+.module-card:hover{border-color:var(--primary);box-shadow:0 8px 32px rgba(29,78,216,.12);transform:translateY(-2px);}
+.module-card.soon{cursor:default;opacity:.65;}.module-card.soon:hover{border-color:var(--border);box-shadow:none;transform:none;}
+.module-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.module-name{font-weight:900;font-size:.95rem;color:var(--text);}.module-desc{font-size:.78rem;color:var(--muted);line-height:1.4;}
+.module-badge{position:absolute;top:.8rem;right:.8rem;font-size:.62rem;font-weight:800;padding:2px 8px;border-radius:20px;}
+.badge-ativo{background:var(--success-bg);color:var(--success);}.badge-breve{background:#f1f5f9;color:var(--muted);}.badge-fase2{background:#fef3c7;color:#d97706;}
+.section-label{font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.8rem;display:flex;align-items:center;gap:8px;}
+.section-label::after{content:"";flex:1;height:1px;background:var(--border);}
+.tool-nav{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:.6rem 1.2rem;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:40;box-shadow:0 2px 12px rgba(0,0,0,.2);}
+/* Celular: os botões da direita descem de linha em vez de serem cortados (ex.: "Exportar PDF" da Curva ABC). */
+@media(max-width:640px){.tool-nav{flex-wrap:wrap;}}
+.back-btn{background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:background .2s;}
+.back-btn:hover{background:rgba(255,255,255,.22);}
+#screen-dashboard,#screen-prec,#screen-abc,#screen-kanban,#screen-historico,#screen-manual,#screen-contaspagar,#screen-contasreceber,#screen-resultado{display:none;}
+/* Card do Resultado Semanal: só existe na home para perfil admin. */
+.rs-card-admin{display:none!important;}
+body.rv-admin .rs-card-admin{display:flex!important;}
+/* Botões de escrita dos módulos financeiros só aparecem para quem pode editar.
+   `rv-admin` é posto no login por rvAplicarPapel() e vale para o portal inteiro;
+   `cp-admin` continua aqui porque o Contas a Pagar o liga no próprio init. */
+.rv-so-admin{display:none!important;}
+body.cp-admin .rv-so-admin,body.rv-admin .rv-so-admin{display:inline-flex!important;}
+#loading-screen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,.96);z-index:60;flex-direction:column;justify-content:center;align-items:center;gap:16px;}
+.spinner{width:44px;height:44px;border:4px solid #dbeafe;border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#abc-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;gap:16px;padding:2rem;}
