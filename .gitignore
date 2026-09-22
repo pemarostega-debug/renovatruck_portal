@@ -13,3 +13,7 @@ integracao/contas-receber-sync.json
 integracao/migracao-contas-pagar.json
 contas-pagar-sync.json
 contas-receber-sync.json
+.env
+*.bak
+*.save
+integracao/resultado-semanal-sync.json
