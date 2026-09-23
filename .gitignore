@@ -1,8 +1,16 @@
+# Dependências
 node_modules/
-teste-conexao.js
+
+# Credenciais e variáveis de ambiente - NUNCA versionar
+.env
+.env.local
+.env.*.local
 config.local.json
-exportar.log
 Credenciais_renova_db.txt
+
+# Logs
+exportar.log
+*.log
 
 # Dados financeiros: NUNCA versionar. O repositório é público (é o que faz o
 # GitHub Pages servir o site), então qualquer coisa commitada aqui fica
@@ -11,9 +19,23 @@ integracao/config.local.json
 integracao/contas-pagar-sync.json
 integracao/contas-receber-sync.json
 integracao/migracao-contas-pagar.json
+integracao/resultado-semanal-sync.json
 contas-pagar-sync.json
 contas-receber-sync.json
-.env
+
+# Backups e rascunhos de arquivo (podem conter credenciais)
 *.bak
 *.save
-integracao/resultado-semanal-sync.json
+
+# Scripts de teste
+teste-conexao.js
+
+# Crivo (revisor de código) - local, nunca subir
+.crivo/
+
+# Notas internas e auditorias: contêm credenciais e contexto de trabalho.
+# O repositório é público — nada disso pode subir.
+SECURITY-AUDIT.md
+PROMPT-OPUS.md
+Braistorm*.txt
+.claude/skills/placar/

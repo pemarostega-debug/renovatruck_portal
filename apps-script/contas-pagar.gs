@@ -31,6 +31,39 @@ const ABA_FORN    = 'Fornecedores';
 const ABA_LOG     = 'Log';
 const ABA_CONFIG  = 'Config';
 const ABA_SYNC    = 'SyncStaging';
+const ABA_FIXAS   = 'ContasFixas';
+
+/**
+ * Contas fixas — aluguel, contador, internet, seguro, software.
+ *
+ * A planilha guarda o MOLDE, não os títulos: uma linha por conta que se repete,
+ * com o dia do vencimento e a janela de vigência. Os títulos de cada mês são
+ * gerados a partir daqui, e um título gerado é um título comum — dá para editar,
+ * baixar e cancelar como qualquer outro.
+ *
+ * Por que molde e não 12 títulos de uma vez: o valor do aluguel muda, o contrato
+ * acaba, o fornecedor troca. Gerando mês a mês, a mudança vale do mês seguinte
+ * em diante e o histórico já pago continua intacto.
+ */
+const CAB_FIXAS = [
+  'id',                // F-0001
+  'ativo',             // SIM | NAO
+  'descricao',         // "Aluguel do galpão" — vira a descrição do título
+  'fornecedor',
+  'fornecedor_cod',
+  'natureza_codigo',   // FK → PlanoContas.codigo
+  'natureza',
+  'empresa',           // RENOVA | VALE
+  'valor_previsto',
+  'dia_vencimento',    // 1–31; dia 31 em mês de 30 cai no último dia do mês
+  'forma_pagamento',
+  'inicio',            // 'YYYY-MM' — 1ª competência que gera título
+  'fim',               // 'YYYY-MM' ou vazio para contrato sem prazo
+  'observacao',
+  'criado_em', 'criado_por', 'atualizado_em', 'atualizado_por'
+];
+const FX = {};
+CAB_FIXAS.forEach(function (nome, i) { FX[nome] = i; });
 
 // Notas do Genesis esperando aprovação. Ficam aqui, e não num JSON publicado
 // no GitHub Pages, porque o repositório do portal é público: nome de
@@ -166,6 +199,7 @@ function doGet(e) {
     if (action === 'titulos')      return json({ success: true, data: listarTitulos(e.parameter) });
     if (action === 'plano')        return json({ success: true, data: lerPlano() });
     if (action === 'fornecedores') return json({ success: true, data: lerFornecedores() });
+    if (action === 'fixas')        return json({ success: true, data: lerFixas() });
     if (action === 'dashboard')    return json({ success: true, data: dashboard(e.parameter) });
     return json({ success: false, error: 'Ação desconhecida: ' + action });
   } catch (err) {
@@ -197,6 +231,11 @@ function doPost(e) {
     if (action === 'plano_salvar')    return json({ success: true, data: salvarPlano(body.contas || [], sessao) });
     if (action === 'plano_remover')   return json({ success: true, data: removerConta(body.codigo, sessao) });
 
+    if (action === 'fixa_salvar')   return json({ success: true, data: salvarFixa(body.fixa, sessao) });
+    if (action === 'fixa_remover')  return json({ success: true, data: removerFixa(body.id, sessao) });
+    if (action === 'fixas_gerar')   return json({ success: true, data: gerarFixas(body.competencia, body.ids, sessao) });
+    if (action === 'fixas_previa')  return json({ success: true, data: previaFixas(body.competencia) });
+
     return json({ success: false, error: 'Ação desconhecida: ' + action });
   } catch (err) {
     return json({ success: false, error: erroTexto(err) });
@@ -213,6 +252,7 @@ function instalar() {
   garantirAba(ss, ABA_TITULOS, CAB_TITULOS);
   garantirAba(ss, ABA_PLANO,   CAB_PLANO);
   garantirAba(ss, ABA_FORN,    CAB_FORN);
+  garantirAba(ss, ABA_FIXAS,   CAB_FIXAS);
   garantirAba(ss, ABA_LOG,     CAB_LOG);
   garantirAba(ss, ABA_CONFIG,  ['chave', 'valor']);
   garantirAba(ss, ABA_SYNC,    CAB_SYNC);
@@ -426,6 +466,7 @@ function bootstrap(params) {
     titulos: listarTitulos(params || {}),
     plano: lerPlano(),
     fornecedores: lerFornecedores(),
+    fixas: lerFixas(),
     hoje: dataParaISO(new Date())
   };
 }
@@ -1286,4 +1327,284 @@ function json(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CONTAS FIXAS — o molde do que se repete todo mês
+// ═════════════════════════════════════════════════════════════════════════════
+
+function abaFixas() {
+  const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  let sh = ss.getSheetByName(ABA_FIXAS);
+  if (!sh) { garantirAba(ss, ABA_FIXAS, CAB_FIXAS); sh = ss.getSheetByName(ABA_FIXAS); }
+  return sh;
+}
+
+function lerFixas() {
+  const sh = abaFixas();
+  if (sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, CAB_FIXAS.length).getDisplayValues()
+    .filter(function (l) { return String(l[FX.id] || '').trim(); })
+    .map(function (l) {
+      return {
+        id: String(l[FX.id]),
+        ativo: String(l[FX.ativo]).toUpperCase() !== 'NAO',
+        descricao: String(l[FX.descricao] || ''),
+        fornecedor: String(l[FX.fornecedor] || ''),
+        fornecedor_cod: String(l[FX.fornecedor_cod] || ''),
+        natureza_codigo: String(l[FX.natureza_codigo] || ''),
+        natureza: String(l[FX.natureza] || ''),
+        empresa: String(l[FX.empresa] || 'RENOVA').toUpperCase(),
+        valor_previsto: numero(l[FX.valor_previsto]),
+        dia_vencimento: numero(l[FX.dia_vencimento]),
+        forma_pagamento: String(l[FX.forma_pagamento] || ''),
+        inicio: competenciaValida(l[FX.inicio]),
+        fim: competenciaValida(l[FX.fim]),
+        observacao: String(l[FX.observacao] || '')
+      };
+    });
+}
+
+/** 'YYYY-MM' ou ''. Planilha pt-BR devolve datas como texto formatado. */
+function competenciaValida(v) {
+  const s = String(v == null ? '' : v).trim();
+  let m = /^(\d{4})-(\d{2})$/.exec(s);
+  if (m) return s;
+  m = /^(\d{2})\/(\d{4})$/.exec(s);          // "09/2026"
+  if (m) return m[2] + '-' + m[1];
+  m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s); // "01/09/2026"
+  if (m) return m[3] + '-' + m[2];
+  return '';
+}
+
+function salvarFixa(f, sessao) {
+  if (!f) throw new Error('Conta fixa vazia.');
+  if (!String(f.descricao || '').trim()) throw new Error('Informe a descrição da conta fixa.');
+  const dia = numero(f.dia_vencimento);
+  if (!(dia >= 1 && dia <= 31)) throw new Error('O dia do vencimento precisa estar entre 1 e 31.');
+  if (numero(f.valor_previsto) <= 0) throw new Error('Informe o valor previsto.');
+  const inicio = competenciaValida(f.inicio);
+  if (!inicio) throw new Error('Informe a competência inicial (mês/ano em que a conta começa).');
+  const fim = competenciaValida(f.fim);
+  if (fim && fim < inicio) throw new Error('A competência final é anterior à inicial.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try {
+    const sh = abaFixas();
+    const linhas = sh.getLastRow() >= 2
+      ? sh.getRange(2, 1, sh.getLastRow() - 1, CAB_FIXAS.length).getDisplayValues() : [];
+
+    let i = -1;
+    if (f.id) {
+      for (let k = 0; k < linhas.length; k++) if (String(linhas[k][FX.id]) === String(f.id)) { i = k; break; }
+      if (i < 0) throw new Error('Conta fixa ' + f.id + ' não encontrada.');
+    }
+
+    const agora = new Date();
+    const linha = new Array(CAB_FIXAS.length).fill('');
+    linha[FX.id]              = f.id || proximoIdFixa(linhas);
+    linha[FX.ativo]           = f.ativo === false ? 'NAO' : 'SIM';
+    linha[FX.descricao]       = String(f.descricao).trim();
+    linha[FX.fornecedor]      = String(f.fornecedor || '').trim();
+    linha[FX.fornecedor_cod]  = String(f.fornecedor_cod || '').trim();
+    linha[FX.natureza_codigo] = String(f.natureza_codigo || '').trim();
+    linha[FX.natureza]        = String(f.natureza || '').trim();
+    linha[FX.empresa]         = String(f.empresa || 'RENOVA').toUpperCase();
+    linha[FX.valor_previsto]  = numero(f.valor_previsto);
+    linha[FX.dia_vencimento]  = dia;
+    linha[FX.forma_pagamento] = String(f.forma_pagamento || '').trim();
+    linha[FX.inicio]          = inicio;
+    linha[FX.fim]             = fim;
+    linha[FX.observacao]      = String(f.observacao || '').trim();
+    linha[FX.criado_em]       = i >= 0 ? linhas[i][FX.criado_em] : agora;
+    linha[FX.criado_por]      = i >= 0 ? linhas[i][FX.criado_por] : sessao.usuario;
+    linha[FX.atualizado_em]   = agora;
+    linha[FX.atualizado_por]  = sessao.usuario;
+
+    const destino = i >= 0 ? i + 2 : sh.getLastRow() + 1;
+    // Texto forçado nos campos que a planilha pt-BR estragaria: "2026-09"
+    // viraria data e o código da natureza "3.07" viraria o número 3,07.
+    [FX.id, FX.natureza_codigo, FX.inicio, FX.fim, FX.fornecedor_cod].forEach(function (c) {
+      sh.getRange(destino, c + 1).setNumberFormat('@');
+    });
+    sh.getRange(destino, 1, 1, CAB_FIXAS.length).setValues([linha]);
+    registrar(sessao.usuario, i >= 0 ? 'FIXA_EDITAR' : 'FIXA_CRIAR', linha[FX.id], linha[FX.descricao]);
+    return { id: linha[FX.id] };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function proximoIdFixa(linhas) {
+  let maior = 0;
+  linhas.forEach(function (l) {
+    const m = /^F-(\d+)$/.exec(String(l[FX.id] || ''));
+    if (m) maior = Math.max(maior, parseInt(m[1], 10));
+  });
+  return 'F-' + ('000' + (maior + 1)).slice(-4);
+}
+
+/** Apaga o molde. Os títulos já gerados continuam — eles são dívida de verdade. */
+function removerFixa(id, sessao) {
+  id = String(id || '');
+  if (!id) throw new Error('Conta fixa não informada.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try {
+    const sh = abaFixas();
+    const linhas = sh.getLastRow() >= 2
+      ? sh.getRange(2, 1, sh.getLastRow() - 1, CAB_FIXAS.length).getDisplayValues() : [];
+    for (let k = 0; k < linhas.length; k++) {
+      if (String(linhas[k][FX.id]) === id) {
+        sh.deleteRow(k + 2);
+        registrar(sessao.usuario, 'FIXA_REMOVER', id, String(linhas[k][FX.descricao] || ''));
+        return { id: id, removido: true };
+      }
+    }
+    throw new Error('Conta fixa ' + id + ' não encontrada.');
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Chave natural do título gerado. É o que impede gerar o mesmo mês duas vezes. */
+function chaveFixa(id, competencia) { return 'FIXA|' + id + '|' + competencia; }
+
+/**
+ * O vencimento da conta fixa na competência pedida.
+ * Dia 31 num mês de 30 cai no último dia do mês — nunca escorrega para o mês
+ * seguinte, senão a conta de fevereiro apareceria em março.
+ */
+function vencimentoFixa(competencia, dia) {
+  const ano = parseInt(competencia.slice(0, 4), 10);
+  const mes = parseInt(competencia.slice(5, 7), 10) - 1;
+  const ultimo = new Date(ano, mes + 1, 0).getDate();
+  return new Date(ano, mes, Math.min(dia, ultimo), 12, 0, 0, 0);
+}
+
+/** Vigente na competência? */
+function fixaVigente(f, competencia) {
+  if (!f.ativo) return false;
+  if (f.inicio && competencia < f.inicio) return false;
+  if (f.fim && competencia > f.fim) return false;
+  return true;
+}
+
+/**
+ * O que a geração faria nesta competência, sem gravar nada.
+ * A tela mostra isso antes de confirmar: gerar título às cegas é como o
+ * financeiro descobre, no dia 28, que lançou o aluguel duas vezes.
+ */
+function previaFixas(competencia) {
+  competencia = competenciaValida(competencia);
+  if (!competencia) throw new Error('Informe a competência (AAAA-MM).');
+
+  const fixas = lerFixas();
+  const linhas = lerTitulosBrutos();
+  const jaTem = {};
+  linhas.forEach(function (l) {
+    const k = String(l[COL.chave_origem] || '');
+    if (k.indexOf('FIXA|') === 0) jaTem[k] = String(l[COL.id]);
+  });
+
+  return {
+    competencia: competencia,
+    itens: fixas.map(function (f) {
+      const vigente = fixaVigente(f, competencia);
+      const chave = chaveFixa(f.id, competencia);
+      return {
+        id: f.id, descricao: f.descricao, fornecedor: f.fornecedor,
+        natureza_codigo: f.natureza_codigo, natureza: f.natureza,
+        valor_previsto: f.valor_previsto, empresa: f.empresa,
+        data_vencimento: dataParaISO(vencimentoFixa(competencia, f.dia_vencimento)),
+        vigente: vigente,
+        ja_gerado: jaTem[chave] || '',
+        motivo: !f.ativo ? 'Conta desativada'
+          : (f.inicio && competencia < f.inicio) ? 'Começa em ' + f.inicio
+          : (f.fim && competencia > f.fim) ? 'Terminou em ' + f.fim
+          : jaTem[chave] ? 'Já gerado (' + jaTem[chave] + ')' : ''
+      };
+    })
+  };
+}
+
+/**
+ * Gera os títulos da competência a partir dos moldes.
+ *
+ * Idempotente pela chave natural: rodar de novo no mesmo mês não duplica nada,
+ * e é por isso que dá para chamar sem medo — inclusive de um gatilho mensal.
+ * `ids` limita a geração a algumas contas; vazio gera todas as vigentes.
+ */
+function gerarFixas(competencia, ids, sessao) {
+  competencia = competenciaValida(competencia);
+  if (!competencia) throw new Error('Informe a competência (AAAA-MM).');
+  const filtro = (ids && ids.length) ? ids.map(String) : null;
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = abaTitulos();
+    const linhas = lerTitulosBrutos();
+    const existe = {};
+    linhas.forEach(function (l) {
+      const k = String(l[COL.chave_origem] || '');
+      if (k) existe[k] = true;
+    });
+
+    const gerar = proximoId(linhas);
+    const agora = new Date();
+    const novas = [];
+    const criados = [];
+    let pulados = 0;
+
+    lerFixas().forEach(function (f) {
+      if (filtro && filtro.indexOf(String(f.id)) < 0) return;
+      if (!fixaVigente(f, competencia)) { pulados++; return; }
+      const chave = chaveFixa(f.id, competencia);
+      if (existe[chave]) { pulados++; return; }
+
+      const id = gerar();
+      const linha = new Array(CAB_TITULOS.length).fill('');
+      linha[COL.id]              = id;
+      linha[COL.origem]          = 'FIXA';
+      linha[COL.chave_origem]    = chave;
+      linha[COL.empresa]         = f.empresa || 'RENOVA';
+      linha[COL.data_vencimento] = vencimentoFixa(competencia, f.dia_vencimento);
+      linha[COL.fornecedor]      = f.fornecedor;
+      linha[COL.fornecedor_cod]  = f.fornecedor_cod;
+      linha[COL.descricao]       = f.descricao;
+      linha[COL.natureza_codigo] = f.natureza_codigo;
+      linha[COL.natureza]        = f.natureza;
+      linha[COL.observacao_1]    = f.observacao;
+      linha[COL.forma_pagamento] = f.forma_pagamento;
+      linha[COL.valor_total]     = f.valor_previsto;
+      linha[COL.valor_pago]      = 0;
+      linha[COL.status]          = 'ABERTO';
+      linha[COL.parcela]         = 1;
+      linha[COL.total_parcelas]  = 1;
+      linha[COL.competencia]     = competencia;
+      linha[COL.criado_em]       = agora;
+      linha[COL.criado_por]      = sessao.usuario;
+      linha[COL.atualizado_em]   = agora;
+      linha[COL.atualizado_por]  = sessao.usuario;
+
+      existe[chave] = true;
+      novas.push(linha);
+      criados.push({ id: id, descricao: f.descricao, valor: f.valor_previsto });
+    });
+
+    if (novas.length) {
+      const inicio = sh.getLastRow() + 1;
+      COLUNAS_TEXTO_FORCADO.forEach(function (nome) {
+        sh.getRange(inicio, COL[nome] + 1, novas.length, 1).setNumberFormat('@');
+      });
+      sh.getRange(inicio, 1, novas.length, CAB_TITULOS.length).setValues(novas);
+      registrar(sessao.usuario, 'FIXAS_GERAR', competencia, novas.length + ' título(s)');
+    }
+    return { competencia: competencia, criados: criados, pulados: pulados };
+  } finally {
+    lock.releaseLock();
+  }
 }

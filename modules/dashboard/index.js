@@ -150,9 +150,11 @@ function parseMoneyBR(raw){
 let _finData = null; // cache dos dados já processados da planilha (evita refetch ao limpar filtros)
 
 function monthKeyOf(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0"); }
+// Rótulo de mês em formato numérico (MM/AAAA), como todo o resto do portal.
+// Um balde mensal não tem dia, então o formato é o dd/mm/aaaa sem o dd.
 function monthLabel(key){
   const [y,m] = key.split("-").map(Number);
-  return new Date(y, m-1, 1).toLocaleDateString("pt-BR",{month:"short",year:"2-digit"});
+  return String(m).padStart(2,"0")+"/"+y;
 }
 
 async function loadFinalizadosCharts(){
@@ -495,7 +497,7 @@ function buildHistory(fullData){
   const counts=[];
   for(let i=11;i>=0;i--){
     const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1);
-    labels.push(d.toLocaleDateString("pt-BR",{month:"short",year:"2-digit"}));
+    labels.push(monthLabel(monthKeyOf(d)));
     const month=fullData.filter(r=>r.dataFat&&r.dataFat.getMonth()===d.getMonth()&&r.dataFat.getFullYear()===d.getFullYear());
     vals.push(month.reduce((a,b)=>a+b.valor,0));
     counts.push(month.length);
@@ -549,7 +551,7 @@ function updateEvolution(){
   const hoje=new Date();
   for(let i=11;i>=0;i--){
     const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1);
-    labels.push(d.toLocaleDateString("pt-BR",{month:"short",year:"2-digit"}));
+    labels.push(monthLabel(monthKeyOf(d)));
     vals.push(data.filter(r=>r.dataFat&&r.dataFat.getMonth()===d.getMonth()&&r.dataFat.getFullYear()===d.getFullYear()).reduce((a,b)=>a+b.valor,0));
   }
   if(charts["c-evolucao"]) charts["c-evolucao"].destroy();

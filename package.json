@@ -2,5 +2,12 @@
   "dependencies": {
     "dotenv": "^18.0.3",
     "mysql2": "^3.23.1"
+  },
+  "scripts": {
+    "test-db": "node teste-conexao.js",
+    "export": "node exportar-dados.js",
+    "sync-cp": "node integracao/extrair-contas-pagar.js",
+    "sync-cr": "node integracao/extrair-contas-receber.js",
+    "migrate": "node integracao/migrar-planilha.js"
   }
 }

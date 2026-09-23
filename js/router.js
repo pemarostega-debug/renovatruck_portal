@@ -15,7 +15,7 @@
 // Troque a cada publicação que mexer em arquivos de modules/: o GitHub Pages
 // deixa o navegador guardar cópia por 10 min, e sem isso alguém poderia pegar
 // o template novo com o JavaScript antigo.
-const VERSAO_PORTAL = '2026-09-19';
+const VERSAO_PORTAL = '2026-09-23';
 
 const LIBS = {
   chart: 'https://cdn.jsdelivr.net/npm/chart.js',

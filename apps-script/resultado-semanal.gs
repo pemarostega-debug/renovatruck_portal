@@ -11,7 +11,7 @@
  * Abas:
  *   Itens        — linhas da view, uma por item de OS (tudo em texto simples)
  *   Parametros   — parâmetros base e metas do placar (compartilhados entre admins)
- *   Fechamentos  — o fechamento de cada semana: indicadores, aposta, parâmetros da época
+ *   Fechamentos  — o fechamento de cada semana: indicadores e parâmetros da época
  *   Log
  *
  * Implantação: ver integracao/LEIA-ME-resultado-semanal.md
@@ -25,7 +25,7 @@ const ABA_PARAM = 'Parametros';
 const ABA_FECH = 'Fechamentos';
 const ABA_LOG = 'Log';
 const CAB_PARAM = ['chave', 'valor_json', 'atualizado_em', 'atualizado_por'];
-const CAB_FECH = ['de', 'ate', 'salvo_em', 'salvo_por', 'indicadores_json', 'aposta', 'parametros_json'];
+const CAB_FECH = ['de', 'ate', 'salvo_em', 'salvo_por', 'indicadores_json', 'parametros_json'];
 const CAB_LOG = ['quando', 'quem', 'acao', 'detalhe'];
 
 const ACOES_SERVICO = ['sync_gravar', 'sync_acrescentar', 'sync_status'];
@@ -229,9 +229,9 @@ function lerFechamentos() {
   const sh = aba(ABA_FECH, CAB_FECH);
   if (sh.getLastRow() < 2) return [];
   return sh.getRange(2, 1, sh.getLastRow() - 1, CAB_FECH.length).getValues().map(function (l) {
-    const f = { de: String(l[0]), ate: String(l[1]), salvoEm: String(l[2]), salvoPor: String(l[3]), aposta: String(l[5] || '') };
+    const f = { de: String(l[0]), ate: String(l[1]), salvoEm: String(l[2]), salvoPor: String(l[3]) };
     try { f.ind = JSON.parse(l[4] || '{}'); } catch (e) { f.ind = {}; }
-    try { f.base = JSON.parse(l[6] || '{}'); } catch (e) { f.base = {}; }
+    try { f.base = JSON.parse(l[5] || '{}'); } catch (e) { f.base = {}; }
     return f;
   }).filter(function (f) { return /^\d{4}-\d{2}-\d{2}$/.test(f.de); });
 }
@@ -244,7 +244,7 @@ function salvarFechamento(f, sessao) {
   try {
     const sh = aba(ABA_FECH, CAB_FECH);
     const linha = [f.de, f.ate, new Date().toISOString(), sessao.usuario,
-      JSON.stringify(f.ind || {}), String(f.aposta || '').slice(0, 4000), JSON.stringify(f.base || {})];
+      JSON.stringify(f.ind || {}), JSON.stringify(f.base || {})];
     const n = sh.getLastRow();
     let alvo = n + 1;
     if (n > 1) {

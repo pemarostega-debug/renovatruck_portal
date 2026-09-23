@@ -28,6 +28,8 @@ const CR = {
   editando: null,
   baixaAlvo: null,          // { ids:[], origem:'titulos'|'carteira' }
   opAberta: null,
+  opItens: null,            // operação cujo pacote está aberto para edição
+  itensEdicao: [],          // cópia editável dos itens dessa operação
   parceiroEditando: null,
   politicaEditando: null,
   drill: null,              // { tipo, valor, rotulo }
@@ -66,14 +68,17 @@ const crBRLc = v => {
   return crBRL(n);
 };
 
-/** 'YYYY-MM-DD' → 'DD/MM'. Sem new Date(): o fuso rouba um dia. */
+/** 'YYYY-MM-DD' → 'DD/MM/AAAA'. Sem new Date(): o fuso rouba um dia. */
 const crData = s => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
   return m ? m[3] + '/' + m[2] + '/' + m[1] : '—';
 };
-const crDataLonga = s => {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
-  return m ? m[3] + '/' + m[2] + '/' + m[1] : '—';
+const crDataLonga = crData;
+
+/** 'YYYY-MM' → 'MM/AAAA'. Balde mensal não tem dia; o resto do formato é o mesmo. */
+const crMesRotulo = s => {
+  const m = /^(\d{4})-(\d{2})/.exec(String(s || ''));
+  return m ? m[2] + '/' + m[1] : '—';
 };
 
 /** Diferença em dias entre duas datas ISO, sem passar por Date/fuso. */
@@ -474,10 +479,7 @@ function crChartEvolucao(ativos) {
   crDestruir('evolucao');
   const ctx = document.getElementById('cr-c-evolucao');
   if (!ctx) return;
-  const rot = meses.map(m => {
-    const [a, b] = m.split('-');
-    return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+b - 1] + '/' + a.slice(2);
-  });
+  const rot = meses.map(crMesRotulo);
   CR.charts.evolucao = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -860,7 +862,7 @@ function crConferirRegraTitulo() {
   const venc = document.getElementById('cr-t-vencimento').value;
   const pol = crPoliticaDe(document.getElementById('cr-t-clicod').value.trim(),
                            document.getElementById('cr-t-cliente').value.trim());
-  if (!venc || !pol || !pol.regra_venc) { el.innerHTML = ''; return; }
+  if (!venc || !crTemRegra(pol)) { el.innerHTML = ''; return; }
   const certo = crAplicarRegra(venc, pol);
   el.innerHTML = certo === venc
     ? '<span style="color:var(--ant);font-weight:700;"><i class="fa-solid fa-check"></i> ' +
@@ -1138,8 +1140,8 @@ function crRenderAntecipar() {
     const prazo = crDias(CR.hoje, venc);
     // Data editável na própria linha: é aqui que o financeiro corrige o
     // vencimento que veio errado do Genesis, antes de o borderô ir ao fundo.
-    const pol = crPoliticaDe(t.cliente_cod);
-    const pelaRegra = pol && pol.regra_venc ? crAplicarRegra(venc, pol) : venc;
+    const pol = crPoliticaDe(t.cliente_cod, t.cliente);
+    const pelaRegra = crTemRegra(pol) ? crAplicarRegra(venc, pol) : venc;
     const foraDaRegra = pelaRegra !== venc;
     return '<tr class="' + (marcado ? 'sel' : '') + '">' +
       '<td><input type="checkbox" ' + (marcado ? 'checked' : '') + ' onchange="crMarcarAntTit(\'' + t.id + '\',this.checked)" /></td>' +
@@ -1153,7 +1155,7 @@ function crRenderAntecipar() {
            ' só paga nos dias da regra cadastrada">fora da regra → ' + crData(pelaRegra) + '</div>' : '') +
       '</td>' +
       '<td class="cr-cli" title="' + crEsc(t.cliente) + '">' + crEsc(t.cliente) +
-        (pol && pol.regra_venc ? ' ' + crRegraTexto(pol) : '') + '</td>' +
+        (crTemRegra(pol) ? ' ' + crRegraTexto(pol) : '') + '</td>' +
       '<td class="cr-col-apoio">' + crEsc(crRotuloNF(t)) + '</td>' +
       '<td class="cr-num" style="font-weight:800;">' + crBRL(t.valor_total) + '</td>' +
       '<td class="cr-num">' + prazo + 'd</td></tr>';
@@ -1220,19 +1222,46 @@ function crAjustarVenc(id, valor) {
  */
 function crAplicarRegrasNosVencimentos() {
   const alvo = crTitulosAntecipaveis();
-  let n = 0;
+
+  // Um botão que não faz nada e não fala nada é indistinguível de um botão
+  // quebrado. Estes três contadores são o que separa "não havia o que ajustar"
+  // de "a regra não chegou até aqui".
+  let n = 0, comRegra = 0, semPolitica = 0;
+
   alvo.forEach(t => {
-    const pol = crPoliticaDe(t.cliente_cod);
-    if (!pol || !pol.regra_venc) return;
+    const pol = crPoliticaDe(t.cliente_cod, t.cliente);
+    if (!crTemRegra(pol)) { if (!pol) semPolitica++; return; }
+    comRegra++;
     const atual = crVencDe(t);
     const novo = crAplicarRegra(atual, pol);
     if (novo && novo !== atual) { CR.vencAjustado[t.id] = novo; n++; }
   });
   crRenderAntecipar();
-  crAviso(n
-    ? '<b>' + n + ' vencimento(s) ajustado(s)</b> para o dia de pagamento de cada cliente. ' +
-      'A correção vale no borderô e volta para o título quando a operação for registrada.'
-    : 'Nenhum título à vista está fora da regra do cliente.', n ? 'ok' : 'info');
+
+  if (n) {
+    crAviso('<b>' + n + ' vencimento(s) ajustado(s)</b> para o dia de pagamento de cada cliente. ' +
+            'A correção vale no borderô e volta para o título quando a operação for registrada.', 'ok');
+    return;
+  }
+  if (!alvo.length) {
+    crAviso('Não há duplicata na lista para ajustar. Confira os filtros acima.', 'info');
+    return;
+  }
+  if (comRegra) {
+    crAviso('Os ' + comRegra + ' título(s) de clientes com regra já estão no dia certo — nada a ajustar.', 'info');
+    return;
+  }
+  const comPolitica = alvo.length - semPolitica;
+  crAviso('<b>Nenhum cliente da lista tem regra de vencimento cadastrada</b>, então não há o que ajustar. ' +
+          (semPolitica
+            ? semPolitica + ' título(s) são de cliente sem política nenhuma. '
+            : '') +
+          (comPolitica
+            ? 'Os outros têm política, mas com o campo <b>"Quando o cliente paga"</b> em branco. '
+            : '') +
+          'Cadastre a regra em <b>Parceiros &amp; Políticas</b> (JSL, Imediato, Fadel e Reiterlog são os casos conhecidos). ' +
+          'Se a regra já está cadastrada lá e mesmo assim aparece esta mensagem, o Apps Script publicado ' +
+          'ainda é anterior às colunas de regra — republique o <code>contas-receber.gs</code>.', 'aviso');
 }
 
 /** Desfaz todas as correções manuais desta montagem. */
@@ -1243,12 +1272,6 @@ function crLimparVencimentos() {
 
 function crMarcarAntTit(id, m) { if (m) CR.selAntTit[id] = true; else delete CR.selAntTit[id]; crRenderAntecipar(); }
 function crMarcarAntOS(os, m) { if (m) CR.selAntOS[os] = true; else delete CR.selAntOS[os]; crRenderAntecipar(); }
-
-function crSelecionarTudoAntecipar() {
-  crTitulosAntecipaveis().forEach(t => CR.selAntTit[t.id] = true);
-  crOSAntecipaveis().forEach(o => { if (!o.bloqueio) CR.selAntOS[o.num_os] = true; });
-  crRenderAntecipar();
-}
 
 /** Os itens escolhidos, num formato único que serve à simulação e ao borderô. */
 function crItensSelecionados() {
@@ -1714,6 +1737,10 @@ function crAbrirOperacao(id) {
   if (btnCancelar) btnCancelar.classList.toggle('cr-oculto', liquidada || op.status === 'CANCELADA');
   const btnEditar = document.getElementById('cr-op-editar');
   if (btnEditar) btnEditar.classList.toggle('cr-oculto', op.status === 'CANCELADA');
+  // Trocar o conteúdo do borderô só faz sentido enquanto ele ainda é uma
+  // promessa: liquidada, a operação já virou dinheiro e despesa no DRE.
+  const btnItens = document.getElementById('cr-op-itens');
+  if (btnItens) btnItens.classList.toggle('cr-oculto', liquidada || op.status === 'CANCELADA');
 
   document.getElementById('cr-op-resumo').innerHTML =
     '<div class="cr-resumo-linha"><span>Valor de face</span><b>' + crBRL(op.valor_bruto) + '</b></div>' +
@@ -1813,6 +1840,243 @@ async function crSalvarEdicaoOperacao() {
       (r.avisos || []).length ? 'info' : 'ok');
   } catch (e) {
     crAviso('<b>Não consegui salvar.</b> ' + crEsc(e.message), 'erro');
+  }
+}
+
+// ── Títulos de uma operação já registrada ────────────────────────────────────
+/**
+ * Borderô real muda depois de registrado: o fundo recusa uma nota, aparece
+ * outra que cabia no pacote, ou o vencimento veio errado do Genesis. Antes o
+ * único caminho era cancelar e montar de novo — o que trocava o número da
+ * operação e sujava o histórico por causa de um erro de digitação.
+ *
+ * Aqui a operação continua sendo a mesma; muda o conteúdo dela. Quem manda é o
+ * servidor: esta tela só monta a lista e mostra o custo que vai sair.
+ */
+function crAbrirItensOperacao() {
+  const op = CR.opAberta;
+  if (!op || !crPodeEditar()) return;
+  if (op.status === 'CANCELADA') { crAviso('Operação cancelada não se edita.', 'erro'); return; }
+  if (op.status === 'LIQUIDADA') {
+    crAviso('<b>Operação já liquidada.</b> O crédito entrou e o custo real já virou despesa no ' +
+            'Contas a Pagar — trocar os títulos agora deixaria o DRE sem explicação. ' +
+            'Estorne a despesa e cancele a operação antes de remontar o pacote.', 'erro');
+    return;
+  }
+
+  CR.opItens = op;
+  CR.itensEdicao = crItensDaOperacao(op);
+  document.getElementById('cr-oi-sub').textContent =
+    'Operação nº ' + (op.numero || op.id) + ' · ' + op.parceiro + ' · ' + crStatusOp(op.status);
+  document.getElementById('cr-oi-busca').value = '';
+  crRenderItensOperacao();
+  crAbrir('cr-modal-op-itens');
+}
+
+/** Cópia editável dos itens gravados — mexer no original confundiria a tela de trás. */
+function crItensDaOperacao(op) {
+  return (op.itens || []).map(i => {
+    const tipo = String(i.tipo || 'TITULO').toUpperCase();
+    // Num item de OS, `valor` é o ANTECIPÁVEL (valor da OS × % da política), e
+    // o servidor reaplica a % sobre o valor_os que a tela mandar. Reenviar o
+    // antecipável como se fosse o valor da OS encolheria o item a cada salvada,
+    // então o valor cheio vem da antecipação, que é quem o guarda.
+    const ant = tipo === 'OS' ? CR.antecipacoesOS.filter(a => a.id === i.ref_id)[0] : null;
+    return {
+      tipo: tipo,
+      ref_id: String(i.ref_id || ''),
+      num_os: String(i.num_os || ''),
+      numero_nf: String(i.numero_nf || ''),
+      parcela: Number(i.parcela) || 1,
+      cliente: String(i.cliente || ''),
+      cliente_cod: String(i.cliente_cod || ''),
+      vencimento: String(i.vencimento || ''),
+      valor: Number(i.valor) || 0,
+      valor_os: ant ? Number(ant.valor_os) || 0 : Number(i.valor) || 0,
+      original: String(i.vencimento || '')
+    };
+  }).sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''));
+}
+
+function crDesfazerItensOperacao() {
+  if (!CR.opItens) return;
+  CR.itensEdicao = crItensDaOperacao(CR.opItens);
+  crRenderItensOperacao();
+}
+
+/** Duplicatas livres que podem entrar neste borderô. */
+function crItensLivres() {
+  const busca = (document.getElementById('cr-oi-busca').value || '').toLowerCase().trim();
+  const dentro = {};
+  CR.itensEdicao.forEach(i => { if (i.tipo === 'TITULO') dentro[i.ref_id] = true; });
+
+  return crAtivos().filter(t => {
+    if (dentro[t.id]) return false;
+    if (!crEmAberto(t)) return false;
+    if (String(t.antecipado).toUpperCase() === 'SIM') return false;
+    if (busca) {
+      const alvo = [t.cliente, t.numero_nf, t.num_os].join(' ').toLowerCase();
+      if (!alvo.includes(busca)) return false;
+    }
+    return true;
+  }).sort((a, b) => (a.data_vencimento || '').localeCompare(b.data_vencimento || ''));
+}
+
+function crRenderItensOperacao() {
+  const op = CR.opItens;
+  if (!op) return;
+  const base = op.data_operacao || CR.hoje;
+  const itens = CR.itensEdicao;
+
+  itens.forEach(i => { i.prazo_dias = Math.max(crDias(base, i.vencimento), 0); });
+
+  document.getElementById('cr-tb-oi-itens').innerHTML = itens.length
+    ? itens.map((i, k) => {
+        const mudou = i.vencimento !== i.original;
+        const pol = crPoliticaDe(i.cliente_cod, i.cliente);
+        const pelaRegra = crTemRegra(pol) ? crAplicarRegra(i.vencimento, pol) : i.vencimento;
+        return '<tr>' +
+          '<td>' + (i.tipo === 'OS' ? '<span class="cr-pill cr-pill-ant">OS</span>' : 'Duplicata') + '</td>' +
+          '<td class="cr-cli" title="' + crEsc(i.cliente) + '">' + crEsc(i.cliente) +
+            (crTemRegra(pol) ? ' ' + crRegraTexto(pol) : '') + '</td>' +
+          '<td>' + (i.tipo === 'OS' ? 'OS ' + crEsc(i.num_os) : 'NF ' + crEsc(i.numero_nf || '—')) + '</td>' +
+          '<td style="white-space:nowrap;">' +
+            '<input type="date" class="cr-venc-inp' + (mudou ? ' mudou' : '') + '" value="' + crEsc(i.vencimento) +
+              '" onchange="crItemVenc(' + k + ',this.value)" title="Vencimento gravado: ' + crData(i.original) + '" />' +
+            (mudou ? '<div class="cr-sub" style="color:#b45309;">era ' + crData(i.original) + '</div>' : '') +
+            (pelaRegra !== i.vencimento ? '<div class="cr-sub" style="color:#b45309;">fora da regra → ' +
+               crData(pelaRegra) + '</div>' : '') +
+          '</td>' +
+          '<td class="cr-num">' + i.prazo_dias + 'd</td>' +
+          '<td class="cr-num" style="font-weight:800;">' + crBRL(i.valor) + '</td>' +
+          '<td><button class="cr-acao excluir" onclick="crItemRemover(' + k + ')" title="Tirar do borderô">' +
+            '<i class="fa-solid fa-xmark"></i></button></td></tr>';
+      }).join('')
+    : '<tr><td colspan="7" class="cr-vazio">O borderô ficou vazio. Inclua ao menos um item — ' +
+      'para esvaziar de vez, cancele ou exclua a operação.</td></tr>';
+
+  const total = itens.reduce((s, i) => s + i.valor, 0);
+  document.getElementById('cr-oi-resumo').textContent =
+    itens.length ? itens.length + ' item(ns) · ' + crBRL(total) : '—';
+
+  const livres = crItensLivres();
+  const mostrar = livres.slice(0, 60);
+  document.getElementById('cr-tb-oi-livres').innerHTML = mostrar.length
+    ? mostrar.map(t =>
+        '<tr>' +
+        '<td style="white-space:nowrap;">' + crData(t.data_vencimento) + '</td>' +
+        '<td class="cr-cli" title="' + crEsc(t.cliente) + '">' + crEsc(t.cliente) + '</td>' +
+        '<td class="cr-col-apoio">' + crEsc(crRotuloNF(t)) + '</td>' +
+        '<td class="cr-num" style="font-weight:800;">' + crBRL(t.valor_total) + '</td>' +
+        '<td><button class="cr-acao ant" onclick="crItemAdicionar(\'' + t.id + '\')" title="Incluir no borderô">' +
+          '<i class="fa-solid fa-plus"></i></button></td></tr>').join('')
+    : '<tr><td colspan="5" class="cr-vazio">Nenhuma duplicata livre com esses filtros.</td></tr>';
+
+  document.getElementById('cr-oi-livres-resumo').textContent = livres.length
+    ? livres.length + ' livre(s)' + (livres.length > mostrar.length ? ' · mostrando ' + mostrar.length : '')
+    : '—';
+
+  // O custo estimado do pacote novo, lado a lado com o que está gravado: é o
+  // número que faz o financeiro decidir se vale salvar.
+  const parceiro = crParceiro(op.parceiro_id);
+  const c = crCalcular(itens, parceiro);
+  const dif = (novo, velho) => {
+    const d = novo - velho;
+    if (Math.abs(d) < 0.005) return '';
+    return ' <span class="cr-sub" style="color:' + (d > 0 ? '#b45309' : 'var(--ant)') + ';">' +
+      (d > 0 ? '+' : '−') + crBRL(Math.abs(d)).replace('R$', '').trim() + '</span>';
+  };
+  document.getElementById('cr-oi-simulacao').innerHTML =
+    '<div class="cr-resumo-linha"><span>Valor de face</span><b>' + crBRL(c.bruto) +
+      dif(c.bruto, Number(op.valor_bruto) || 0) + '</b></div>' +
+    '<div class="cr-resumo-linha"><span>Prazo médio ponderado</span><b>' +
+      c.prazo.toLocaleString('pt-BR') + ' dias</b></div>' +
+    '<div class="cr-resumo-linha"><span>Deságio estimado</span><b>' + crBRL(c.desagio) +
+      dif(c.desagio, Number(op.desagio_estimado) || 0) + '</b></div>' +
+    '<div class="cr-resumo-linha destaque"><span>Líquido estimado</span><b style="color:var(--ant);">' +
+      crBRL(c.liquido) + '</b></div>';
+}
+
+function crItemVenc(k, valor) {
+  const i = CR.itensEdicao[k];
+  if (!i) return;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) i.vencimento = valor;
+  crRenderItensOperacao();
+}
+
+function crItemRemover(k) {
+  CR.itensEdicao.splice(k, 1);
+  crRenderItensOperacao();
+}
+
+function crItemAdicionar(id) {
+  const t = CR.titulos.filter(x => x.id === id)[0];
+  if (!t) return;
+  CR.itensEdicao.push({
+    tipo: 'TITULO', ref_id: t.id, num_os: String(t.num_os || ''),
+    numero_nf: crRotuloNF(t), parcela: Number(t.parcela) || 1,
+    cliente: t.cliente, cliente_cod: String(t.cliente_cod || ''),
+    vencimento: t.data_vencimento || '', valor: Number(t.valor_total) || 0,
+    valor_os: Number(t.valor_total) || 0, original: t.data_vencimento || ''
+  });
+  CR.itensEdicao.sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''));
+  crRenderItensOperacao();
+}
+
+/** A mesma regra da aba Antecipar, aplicada aos itens já dentro do borderô. */
+function crAplicarRegraNosItens() {
+  let n = 0, comRegra = 0;
+  CR.itensEdicao.forEach(i => {
+    const pol = crPoliticaDe(i.cliente_cod, i.cliente);
+    if (!crTemRegra(pol)) return;
+    comRegra++;
+    const novo = crAplicarRegra(i.vencimento, pol);
+    if (novo && novo !== i.vencimento) { i.vencimento = novo; n++; }
+  });
+  crRenderItensOperacao();
+  crAviso(n
+    ? '<b>' + n + ' vencimento(s) ajustado(s)</b> para o dia de pagamento de cada cliente. ' +
+      'Salve o pacote para gravar.'
+    : comRegra
+      ? 'Os ' + comRegra + ' item(ns) de clientes com regra já estão no dia certo.'
+      : 'Nenhum cliente deste borderô tem regra de vencimento cadastrada em <b>Parceiros &amp; Políticas</b>.',
+    n ? 'ok' : 'info');
+}
+
+async function crSalvarItensOperacao() {
+  const op = CR.opItens;
+  if (!op) return;
+  const itens = CR.itensEdicao;
+  if (!itens.length) {
+    crAviso('O borderô ficaria vazio. Para isso, cancele ou exclua a operação.', 'erro');
+    return;
+  }
+  const antes = crItensDaOperacao(op);
+  const saem = antes.filter(a => !itens.some(i => i.tipo === a.tipo && i.ref_id === a.ref_id));
+  const entram = itens.filter(i => !antes.some(a => a.tipo === i.tipo && a.ref_id === i.ref_id));
+
+  if (!confirm('Salvar o pacote da operação nº ' + (op.numero || op.id) + '?\n\n' +
+               entram.length + ' item(ns) entram, ' + saem.length + ' saem — total ' + itens.length + '.\n' +
+               'O valor de face, o prazo médio e o deságio estimado são refeitos, e os títulos ' +
+               'que saírem voltam para a fila de antecipáveis.')) return;
+
+  try {
+    const r = await crPost('operacao_itens', {
+      id: op.id,
+      itens: itens.map(i => ({
+        tipo: i.tipo, ref_id: i.ref_id, num_os: i.num_os,
+        cliente: i.cliente, cliente_cod: i.cliente_cod,
+        vencimento: i.vencimento, valor_os: i.valor_os
+      }))
+    });
+    crFechar('cr-modal-op-itens');
+    crFechar('cr-modal-operacao');
+    await crCarregar();
+    crAviso('<b>Pacote atualizado.</b> ' + r.itens + ' item(ns) · ' + crBRL(r.custo.valor_bruto) +
+      (r.titulos_liberados ? ' · ' + r.titulos_liberados + ' título(s) devolvido(s) à fila' : '') +
+      (r.os_liberadas ? ' · ' + r.os_liberadas + ' OS devolvida(s)' : ''), 'ok');
+  } catch (e) {
+    crAviso('<b>Não consegui salvar o pacote.</b> ' + crEsc(e.message), 'erro');
   }
 }
 
@@ -2165,7 +2429,6 @@ function crChartBIMes(liq) {
   if (!ctx) return;
   if (!meses.length) { ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height); return; }
 
-  const nomes = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   const taxas = meses.map(m => {
     const v = liq.filter(o => String(o.data_credito || o.data_operacao || '').slice(0, 7) === m);
     const vol = v.reduce((s, o) => s + (Number(o.valor_bruto) || 0), 0);
@@ -2174,7 +2437,7 @@ function crChartBIMes(liq) {
 
   CR.charts.biMes = new Chart(ctx, {
     data: {
-      labels: meses.map(m => nomes[+m.slice(5, 7) - 1] + '/' + m.slice(2, 4)),
+      labels: meses.map(crMesRotulo),
       datasets: [
         { type: 'bar', label: 'Custo', data: meses.map(m => por[m].custo), backgroundColor: '#f59e0b', borderRadius: 5, maxBarThickness: 28, yAxisID: 'y' },
         { type: 'line', label: 'Taxa efetiva (% a.m.)', data: taxas, borderColor: '#7c3aed', backgroundColor: 'transparent', borderWidth: 2, tension: .3, pointRadius: 3, yAxisID: 'y2' }
@@ -2438,16 +2701,50 @@ const CR_DIAS_SEMANA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feir
 
 /** Como a regra do cliente aparece na tabela e no borderô. */
 function crRegraTexto(p) {
+  const regra = crRegraDe(p);
   const dias = crDiasFixos(p && p.dias_fixos);
-  if (p && p.regra_venc === 'DIAS_FIXOS' && dias.length) {
+  if (regra === 'DIAS_FIXOS' && dias.length) {
     return '<span class="cr-pill cr-pill-livre" title="Só paga nesses dias do mês">dia ' +
       dias.join(' e ') + '</span>';
   }
-  if (p && p.regra_venc === 'DIA_SEMANA' && p.dia_semana != null) {
+  if (regra === 'DIA_SEMANA' && p.dia_semana != null) {
     return '<span class="cr-pill cr-pill-livre" title="O prazo corre e a data cai neste dia da semana">' +
       crEsc(CR_DIAS_SEMANA[Number(p.dia_semana)] || '—') + '</span>';
   }
   return '<span class="cr-col-apoio">—</span>';
+}
+
+/**
+ * A regra da política, normalizada.
+ *
+ * O backend já devolve em maiúsculas, mas política cadastrada antes das colunas
+ * de regra existirem — ou editada direto na planilha — chega em minúscula ou com
+ * espaço. Comparar a string crua fazia a regra ser ignorada sem avisar ninguém.
+ */
+function crRegraDe(p) {
+  const r = String((p && p.regra_venc) || '').trim().toUpperCase();
+  return r === 'DIAS_FIXOS' || r === 'DIA_SEMANA' ? r : '';
+}
+
+/** Uma política só "tem regra" quando a regra está completa e utilizável. */
+function crTemRegra(p) {
+  const r = crRegraDe(p);
+  if (r === 'DIAS_FIXOS') return crDiasFixos(p.dias_fixos).length > 0;
+  if (r === 'DIA_SEMANA') return crDiaSemana(p.dia_semana) >= 0;
+  return false;
+}
+
+/**
+ * 0–6, ou -1 quando não há dia escolhido.
+ *
+ * Passa por aqui e não por Number() direto porque Number(null) e Number('') dão
+ * zero: uma política marcada como DIA_SEMANA mas com o dia em branco viraria
+ * "paga todo domingo", calada.
+ */
+function crDiaSemana(v) {
+  if (v === null || v === undefined || String(v).trim() === '') return -1;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 && n <= 6 ? n : -1;
 }
 
 /** "10, 25" ou [10,25] → [10, 25]. Só 1–31, sem repetir, em ordem. */
@@ -2488,13 +2785,18 @@ function crPoliticaRegraMudou() {
  */
 function crAplicarRegra(iso, p) {
   if (!iso || !p) return iso;
-  const [y, m, d] = String(iso).split('-').map(Number);
-  if (!y) return iso;
+  // A data tem que ser 'AAAA-MM-DD' inteira. Uma data com hora ('2026-10-10T…')
+  // passava no split e produzia Invalid Date, e a regra voltava sem aplicar —
+  // calada, que é o pior jeito de errar.
+  const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+  if (!partes) return iso;
+  const y = +partes[1], m = +partes[2], d = +partes[3];
   const base = new Date(y, m - 1, d, 12, 0, 0, 0);
   const fim = dt => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') +
                     '-' + String(dt.getDate()).padStart(2, '0');
+  const regra = crRegraDe(p);
 
-  if (p.regra_venc === 'DIAS_FIXOS') {
+  if (regra === 'DIAS_FIXOS') {
     const dias = crDiasFixos(p.dias_fixos);
     if (!dias.length) return iso;
     for (let salto = 0; salto < 3; salto++) {
@@ -2508,9 +2810,9 @@ function crAplicarRegra(iso, p) {
     }
     return iso;
   }
-  if (p.regra_venc === 'DIA_SEMANA') {
-    const alvo = Number(p.dia_semana);
-    if (!(alvo >= 0 && alvo <= 6)) return iso;
+  if (regra === 'DIA_SEMANA') {
+    const alvo = crDiaSemana(p.dia_semana);
+    if (alvo < 0) return iso;
     base.setDate(base.getDate() + ((alvo - base.getDay() + 7) % 7));
     return fim(base);
   }
@@ -2546,7 +2848,7 @@ function crAbrirPolitica(cod) {
   document.getElementById('cr-pol-teto').value =
     p && Number(p.teto_exposicao) > 0 ? Number(p.teto_exposicao).toFixed(2).replace('.', ',') : '';
   document.getElementById('cr-pol-obs').value = p ? (p.observacao || '') : '';
-  document.getElementById('cr-pol-regra').value = p ? (p.regra_venc || '') : '';
+  document.getElementById('cr-pol-regra').value = p ? crRegraDe(p) : '';
   document.getElementById('cr-pol-diasfixos').value = p ? crDiasFixos(p.dias_fixos).join(', ') : '';
   document.getElementById('cr-pol-diasemana').value = p && p.dia_semana != null ? String(p.dia_semana) : '4';
   document.getElementById('cr-pol-remover').style.display = p ? '' : 'none';

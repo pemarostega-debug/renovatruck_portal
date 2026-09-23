@@ -41,13 +41,13 @@
 
 'use strict';
 
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
 
 // Fica em integracao/ (pasta ignorada pelo git), não na raiz publicada.
 const SAIDA = path.join(__dirname, 'contas-receber-sync.json');
-const CONFIG = path.join(__dirname, 'config.local.json');
 
 // ── Argumentos ──
 const args = process.argv.slice(2);
@@ -241,19 +241,26 @@ const SQL_OS_PENDENTES = `
 // ═════════════════════════════════════════════════════════════════════════════
 
 async function extrair() {
-  if (!fs.existsSync(CONFIG)) {
-    console.error('Falta o arquivo integracao/config.local.json com as credenciais do banco.');
-    console.error('Modelo: {"host":"...","port":3311,"user":"...","password":"...","database":"sas0003"}');
+  // Credenciais do banco vêm do .env na raiz
+  if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD) {
+    console.error('Falta configurar as variáveis de ambiente do banco (.env)');
+    console.error('Crie um arquivo .env na raiz com: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE');
     process.exitCode = 1;
     return;
   }
-  const cfg = JSON.parse(fs.readFileSync(CONFIG, 'utf8'));
 
-  // Essas quatro chaves NÃO são do banco — separa antes de passar o resto para
-  // o mysql2, senão ele avisa "Ignoring invalid configuration option".
-  const { api, syncToken, apiReceber, syncTokenReceber, ...dbCfg } = cfg;
-  if (!TOKEN) TOKEN = String(syncTokenReceber || syncToken || '');
-  if (!API) API = String(apiReceber || '');
+  const dbCfg = {
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT, 10),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE
+  };
+
+  // Para o cron: se --token / --api não vieram na linha de comando, usa o que
+  // estiver no .env (fora do git).
+  if (!TOKEN) TOKEN = String(process.env.SYNC_TOKEN || '');
+  if (!API) API = String(process.env.SYNC_API_URL || '');
 
   console.log(`Janela: ${DESDE} → ${ATE}`);
   let cn;

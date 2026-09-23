@@ -123,7 +123,17 @@ const CAB_REC_POLITICAS = [
   'dias_ate_faturar',  // OS → NF, em dias
   'dias_prazo_venc',   // NF → vencimento, em dias
   'teto_exposicao',    // R$ máximo antecipado em aberto para este cliente
-  'ativo', 'observacao', 'atualizado_em', 'atualizado_por'
+  'ativo', 'observacao', 'atualizado_em', 'atualizado_por',
+  // ── Regra de negócio do cliente ──
+  // Cliente grande não paga quando a nota vence: paga no dia dele. Sem isso a
+  // projeção de caixa erra por até um mês e o borderô sai com prazo errado.
+  //
+  // Colunas NOVAS vão no fim, sempre: garantirAbaRec() só reescreve o cabeçalho
+  // e deixa os dados onde estão — inserir no meio embaralharia as políticas já
+  // cadastradas.
+  'regra_venc',        // '' (prazo puro) | DIAS_FIXOS | DIA_SEMANA
+  'dias_fixos',        // DIAS_FIXOS: "10,25" — dias do mês em que o cliente paga
+  'dia_semana'         // DIA_SEMANA: 0=domingo … 6=sábado (Reiterlog paga na quinta)
 ];
 const PO = {};
 CAB_REC_POLITICAS.forEach(function (nome, i) { PO[nome] = i; });
@@ -254,6 +264,10 @@ function doPost(e) {
     if (action === 'operacao_liquidar') return jsonR({ success: true, data: liquidarOperacao(body, sessao) });
     if (action === 'operacao_relancar') return jsonR({ success: true, data: relancarDespesa(body.id, sessao) });
     if (action === 'operacao_cancelar') return jsonR({ success: true, data: cancelarOperacao(body.id, sessao) });
+    if (action === 'operacao_editar')   return jsonR({ success: true, data: editarOperacao(body, sessao) });
+    if (action === 'operacao_itens')    return jsonR({ success: true, data: editarItensOperacao(body, sessao) });
+    if (action === 'operacao_excluir')  return jsonR({ success: true, data: excluirOperacao(body.id, body.confirmar, sessao) });
+    if (action === 'titulo_vencimento') return jsonR({ success: true, data: corrigirVencimentos(body.ajustes || [], sessao) });
 
     if (action === 'sync_gravar')       return jsonR({ success: true, data: gravarStagingRec(body.notas || [], body.gerado_em, body.janela, true) });
     if (action === 'sync_acrescentar')  return jsonR({ success: true, data: gravarStagingRec(body.notas || [], body.gerado_em, body.janela, false) });
@@ -387,8 +401,77 @@ function lerPoliticas() {
       const o = objetoDe(l, CAB_REC_POLITICAS, [], num);
       o.permite_os = String(l[PO.permite_os]).toUpperCase() !== 'NAO';
       o.ativo = String(l[PO.ativo]).toUpperCase() !== 'NAO';
+      o.regra_venc = String(l[PO.regra_venc] || '').toUpperCase();
+      o.dias_fixos = normalizarDiasFixos(l[PO.dias_fixos]);
+      o.dia_semana = l[PO.dia_semana] === '' || l[PO.dia_semana] == null
+        ? null : numeroRec(l[PO.dia_semana]);
       return o;
     });
+}
+
+/**
+ * 0–6, ou -1 quando não há dia escolhido.
+ *
+ * Não é numeroRec(): lá vazio e nulo viram zero, e uma política marcada como
+ * DIA_SEMANA com o dia em branco passaria a significar "paga todo domingo" sem
+ * ninguém ter pedido. Espelho de crDiaSemana() no portal.
+ */
+function diaSemanaRec(v) {
+  if (v === null || v === undefined || String(v).trim() === '') return -1;
+  const n = Number(v);
+  return (n === Math.floor(n) && n >= 0 && n <= 6) ? n : -1;
+}
+
+/** "10, 25" / "5;20" / 20 → [10, 25]. Ordenado, sem repetição, só 1–31. */
+function normalizarDiasFixos(v) {
+  return String(v == null ? '' : v).split(/[^0-9]+/)
+    .map(function (x) { return parseInt(x, 10); })
+    .filter(function (n) { return n >= 1 && n <= 31; })
+    .filter(function (n, i, a) { return a.indexOf(n) === i; })
+    .sort(function (a, b) { return a - b; });
+}
+
+/**
+ * Aplica a regra de pagamento do cliente sobre uma data já calculada pelo prazo.
+ *
+ *   DIAS_FIXOS  o cliente só paga nos dias dele no mês (JSL 10 e 25, Fadel 5 e
+ *               20, Imediato todo dia 20). Anda para o primeiro dia de pagamento
+ *               naquele dia ou depois — nunca para trás, que seria prometer um
+ *               recebimento antes do combinado.
+ *   DIA_SEMANA  o prazo em dias corre normal e a data cai no próximo dia da
+ *               semana combinado (Reiterlog: 30 dias, e daí a quinta seguinte).
+ *
+ * Sem regra, devolve a data como veio.
+ */
+function aplicarRegraVencimento(data, politica) {
+  if (!data || !politica) return data;
+  const regra = String(politica.regra_venc || '').trim().toUpperCase();
+  const d = new Date(data.getTime());
+  d.setHours(12, 0, 0, 0);   // meio-dia: some com a virada do horário de verão
+
+  if (regra === 'DIAS_FIXOS') {
+    const dias = normalizarDiasFixos(politica.dias_fixos);
+    if (!dias.length) return data;
+    for (var salto = 0; salto < 3; salto++) {
+      const ano = d.getFullYear(), mes = d.getMonth() + salto;
+      const ultimo = new Date(ano, mes + 1, 0).getDate();
+      for (var i = 0; i < dias.length; i++) {
+        // Dia 31 em mês de 30 vira o último dia do mês, não o dia 1 do seguinte.
+        const alvo = new Date(ano, mes, Math.min(dias[i], ultimo), 12, 0, 0, 0);
+        if (alvo.getTime() >= d.getTime()) return alvo;
+      }
+    }
+    return d;
+  }
+
+  if (regra === 'DIA_SEMANA') {
+    const alvo = diaSemanaRec(politica.dia_semana);
+    if (alvo < 0) return data;
+    d.setDate(d.getDate() + ((alvo - d.getDay() + 7) % 7));   // 0 = já é o dia certo
+    return d;
+  }
+
+  return data;
 }
 
 function lerOperacoes() {
@@ -551,7 +634,9 @@ function montarLinhaRec(t, existente, quem) {
 
   linha[RT.id]                = (existente && existente[RT.id]) || t.id || '';
   linha[RT.origem]            = String(t.origem || (existente ? existente[RT.origem] : 'MANUAL') || 'MANUAL');
-  linha[RT.chave_origem]      = chaveNaturalRec(t);
+  // Avulso confirmado como repetido já chega com a chave própria (ver
+  // salvarTituloRec); recalcular aqui reintroduziria a colisão.
+  linha[RT.chave_origem]      = String(t.chave_origem || '') || chaveNaturalRec(t);
   linha[RT.empresa]           = String(t.empresa || 'RENOVA').toUpperCase();
   linha[RT.data_emissao]      = paraDataRec(t.data_emissao) || '';
   linha[RT.data_vencimento]   = venc || '';
@@ -619,13 +704,20 @@ function salvarTituloRec(t, sessao) {
     const chave = chaveNaturalRec(t);
     for (let i = 0; i < linhas.length; i++) {
       if (String(linhas[i][RT.chave_origem]) === chave) {
+        // Recebimento avulso (PIX, dinheiro, serviço sem nota) pode repetir de
+        // verdade: dois PIX iguais do mesmo cliente no mesmo dia são duas
+        // entradas. Quem confirma na tela ganha uma chave própria.
+        if (t.permitir_duplicado === true && !String(t.numero_nf || '').trim()) break;
         throw new Error('Este título já existe na base (' + linhas[i][RT.id] + '). ' +
-                        'Se for mesmo outro lançamento, mude a NF ou a parcela.');
+                        'Se for mesmo outro lançamento, mude a NF ou a parcela — ' +
+                        'ou, se for um recebimento avulso que repete, confirme o lançamento duplicado.');
       }
     }
 
     const gerar = proximoIdRec(linhas, RT.id, 'R-', 6);
     t.id = gerar();
+    // A chave do avulso confirmado leva o id junto: nunca colide com o próximo.
+    if (t.permitir_duplicado === true && !String(t.numero_nf || '').trim()) t.chave_origem = chave + '|' + t.id;
     const nova = montarLinhaRec(t, null, quem);
     const linhaNova = sh.getLastRow() + 1;
     forcarTextoRec(sh, linhaNova);
@@ -841,6 +933,16 @@ function salvarPolitica(p, sessao) {
     linha[PO.dias_ate_faturar] = numeroRec(p.dias_ate_faturar);
     linha[PO.dias_prazo_venc]  = numeroRec(p.dias_prazo_venc);
     linha[PO.teto_exposicao]   = numeroRec(p.teto_exposicao);
+
+    const regra = String(p.regra_venc || '').trim().toUpperCase();
+    const diasFx = normalizarDiasFixos(p.dias_fixos);
+    const dsem = diaSemanaRec(p.dia_semana);
+    if (regra === 'DIAS_FIXOS' && !diasFx.length) throw new Error('Informe ao menos um dia do mês para a regra de dias fixos.');
+    if (regra === 'DIA_SEMANA' && dsem < 0) throw new Error('Informe o dia da semana da regra.');
+    linha[PO.regra_venc] = ['DIAS_FIXOS', 'DIA_SEMANA'].indexOf(regra) >= 0 ? regra : '';
+    linha[PO.dias_fixos] = regra === 'DIAS_FIXOS' ? diasFx.join(',') : '';
+    linha[PO.dia_semana] = regra === 'DIA_SEMANA' ? dsem : '';
+
     linha[PO.ativo]            = p.ativo === false ? 'NAO' : 'SIM';
     linha[PO.observacao]       = String(p.observacao || '').trim();
     linha[PO.atualizado_em]    = new Date();
@@ -848,6 +950,7 @@ function salvarPolitica(p, sessao) {
 
     const destino = i >= 0 ? i + 2 : sh.getLastRow() + 1;
     sh.getRange(destino, PO.cliente_cod + 1).setNumberFormat('@');
+    sh.getRange(destino, PO.dias_fixos + 1).setNumberFormat('@');   // "10,25" viraria o número 10,25 em pt-BR
     sh.getRange(destino, 1, 1, CAB_REC_POLITICAS.length).setValues([linha]);
     registrarRec(sessao.usuario, 'POLITICA', cod, linha[PO.cliente]);
     return { cliente_cod: cod };
@@ -957,6 +1060,7 @@ function criarOperacao(op, itens, sessao) {
 
     const resolvidos = [];
     const novasAntecip = [];
+    const correcoesVenc = [];   // vencimentos corrigidos na montagem do borderô
     let qtdTitulos = 0, qtdOS = 0;
 
     itens.forEach(function (it) {
@@ -1009,11 +1113,22 @@ function criarOperacao(op, itens, sessao) {
       if (String(l[RT.status]) === 'RECEBIDO' || String(l[RT.status]) === 'CANCELADO') {
         throw new Error('O título ' + l[RT.id] + ' está ' + l[RT.status] + ' e não pode ser antecipado.');
       }
+      // O vencimento PODE vir da tela: é onde o financeiro corrige a data que
+      // veio errada do Genesis, ou aplica a regra do cliente, antes de fechar o
+      // borderô. O valor continua saindo da planilha — dinheiro não vem do
+      // navegador. A correção também volta para o título, senão a carteira e a
+      // projeção de caixa continuariam com a data velha.
+      const vencCorrigido = paraDataRec(it.vencimento);
+      const vencAtual = paraDataRec(l[RT.data_vencimento]);
+      const venc = vencCorrigido || vencAtual;
+      if (vencCorrigido && (!vencAtual || vencCorrigido.getTime() !== vencAtual.getTime())) {
+        correcoesVenc.push({ i: i, data: vencCorrigido });
+      }
       resolvidos.push({
         tipo: 'TITULO', ref_id: String(l[RT.id]), num_os: String(l[RT.num_os] || ''),
         numero_nf: String(l[RT.numero_nf] || ''), parcela: numeroRec(l[RT.parcela]) || 1,
         cliente: String(l[RT.cliente] || ''), cliente_cod: String(l[RT.cliente_cod] || ''),
-        vencimento: paraDataRec(l[RT.data_vencimento]), valor: numeroRec(l[RT.valor_total])
+        vencimento: venc, valor: numeroRec(l[RT.valor_total])
       });
       qtdTitulos++;
     });
@@ -1087,6 +1202,11 @@ function criarOperacao(op, itens, sessao) {
     // Já entram como antecipados no RASCUNHO, de propósito: é o que impede a
     // mesma duplicata de entrar em dois borderôs enquanto um deles está em
     // análise no fundo. Cancelar a operação devolve todos.
+    correcoesVenc.forEach(function (c) {
+      linhasT[c.i][RT.data_vencimento] = c.data;
+      linhasT[c.i][RT.competencia] = competenciaDe(c.data);
+    });
+
     let mexeu = 0;
     resolvidos.forEach(function (r) {
       if (r.tipo !== 'TITULO') return;
@@ -1116,7 +1236,7 @@ function vencimentoEstimado(base, politica) {
   const ate = politica ? numeroRec(politica.dias_ate_faturar) : 0;
   const prazo = politica ? numeroRec(politica.dias_prazo_venc) : 0;
   d.setDate(d.getDate() + (ate || 30) + (prazo || 30));
-  return d;
+  return aplicarRegraVencimento(d, politica);
 }
 
 function mudarStatusOperacao(id, status, sessao) {
@@ -1355,6 +1475,541 @@ function cancelarOperacao(id, sessao) {
 
     registrarRec(sessao.usuario, 'OPERACAO_CANCELAR', id, n + ' título(s) e ' + m + ' OS devolvidos');
     return { id: id, titulos_liberados: n, os_liberadas: m };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** 'YYYY-MM' do vencimento — é o eixo do DRE e do fluxo de caixa. */
+function competenciaDe(data) {
+  const d = paraDataRec(data);
+  if (!d) return '';
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+}
+
+/**
+ * Corrige o vencimento de títulos em lote.
+ *
+ * Existe porque a data que vem do Genesis nem sempre é a que o cliente vai
+ * pagar: cliente grande paga só nos dias dele. Quando há política com regra,
+ * a data informada ainda passa pela regra — assim a correção manual e o
+ * cálculo automático nunca divergem.
+ *
+ * ajustes: [{ id: 'R-000123', data_vencimento: '2026-10-25', aplicar_regra: true }]
+ */
+function corrigirVencimentos(ajustes, sessao) {
+  if (!ajustes.length) return { alterados: 0 };
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = abaRec(ABA_REC_TITULOS, CAB_REC_TITULOS);
+    const linhas = lerBruto(ABA_REC_TITULOS, CAB_REC_TITULOS);
+    const politicas = {};
+    lerPoliticas().forEach(function (p) { politicas[String(p.cliente_cod)] = p; });
+
+    const agora = new Date();
+    let n = 0;
+    const detalhe = [];
+
+    ajustes.forEach(function (a) {
+      const i = acharLinhaRec(linhas, RT.id, a.id);
+      if (i < 0) throw new Error('Título ' + a.id + ' não encontrado.');
+      const l = linhas[i];
+      if (String(l[RT.status]) === 'CANCELADO') throw new Error('O título ' + a.id + ' está cancelado.');
+      if (String(l[RT.status]) === 'RECEBIDO') throw new Error('O título ' + a.id + ' já foi recebido — o vencimento dele é história.');
+
+      let nova = paraDataRec(a.data_vencimento);
+      if (!nova) throw new Error('Vencimento inválido para o título ' + a.id + '.');
+      if (a.aplicar_regra !== false) {
+        nova = aplicarRegraVencimento(nova, politicas[String(l[RT.cliente_cod] || '')]);
+      }
+      const atual = paraDataRec(l[RT.data_vencimento]);
+      if (atual && atual.getTime() === nova.getTime()) return;
+
+      l[RT.data_vencimento] = nova;
+      l[RT.competencia]     = competenciaDe(nova);
+      l[RT.atualizado_em]   = agora;
+      l[RT.atualizado_por]  = sessao.usuario;
+      detalhe.push(a.id + ': ' + dataParaISORec(atual) + ' → ' + dataParaISORec(nova));
+      n++;
+    });
+
+    if (n) {
+      sh.getRange(2, 1, linhas.length, CAB_REC_TITULOS.length).setValues(linhas);
+      registrarRec(sessao.usuario, 'CORRIGIR_VENCIMENTO', '', detalhe.join(' | ').slice(0, 900));
+    }
+    return { alterados: n };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Edita uma operação já registrada — inclusive liquidada.
+ *
+ * O que dá para mudar: parceiro, data da operação, observação e, quando já
+ * liquidada, o líquido creditado e a data do crédito. Trocar parceiro ou data
+ * refaz o deságio estimado, porque as condições e o prazo médio mudam junto.
+ *
+ * O que NÃO muda por aqui: a lista de títulos do borderô. Ela tem caminho
+ * próprio, em editarItensOperacao() — lá os títulos que saem voltam a ficar
+ * livres e o custo é refeito, coisas que este cabeçalho sozinho não faz.
+ *
+ * Quando o líquido de uma operação liquidada muda, o título de despesa 3.07 que
+ * foi lançado no Contas a Pagar fica com o valor velho. Em vez de mexer no
+ * módulo do lado calado, devolvemos o aviso para a tela mostrar.
+ */
+function editarOperacao(body, sessao) {
+  const id = String(body.id || '');
+  if (!id) throw new Error('Operação não informada.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = abaRec(ABA_REC_OPERACOES, CAB_REC_OPERACOES);
+    const linhas = lerBruto(ABA_REC_OPERACOES, CAB_REC_OPERACOES);
+    const i = acharLinhaRec(linhas, OP.id, id);
+    if (i < 0) throw new Error('Operação ' + id + ' não encontrada.');
+    const l = linhas[i];
+    const status = String(l[OP.status]);
+    if (status === 'CANCELADA') throw new Error('Operação cancelada não se edita.');
+
+    const agora = new Date();
+    const avisos = [];
+
+    // ── parceiro e data: refazem o custo estimado ──
+    const parceiroId = String(body.parceiro_id || l[OP.parceiro_id]);
+    const parceiro = lerParceiros().filter(function (p) { return p.id === parceiroId; })[0];
+    if (!parceiro) throw new Error('Parceiro ' + parceiroId + ' não encontrado.');
+    const dataOp = paraDataRec(body.data_operacao) || paraDataRec(l[OP.data_operacao]) || new Date();
+
+    const itens = lerBruto(ABA_REC_ITENS, CAB_REC_ITENS)
+      .filter(function (li) { return String(li[IT.operacao_id]) === id; })
+      .map(function (li) {
+        return { valor: numeroRec(li[IT.valor]), vencimento: paraDataRec(li[IT.vencimento]) };
+      });
+    if (!itens.length) throw new Error('Operação sem itens — não dá para recalcular o custo.');
+
+    const custo = calcularCustoOperacao(itens, parceiro, dataOp);
+
+    l[OP.parceiro_id]      = parceiro.id;
+    l[OP.parceiro]         = parceiro.nome;
+    l[OP.data_operacao]    = dataOp;
+    l[OP.prazo_medio]      = custo.prazo_medio;
+    l[OP.taxa_mes]         = custo.taxa_mes;
+    l[OP.tarifa_titulo]    = custo.tarifa_titulo;
+    l[OP.tac]              = custo.tac;
+    l[OP.desagio_estimado] = custo.desagio_estimado;
+    l[OP.liquido_estimado] = custo.liquido_estimado;
+    if (body.observacao !== undefined) l[OP.observacao] = String(body.observacao || '').trim();
+
+    // ── liquidada: o líquido creditado também pode ser corrigido ──
+    if (status === 'LIQUIDADA' && body.valor_liquido !== undefined && body.valor_liquido !== '') {
+      const liquido = numeroRec(body.valor_liquido);
+      const bruto = numeroRec(l[OP.valor_bruto]);
+      if (liquido <= 0) throw new Error('Informe o valor líquido recebido.');
+      if (liquido > bruto + 0.005) {
+        throw new Error('O líquido (' + liquido.toFixed(2) + ') é maior que o valor de face (' +
+                        bruto.toFixed(2) + '). Confira o extrato antes de gravar.');
+      }
+      const custoReal = arred(bruto - liquido);
+      const anterior = numeroRec(l[OP.custo_real]);
+      const prazo = numeroRec(l[OP.prazo_medio]);
+      l[OP.valor_liquido]    = liquido;
+      l[OP.custo_real]       = custoReal;
+      l[OP.taxa_efetiva_mes] = (bruto > 0 && prazo > 0)
+        ? Math.round((custoReal / bruto) / (prazo / 30) * 100 * 1000) / 1000 : 0;
+      if (body.data_credito) l[OP.data_credito] = paraDataRec(body.data_credito) || l[OP.data_credito];
+
+      if (Math.abs(custoReal - anterior) > 0.005 && l[OP.titulo_despesa_id]) {
+        avisos.push('O deságio real mudou de ' + anterior.toFixed(2) + ' para ' + custoReal.toFixed(2) +
+                    '. O título ' + l[OP.titulo_despesa_id] + ' no Contas a Pagar continua com o valor antigo — ' +
+                    'ajuste lá para o DRE fechar.');
+      }
+    }
+
+    l[OP.atualizado_em]  = agora;
+    l[OP.atualizado_por] = sessao.usuario;
+    sh.getRange(2, 1, linhas.length, CAB_REC_OPERACOES.length).setValues(linhas);
+    registrarRec(sessao.usuario, 'OPERACAO_EDITAR', id, parceiro.nome + ' · ' + dataParaISORec(dataOp));
+    return { id: id, avisos: avisos };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Troca a lista de itens de uma operação já registrada.
+ *
+ * Existe porque borderô real muda: o fundo recusa uma nota, aparece outra que
+ * cabia no pacote, ou o vencimento que veio do Genesis estava errado. Antes o
+ * único caminho era cancelar e montar tudo de novo, o que trocava o número da
+ * operação e sujava o histórico por um erro de digitação.
+ *
+ * O que muda junto, obrigatoriamente: valor de face, prazo médio, deságio e
+ * líquido estimado. Deixar o cabeçalho com os números do pacote antigo seria
+ * pior do que não deixar editar.
+ *
+ * Limites que o servidor impõe, porque a tela não é a fonte da verdade:
+ *   - operação LIQUIDADA não entra aqui — o dinheiro já entrou e o custo real
+ *     já virou despesa 3.07 no Contas a Pagar. Estorne lá primeiro;
+ *   - título que já foi LIQUIDADO ou RECOMPRADO não sai do pacote: ele encostou
+ *     em dinheiro e sair daqui deixaria o caixa sem contrapartida;
+ *   - OS que já virou nota fiscal não sai: a reconciliação depende do registro;
+ *   - título antecipado em OUTRA operação não entra: seria vender o mesmo
+ *     recebível duas vezes.
+ *
+ * body: { id, itens: [ {tipo:'TITULO', ref_id, vencimento?},
+ *                      {tipo:'OS', ref_id?, num_os, cliente, cliente_cod,
+ *                       valor_os, vencimento} ] }
+ */
+function editarItensOperacao(body, sessao) {
+  const id = String(body.id || '');
+  if (!id) throw new Error('Operação não informada.');
+  const entrada = body.itens || [];
+  if (!entrada.length) {
+    throw new Error('A operação ficaria sem nenhum item. Para esvaziar o borderô, cancele ou exclua a operação.');
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const shOp = abaRec(ABA_REC_OPERACOES, CAB_REC_OPERACOES);
+    const linhasOp = lerBruto(ABA_REC_OPERACOES, CAB_REC_OPERACOES);
+    const iOp = acharLinhaRec(linhasOp, OP.id, id);
+    if (iOp < 0) throw new Error('Operação ' + id + ' não encontrada.');
+    const lOp = linhasOp[iOp];
+    const status = String(lOp[OP.status]);
+
+    if (status === 'CANCELADA') throw new Error('Operação cancelada não se edita.');
+    if (status === 'LIQUIDADA') {
+      throw new Error('Operação já liquidada: o crédito entrou e o custo real virou despesa' +
+                      (lOp[OP.titulo_despesa_id] ? ' (' + lOp[OP.titulo_despesa_id] + ')' : '') +
+                      ' no Contas a Pagar. Trocar os títulos agora deixaria o DRE sem explicação — ' +
+                      'estorne a despesa e cancele a operação antes de remontar o pacote.');
+    }
+
+    const parceiroId = String(lOp[OP.parceiro_id] || '');
+    const parceiro = lerParceiros().filter(function (p) { return p.id === parceiroId; })[0];
+    if (!parceiro) throw new Error('Parceiro ' + parceiroId + ' não encontrado.');
+    const dataOp = paraDataRec(lOp[OP.data_operacao]) || new Date();
+    const agora = new Date();
+    const quem = sessao.usuario;
+
+    const politicas = {};
+    lerPoliticas().forEach(function (p) { politicas[String(p.cliente_cod)] = p; });
+
+    const shT = abaRec(ABA_REC_TITULOS, CAB_REC_TITULOS);
+    const linhasT = lerBruto(ABA_REC_TITULOS, CAB_REC_TITULOS);
+    const shA = abaRec(ABA_REC_ANTECIP, CAB_REC_ANTECIP);
+    const linhasA = lerBruto(ABA_REC_ANTECIP, CAB_REC_ANTECIP);
+    const linhasIt = lerBruto(ABA_REC_ITENS, CAB_REC_ITENS);
+
+    const gerarAnt = proximoIdRec(linhasA, AN.id, 'A-', 6);
+
+    // ── o que já estava no pacote ──
+    const antesTit = {}, antesOS = {};
+    linhasIt.forEach(function (l) {
+      if (String(l[IT.operacao_id]) !== id) return;
+      if (String(l[IT.tipo]).toUpperCase() === 'OS') antesOS[String(l[IT.ref_id])] = true;
+      else antesTit[String(l[IT.ref_id])] = true;
+    });
+
+    const resolvidos = [];
+    const ficamTit = {}, ficamOS = {};
+    const novasA = [];   // antecipações de OS criadas agora, gravadas no fim
+    let qtdTitulos = 0, qtdOS = 0;
+
+    entrada.forEach(function (it) {
+      // ───────────────── OS sem nota ─────────────────
+      if (String(it.tipo).toUpperCase() === 'OS') {
+        const numOS = String(it.num_os || '').trim();
+        if (!numOS) throw new Error('OS sem número no pacote.');
+        const refAnt = String(it.ref_id || '');
+
+        // A mesma OS duas vezes no pacote seria o mesmo recebível vendido duas
+        // vezes dentro do próprio borderô.
+        for (var j = 0; j < novasA.length; j++) {
+          if (String(novasA[j][AN.num_os]) === numOS) {
+            throw new Error('A OS ' + numOS + ' aparece duas vezes no pacote.');
+          }
+        }
+        // Já antecipada em OUTRA operação e ainda esperando nota? Não entra.
+        for (var k = 0; k < linhasA.length; k++) {
+          if (String(linhasA[k][AN.num_os]) !== numOS) continue;
+          if (String(linhasA[k][AN.status]) !== 'AGUARDANDO_FATURAMENTO') continue;
+          if (String(linhasA[k][AN.operacao_id]) === id) continue;
+          throw new Error('A OS ' + numOS + ' já está antecipada na operação ' +
+                          linhasA[k][AN.operacao_id] + '.');
+        }
+
+        const pol = politicas[String(it.cliente_cod || '')];
+        if (pol && !pol.permite_os) {
+          throw new Error('A política do cliente ' + (it.cliente || it.cliente_cod) +
+                          ' não permite antecipar OS sem pedido.');
+        }
+        const pct = pol && pol.pct_max_os > 0 ? pol.pct_max_os : 100;
+        const valorOS = numeroRec(it.valor_os || it.valor);
+        const valor = arred(valorOS * pct / 100);
+        const venc = paraDataRec(it.vencimento) || vencimentoEstimado(dataOp, pol);
+
+        // Antecipação que já existe neste borderô: atualiza no lugar, para não
+        // perder o id que a reconciliação com a nota usa.
+        var iA = refAnt ? acharLinhaRec(linhasA, AN.id, refAnt) : -1;
+        if (iA >= 0 && String(linhasA[iA][AN.operacao_id]) !== id) iA = -1;
+        var antId;
+        if (iA >= 0) {
+          if (String(linhasA[iA][AN.status]) === 'FATURADA') {
+            throw new Error('A OS ' + numOS + ' já virou nota fiscal — os valores dela não se editam mais.');
+          }
+          antId = String(linhasA[iA][AN.id]);
+          linhasA[iA][AN.valor_os] = valorOS;
+          linhasA[iA][AN.valor_antecipado] = valor;
+          linhasA[iA][AN.vencimento_estimado] = venc;
+          linhasA[iA][AN.status] = 'AGUARDANDO_FATURAMENTO';
+          linhasA[iA][AN.atualizado_em] = agora;
+          linhasA[iA][AN.atualizado_por] = quem;
+        } else {
+          antId = gerarAnt();
+          const nova = new Array(CAB_REC_ANTECIP.length).fill('');
+          nova[AN.id] = antId;                     nova[AN.num_os] = numOS;
+          nova[AN.cliente] = String(it.cliente || '');
+          nova[AN.cliente_cod] = String(it.cliente_cod || '');
+          nova[AN.valor_os] = valorOS;             nova[AN.valor_antecipado] = valor;
+          nova[AN.vencimento_estimado] = venc;
+          nova[AN.operacao_id] = id;               nova[AN.parceiro_id] = parceiro.id;
+          nova[AN.status] = 'AGUARDANDO_FATURAMENTO';
+          nova[AN.criado_em] = agora;              nova[AN.criado_por] = quem;
+          nova[AN.atualizado_em] = agora;          nova[AN.atualizado_por] = quem;
+          novasA.push(nova);
+        }
+
+        ficamOS[antId] = true;
+        resolvidos.push({
+          tipo: 'OS', ref_id: antId, num_os: numOS, numero_nf: '', parcela: 1,
+          cliente: String(it.cliente || ''), cliente_cod: String(it.cliente_cod || ''),
+          vencimento: venc, valor: valor
+        });
+        qtdOS++;
+        return;
+      }
+
+      // ───────────────── duplicata ─────────────────
+      const i = acharLinhaRec(linhasT, RT.id, it.ref_id);
+      if (i < 0) throw new Error('Título ' + it.ref_id + ' não encontrado.');
+      const l = linhasT[i];
+      // Duas vezes no mesmo pacote dobraria o valor de face de um recebível que
+      // existe uma vez só.
+      if (ficamTit[String(l[RT.id])]) {
+        throw new Error('O título ' + l[RT.id] + ' aparece duas vezes no pacote.');
+      }
+      const jaNesta = String(l[RT.operacao_id]) === id;
+
+      if (String(l[RT.antecipado]).toUpperCase() === 'SIM' && !jaNesta) {
+        throw new Error('O título ' + l[RT.id] + ' (NF ' + l[RT.numero_nf] +
+                        ') já está antecipado na operação ' + l[RT.operacao_id] + '.');
+      }
+      if (String(l[RT.status]) === 'RECEBIDO' || String(l[RT.status]) === 'CANCELADO') {
+        throw new Error('O título ' + l[RT.id] + ' está ' + l[RT.status] + ' e não pode ser antecipado.');
+      }
+
+      // Vencimento corrigido vem da tela; o valor continua saindo da planilha.
+      // A correção volta para o título, senão a carteira e a projeção de caixa
+      // ficariam com a data velha.
+      const vencCorrigido = paraDataRec(it.vencimento);
+      const vencAtual = paraDataRec(l[RT.data_vencimento]);
+      const venc = vencCorrigido || vencAtual;
+      if (vencCorrigido && (!vencAtual || vencCorrigido.getTime() !== vencAtual.getTime())) {
+        l[RT.data_vencimento] = vencCorrigido;
+        l[RT.competencia] = competenciaDe(vencCorrigido);
+      }
+
+      l[RT.antecipado]     = 'SIM';
+      l[RT.operacao_id]    = id;
+      l[RT.parceiro_id]    = parceiro.id;
+      if (!String(l[RT.situacao_antec] || '')) l[RT.situacao_antec] = 'ANTECIPADO';
+      l[RT.atualizado_em]  = agora;
+      l[RT.atualizado_por] = quem;
+
+      ficamTit[String(l[RT.id])] = true;
+      resolvidos.push({
+        tipo: 'TITULO', ref_id: String(l[RT.id]), num_os: String(l[RT.num_os] || ''),
+        numero_nf: String(l[RT.numero_nf] || ''), parcela: numeroRec(l[RT.parcela]) || 1,
+        cliente: String(l[RT.cliente] || ''), cliente_cod: String(l[RT.cliente_cod] || ''),
+        vencimento: venc, valor: numeroRec(l[RT.valor_total])
+      });
+      qtdTitulos++;
+    });
+
+    // ── títulos que saíram do pacote voltam a ficar livres ──
+    let saiuTit = 0;
+    Object.keys(antesTit).forEach(function (ref) {
+      if (ficamTit[ref]) return;
+      const i = acharLinhaRec(linhasT, RT.id, ref);
+      if (i < 0) return;
+      const l = linhasT[i];
+      const sit = String(l[RT.situacao_antec] || '');
+      if (sit === 'LIQUIDADO' || sit === 'RECOMPRADO') {
+        throw new Error('O título ' + ref + ' está ' + sit.toLowerCase() +
+                        ' — ele já encostou em dinheiro e não sai do borderô por aqui.');
+      }
+      l[RT.antecipado] = 'NAO';    l[RT.operacao_id] = '';
+      l[RT.parceiro_id] = '';      l[RT.situacao_antec] = '';
+      l[RT.atualizado_em] = agora; l[RT.atualizado_por] = quem;
+      saiuTit++;
+    });
+
+    // ── OSs que saíram do pacote ──
+    let saiuOS = 0;
+    Object.keys(antesOS).forEach(function (ref) {
+      if (ficamOS[ref]) return;
+      const i = acharLinhaRec(linhasA, AN.id, ref);
+      if (i < 0) return;
+      if (String(linhasA[i][AN.status]) === 'FATURADA') {
+        throw new Error('A OS ' + linhasA[i][AN.num_os] + ' já virou nota fiscal e não sai do borderô — ' +
+                        'a reconciliação da nota depende do registro dela aqui.');
+      }
+      linhasA[i][AN.status] = 'CANCELADA';
+      linhasA[i][AN.atualizado_em] = agora;
+      linhasA[i][AN.atualizado_por] = quem;
+      saiuOS++;
+    });
+
+    // ── refaz o custo com o pacote novo ──
+    const custo = calcularCustoOperacao(resolvidos, parceiro, dataOp);
+
+    // ── grava: títulos, antecipações, itens e o cabeçalho da operação ──
+    if (linhasT.length) shT.getRange(2, 1, linhasT.length, CAB_REC_TITULOS.length).setValues(linhasT);
+    if (linhasA.length) {
+      shA.getRange(2, AN.num_os + 1, linhasA.length, 1).setNumberFormat('@');
+      shA.getRange(2, 1, linhasA.length, CAB_REC_ANTECIP.length).setValues(linhasA);
+    }
+    if (novasA.length) {
+      const inicioA = shA.getLastRow() + 1;
+      shA.getRange(inicioA, AN.num_os + 1, novasA.length, 1).setNumberFormat('@');
+      shA.getRange(inicioA, 1, novasA.length, CAB_REC_ANTECIP.length).setValues(novasA);
+    }
+
+    const shIt = abaRec(ABA_REC_ITENS, CAB_REC_ITENS);
+    const alvos = [];
+    linhasIt.forEach(function (l, k) { if (String(l[IT.operacao_id]) === id) alvos.push(k + 2); });
+    alvos.reverse().forEach(function (linha) { shIt.deleteRow(linha); });
+
+    const novasIt = resolvidos.map(function (r) {
+      const l = new Array(CAB_REC_ITENS.length).fill('');
+      l[IT.operacao_id] = id;        l[IT.tipo] = r.tipo;
+      l[IT.ref_id] = r.ref_id;       l[IT.num_os] = r.num_os;
+      l[IT.numero_nf] = r.numero_nf; l[IT.parcela] = r.parcela;
+      l[IT.cliente] = r.cliente;     l[IT.cliente_cod] = r.cliente_cod;
+      l[IT.vencimento] = r.vencimento; l[IT.valor] = r.valor;
+      l[IT.prazo_dias] = r.prazo_dias;
+      return l;
+    });
+    const inicioIt = shIt.getLastRow() + 1;
+    shIt.getRange(inicioIt, IT.numero_nf + 1, novasIt.length, 1).setNumberFormat('@');
+    shIt.getRange(inicioIt, IT.num_os + 1, novasIt.length, 1).setNumberFormat('@');
+    shIt.getRange(inicioIt, 1, novasIt.length, CAB_REC_ITENS.length).setValues(novasIt);
+
+    lOp[OP.qtd_titulos]      = qtdTitulos;
+    lOp[OP.qtd_os]           = qtdOS;
+    lOp[OP.valor_bruto]      = custo.valor_bruto;
+    lOp[OP.prazo_medio]      = custo.prazo_medio;
+    lOp[OP.taxa_mes]         = custo.taxa_mes;
+    lOp[OP.tarifa_titulo]    = custo.tarifa_titulo;
+    lOp[OP.tac]              = custo.tac;
+    lOp[OP.desagio_estimado] = custo.desagio_estimado;
+    lOp[OP.liquido_estimado] = custo.liquido_estimado;
+    lOp[OP.atualizado_em]    = agora;
+    lOp[OP.atualizado_por]   = quem;
+    shOp.getRange(2, 1, linhasOp.length, CAB_REC_OPERACOES.length).setValues(linhasOp);
+
+    registrarRec(quem, 'OPERACAO_ITENS', id,
+      resolvidos.length + ' item(ns) · ' + custo.valor_bruto.toFixed(2) +
+      ' · saíram ' + saiuTit + ' título(s) e ' + saiuOS + ' OS');
+
+    return {
+      id: id, itens: resolvidos.length, qtd_titulos: qtdTitulos, qtd_os: qtdOS,
+      titulos_liberados: saiuTit, os_liberadas: saiuOS, custo: custo
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Apaga uma operação de vez — linha da operação, itens e antecipações de OS —
+ * e devolve os títulos para a fila de antecipáveis.
+ *
+ * Cancelar deixa rastro e é o caminho normal. Excluir existe para o borderô
+ * lançado errado, que só suja o histórico. Por isso a exclusão exige
+ * `confirmar` e barra o que já encostou em dinheiro ou em nota:
+ *   - operação liquidada com despesa lançada no Contas a Pagar;
+ *   - OS que já virou nota fiscal (a reconciliação depende do registro).
+ */
+function excluirOperacao(id, confirmar, sessao) {
+  id = String(id || '');
+  if (!id) throw new Error('Operação não informada.');
+  if (confirmar !== true) throw new Error('Exclusão não confirmada.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const shOp = abaRec(ABA_REC_OPERACOES, CAB_REC_OPERACOES);
+    const linhasOp = lerBruto(ABA_REC_OPERACOES, CAB_REC_OPERACOES);
+    const i = acharLinhaRec(linhasOp, OP.id, id);
+    if (i < 0) throw new Error('Operação ' + id + ' não encontrada.');
+    const op = linhasOp[i];
+
+    if (String(op[OP.status]) === 'LIQUIDADA' && String(op[OP.titulo_despesa_id] || '')) {
+      throw new Error('Esta operação já gerou a despesa ' + op[OP.titulo_despesa_id] +
+                      ' no Contas a Pagar. Estorne o título lá antes de excluir aqui, ' +
+                      'senão o custo financeiro fica no DRE sem operação que o explique.');
+    }
+
+    const agora = new Date();
+
+    // ── antecipações de OS: nenhuma pode ter virado nota ──
+    const shA = abaRec(ABA_REC_ANTECIP, CAB_REC_ANTECIP);
+    const linhasA = lerBruto(ABA_REC_ANTECIP, CAB_REC_ANTECIP);
+    const faturadas = linhasA.filter(function (l) {
+      return String(l[AN.operacao_id]) === id && String(l[AN.status]) === 'FATURADA';
+    });
+    if (faturadas.length) {
+      throw new Error(faturadas.length + ' OS desta operação já virou nota fiscal (' +
+                      faturadas.map(function (l) { return l[AN.num_os]; }).join(', ') +
+                      '). Cancele a operação em vez de excluir — o histórico de reconciliação depende dela.');
+    }
+
+    // ── devolve os títulos ──
+    const shT = abaRec(ABA_REC_TITULOS, CAB_REC_TITULOS);
+    const linhasT = lerBruto(ABA_REC_TITULOS, CAB_REC_TITULOS);
+    let n = 0;
+    linhasT.forEach(function (l) {
+      if (String(l[RT.operacao_id]) !== id) return;
+      l[RT.antecipado] = 'NAO'; l[RT.operacao_id] = ''; l[RT.parceiro_id] = '';
+      l[RT.situacao_antec] = ''; l[RT.atualizado_em] = agora; l[RT.atualizado_por] = sessao.usuario;
+      n++;
+    });
+    if (n) shT.getRange(2, 1, linhasT.length, CAB_REC_TITULOS.length).setValues(linhasT);
+
+    // ── apaga itens, antecipações e a própria operação ──
+    // De baixo para cima: apagar de cima muda o índice das linhas de baixo.
+    const apagar = function (sh, linhas, col) {
+      const alvos = [];
+      linhas.forEach(function (l, k) { if (String(l[col]) === id) alvos.push(k + 2); });
+      alvos.reverse().forEach(function (linha) { sh.deleteRow(linha); });
+      return alvos.length;
+    };
+    const shIt = abaRec(ABA_REC_ITENS, CAB_REC_ITENS);
+    const qtdItens = apagar(shIt, lerBruto(ABA_REC_ITENS, CAB_REC_ITENS), IT.operacao_id);
+    const qtdAnt = apagar(shA, linhasA, AN.operacao_id);
+    shOp.deleteRow(i + 2);
+
+    registrarRec(sessao.usuario, 'OPERACAO_EXCLUIR', id,
+      'nº ' + op[OP.numero] + ' · ' + op[OP.parceiro] + ' · ' + numeroRec(op[OP.valor_bruto]).toFixed(2) +
+      ' · ' + n + ' título(s) devolvido(s), ' + qtdItens + ' item(ns) e ' + qtdAnt + ' OS apagados');
+    return { id: id, titulos_liberados: n, itens: qtdItens, os: qtdAnt };
   } finally {
     lock.releaseLock();
   }

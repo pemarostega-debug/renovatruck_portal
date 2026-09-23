@@ -148,6 +148,44 @@ publique **Nova versão**. Sem isso a liquidação de operação falha ao lança
 despesa — sem perder o crédito já gravado, que é recuperável pelo botão
 *relançar despesa* no Contas a Receber.
 
+## Contas fixas — o que se repete todo mês
+
+Aluguel, contador, internet, seguro, software. A aba **Contas Fixas** guarda o
+**molde**, não os títulos: uma linha por conta, com o dia do vencimento e a
+janela de vigência (`inicio` → `fim`, vazio = contrato sem prazo).
+
+**Por que molde e não doze títulos de uma vez.** O valor do aluguel muda, o
+contrato acaba, o fornecedor troca. Gerando mês a mês, a mudança vale do mês
+seguinte em diante e o histórico já pago continua intacto.
+
+No dia a dia:
+
+1. Cadastre cada conta que se repete (descrição, natureza, valor, dia, vigência).
+2. No começo do mês, **Gerar títulos do mês** → escolha a competência.
+3. A tela mostra a **prévia** antes de gravar: o que vai ser criado, o que está
+   fora de vigência e o que já foi gerado. Gerar título às cegas é como o
+   financeiro descobre, no dia 28, que lançou o aluguel duas vezes.
+4. Confirme. Os títulos aparecem na aba **Títulos** e se editam, baixam e
+   cancelam como qualquer outro.
+
+**Rodar de novo não duplica.** Cada título gerado carrega a chave natural
+`FIXA|<id>|<AAAA-MM>`; conta já gerada é pulada. É por isso que dá para chamar
+`fixas_gerar` sem medo — inclusive de um gatilho mensal, se um dia quiser.
+
+**Dia 31** num mês de 30 cai no último dia do mês, nunca escorrega para o mês
+seguinte: a conta de fevereiro apareceria em março e o DRE fecharia errado.
+
+**Mudou o valor?** Edite o molde — vale do próximo mês gerado em diante. Para
+corrigir um mês já gerado, edite o título. **Parou por um tempo?** Use *Pausada*
+em vez de remover: o histórico e o valor ficam guardados. Remover apaga só o
+molde; os títulos já gerados continuam, porque são dívida de verdade.
+
+Ações do backend: `fixas` (GET), `fixa_salvar`, `fixa_remover`, `fixas_previa`,
+`fixas_gerar`. A aba nova é `ContasFixas` — rode `instalar()` de novo depois de
+republicar o script para criá-la.
+
+---
+
 ## Decisões que valem conhecer
 
 **As notas de entrada vêm de duas views, não de uma.** `vw_contas_a_pagar` é a
