@@ -209,7 +209,6 @@
       Vencer até <input type="date" id="cr-a-ate" class="cr-inp" onchange="crRenderAntecipar()" />
     </span>
     <span class="cr-spacer"></span>
-    <button class="cr-btn cr-btn-peq" onclick="crSelecionarTudoAntecipar()"><i class="fa-solid fa-check-double"></i>Selecionar tudo o que está visível</button>
     <button class="cr-btn cr-btn-peq rv-so-admin" onclick="crAplicarRegrasNosVencimentos()" title="Joga cada vencimento para o dia em que o cliente realmente paga, pela regra cadastrada em Parceiros &amp; Políticas"><i class="fa-solid fa-calendar-check"></i>Aplicar regra dos clientes</button>
     <button class="cr-btn cr-btn-peq rv-so-admin" onclick="crLimparVencimentos()" title="Volta todos os vencimentos ao que está gravado no título"><i class="fa-solid fa-rotate-left"></i>Desfazer correções</button>
   </div>
@@ -641,6 +640,7 @@
       <button class="cr-btn cr-acao excluir rv-so-admin" id="cr-op-cancelar" onclick="crCancelarOperacao()"><i class="fa-solid fa-ban"></i>Cancelar operação</button>
       <button class="cr-btn cr-acao excluir rv-so-admin" id="cr-op-excluir" onclick="crExcluirOperacao()" title="Apaga a operação do histórico e devolve os títulos"><i class="fa-solid fa-trash"></i>Excluir</button>
       <span class="cr-spacer"></span>
+      <button class="cr-btn rv-so-admin" id="cr-op-itens" onclick="crAbrirItensOperacao()" title="Tirar ou incluir títulos e corrigir vencimentos deste borderô"><i class="fa-solid fa-list-check"></i>Editar títulos</button>
       <button class="cr-btn rv-so-admin" id="cr-op-editar" onclick="crAbrirEditarOperacao()"><i class="fa-solid fa-pen"></i>Editar</button>
       <button class="cr-btn" onclick="crPreBorderoDaOperacao('pdf')"><i class="fa-solid fa-file-pdf"></i>Borderô</button>
       <button class="cr-btn" onclick="crPreBorderoDaOperacao('xlsx')"><i class="fa-solid fa-file-excel"></i>Excel</button>
@@ -680,14 +680,75 @@
       <p class="cr-ajuda">
         Trocar o <b>parceiro</b> ou a <b>data</b> refaz o deságio estimado: as condições
         e o prazo médio mudam junto.
-        <br>A <b>lista de títulos</b> do borderô não se edita aqui — trocar o conteúdo de
-        uma operação em análise no fundo é outra operação. Cancele e monte de novo.
+        <br>A <b>lista de títulos</b> tem tela própria: <b>Editar títulos</b>, no rodapé da operação.
       </p>
     </div>
     <div class="cr-modal-f">
       <span class="cr-spacer"></span>
       <button class="cr-btn" onclick="crFechar('cr-modal-op-editar')">Fechar</button>
       <button class="cr-btn cr-btn-primary" onclick="crSalvarEdicaoOperacao()"><i class="fa-solid fa-floppy-disk"></i>Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: TÍTULOS DA OPERAÇÃO ══ -->
+<div class="cr-overlay" id="cr-modal-op-itens">
+  <div class="cr-modal largo">
+    <div class="cr-modal-h roxo">
+      <div><h3><i class="fa-solid fa-list-check"></i>Títulos da operação</h3>
+      <div class="sub" id="cr-oi-sub">—</div></div>
+      <button class="cr-fechar" onclick="crFechar('cr-modal-op-itens')">&times;</button>
+    </div>
+    <div class="cr-modal-b">
+      <div class="cr-notice info" style="display:block;margin:0 0 14px;">
+        Tire e ponha itens e corrija os vencimentos. Ao salvar, o <b>valor de face</b>,
+        o <b>prazo médio</b> e o <b>deságio estimado</b> são refeitos com o pacote novo,
+        e os títulos que saírem voltam para a fila de antecipáveis. O vencimento
+        corrigido aqui também volta para o título.
+      </div>
+
+      <div class="cr-card-h" style="margin:0 0 8px;">
+        <span><i class="fa-solid fa-file-invoice"></i>No borderô</span>
+        <span class="cr-kpi-sub" id="cr-oi-resumo">—</span>
+      </div>
+      <div class="cr-filtros" style="margin-bottom:10px;">
+        <span class="cr-spacer"></span>
+        <button class="cr-btn cr-btn-peq" onclick="crAplicarRegraNosItens()" title="Joga cada vencimento para o dia em que o cliente realmente paga, pela regra cadastrada em Parceiros &amp; Políticas"><i class="fa-solid fa-calendar-check"></i>Aplicar regra dos clientes</button>
+        <button class="cr-btn cr-btn-peq" onclick="crDesfazerItensOperacao()" title="Volta a lista ao que está gravado na operação"><i class="fa-solid fa-rotate-left"></i>Desfazer</button>
+      </div>
+      <div class="cr-tbl-wrap" style="max-height:300px;overflow-y:auto;">
+        <table class="cr-tbl">
+          <thead><tr>
+            <th>Tipo</th><th>Cliente</th><th>NF / OS</th><th>Vencimento</th>
+            <th class="cr-num">Prazo</th><th class="cr-num">Valor</th><th style="width:38px;"></th>
+          </tr></thead>
+          <tbody id="cr-tb-oi-itens"></tbody>
+        </table>
+      </div>
+
+      <div class="cr-card-h" style="margin:18px 0 8px;">
+        <span><i class="fa-solid fa-plus"></i>Duplicatas livres para incluir</span>
+        <span class="cr-kpi-sub" id="cr-oi-livres-resumo">—</span>
+      </div>
+      <div class="cr-filtros" style="margin-bottom:10px;">
+        <input type="text" id="cr-oi-busca" class="cr-inp busca" placeholder="Filtrar por cliente, NF ou OS..." oninput="crRenderItensOperacao()" />
+      </div>
+      <div class="cr-tbl-wrap" style="max-height:240px;overflow-y:auto;">
+        <table class="cr-tbl">
+          <thead><tr>
+            <th>Vencimento</th><th>Cliente</th><th class="cr-col-apoio">NF</th>
+            <th class="cr-num">Valor</th><th style="width:38px;"></th>
+          </tr></thead>
+          <tbody id="cr-tb-oi-livres"></tbody>
+        </table>
+      </div>
+
+      <div class="cr-resumo-box" style="margin:16px 0 0;" id="cr-oi-simulacao"></div>
+    </div>
+    <div class="cr-modal-f">
+      <span class="cr-spacer"></span>
+      <button class="cr-btn" onclick="crFechar('cr-modal-op-itens')">Fechar</button>
+      <button class="cr-btn cr-btn-primary" onclick="crSalvarItensOperacao()"><i class="fa-solid fa-floppy-disk"></i>Salvar pacote</button>
     </div>
   </div>
 </div>

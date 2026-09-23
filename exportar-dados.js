@@ -1,3 +1,4 @@
+require('dotenv').config();
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
@@ -6,7 +7,13 @@ const { execSync } = require('child_process');
 const DIR = __dirname;
 const ARQUIVO = path.join(DIR, 'dados.json');
 
-const config = require('./config.local.json');
+const config = {
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT, 10),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE
+};
 
 const git = cmd => execSync('git ' + cmd, { cwd: DIR, stdio: 'pipe' }).toString().trim();
 

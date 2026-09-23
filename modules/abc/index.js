@@ -82,7 +82,7 @@ function exportABCPDF(){
   const d=window._abcData;if(!d)return;
   const {abc,total,osCount}=d;
   const now=new Date();
-  const hoje=now.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const hoje=now.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
   const fmtM=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const logoEl=document.querySelector('#screen-home .home-header img');
   const logoSrc=logoEl?logoEl.src:'';

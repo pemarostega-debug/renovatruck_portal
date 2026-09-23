@@ -43,8 +43,14 @@ arquivo "OSs detalhe" arrastado para a tela.
 
 ## 2. Ligar o portal
 
-No `index.html`, procure `COLE_AQUI_A_URL_DO_RESULTADO_SEMANAL` e troque pela URL do
-passo 1.6. Commit + push — o GitHub Pages publica sozinho.
+No `index.html`, procure `RESULTADO_SEMANAL_API` dentro do bloco `CONFIG` (perto do
+topo, junto das outras URLs e IDs de planilha) e cole a URL do passo 1.6. Commit +
+push — o GitHub Pages publica sozinho.
+
+**Enquanto esse campo estiver vazio**, o módulo só enxerga a planilha do gerente:
+ele sabe *quais* OSs fecharam na semana, mas não *o que* tem dentro delas. Sem as
+linhas da `vw_os_produto_serviço` não há peça, serviço, custo nem margem — e toda
+OS aparece como "sem itens no detalhe". É o passo que liga o módulo de verdade.
 
 ## 3. Extrator na VPS
 
@@ -83,8 +89,19 @@ Opções úteis:
 2. O cartão "Peças e serviços — banco do Genesis" deve mostrar as linhas e a hora da extração.
 3. Informe a **folha mensal dos produtivos** no painel de parâmetros. A base passa a
    valer para todos os admins (fica na aba `Parametros`, não no código).
-4. Na reunião: escolha a semana no seletor, escreva a aposta, clique **Salvar fechamento**
-   e gere o **PDF**.
+4. Na reunião: escolha a semana no seletor, clique **Salvar fechamento** e gere o **PDF**.
+
+### De onde vem cada número
+
+| O quê | Fonte |
+|---|---|
+| Quais OSs fecharam na semana | Planilha do gerente (`SHEET_FINALIZADAS_ID`, aba "Serviços Finalizados") — a mesma do gráfico de OSs finalizadas por dia do Dashboard |
+| O que tem dentro de cada OS | `vw_os_produto_serviço`, via extrator da VPS → Apps Script |
+
+As duas se cruzam pelo **número da OS**. O seletor de semanas cobre todas as
+semanas com OS lançada na planilha, da primeira em diante — semana antiga abre
+com a análise completa, desde que a janela do extrator (`--desde`) alcance a data
+de geração daquelas OSs.
 
 ---
 

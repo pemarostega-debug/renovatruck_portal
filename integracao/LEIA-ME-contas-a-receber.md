@@ -188,14 +188,15 @@ Três situações diferentes, três ações diferentes:
 
 ### Política de antecipação por cliente
 
-Quatro regras por cliente, todas opcionais:
+Cinco regras por cliente, todas opcionais:
 
 - **Elegibilidade** — pode ou não antecipar OS sem pedido;
 - **% máximo antecipável** da OS;
 - **Dias até faturar + prazo de vencimento** — projetam o vencimento da OS, que
   é o número que o fundo usa para calcular o deságio de um recebível que ainda
   não existe;
-- **Teto de exposição** em R$.
+- **Teto de exposição** em R$;
+- **Regra de pagamento** — ver abaixo.
 
 Cliente sem política cadastrada cai no **padrão da casa: pode antecipar
 duplicata emitida, mas não OS sem pedido** — antecipar recebível que ainda não
@@ -209,6 +210,87 @@ de vencimento continua manual — vem da negociação comercial, não do sistema
 Os tetos **avisam, não bloqueiam**: é regra de gestão, e existe caso legítimo de
 estourar com aprovação da diretoria. Bloquear em silêncio faria o usuário
 procurar o motivo no lugar errado.
+
+### Regra de pagamento do cliente
+
+Cliente grande não paga quando a nota vence: paga **no dia dele**. Sem isso a
+projeção de caixa erra por até um mês e o borderô sai com prazo errado.
+
+Dois formatos, no cadastro da política:
+
+| Regra | Campo | Exemplo real |
+|---|---|---|
+| `DIAS_FIXOS` | dias do mês, separados por vírgula | JSL `10,25` · Imediato `20` · Fadel `5,20` |
+| `DIA_SEMANA` | 0=domingo … 6=sábado | Reiterlog: prazo de 30 dias caindo na **quinta** (`4`) |
+
+A regra entra **depois** do prazo: calcula-se o vencimento normal e a data anda
+**para a frente** até o primeiro dia de pagamento do cliente. Nunca para trás —
+isso seria prometer um recebimento antes do combinado. Dia 31 num mês de 30 vira
+o último dia do mês, e não o dia 1 do mês seguinte.
+
+Onde a regra atua:
+
+- no **vencimento estimado** da OS antecipada (`vencimentoEstimado`);
+- no botão **Aplicar regra dos clientes**, na montagem do borderô;
+- como **aviso** no lançamento manual, quando a data digitada não bate com a regra.
+
+A conta vive em `aplicarRegraVencimento()` no Apps Script e tem um espelho em
+`crAplicarRegra()` no portal, para a tela mostrar a data antes de gravar. **Se
+mexer numa, mexa na outra** — o teste que compara as duas está descrito em
+"Cuidados ao mexer no código".
+
+### Corrigir vencimentos na montagem do borderô
+
+A data que vem do Genesis nem sempre é a que o cliente vai pagar. Na aba
+**Antecipar**, o vencimento de cada duplicata é editável na própria linha:
+
+- a data corrigida vale no borderô **e volta para o título** quando a operação é
+  registrada — senão a carteira e o fluxo de caixa ficariam com a data velha;
+- linhas fora da regra do cliente ganham um aviso com a data correta;
+- **Aplicar regra dos clientes** ajusta de uma vez tudo o que está fora da regra.
+  A regra só vale quando está **completa**: `DIAS_FIXOS` sem nenhum dia, ou
+  `DIA_SEMANA` com o dia em branco, são ignoradas em vez de virarem "dia 1" ou
+  "domingo". Quando nada muda, o botão diz **por quê** — lista sem duplicata,
+  todos já no dia certo, ou nenhum cliente com regra cadastrada;
+- **Desfazer correções** volta ao que está gravado.
+
+Para corrigir vencimentos fora de uma operação, o backend expõe
+`titulo_vencimento` (lote de `{ id, data_vencimento, aplicar_regra }`).
+
+### Editar e excluir operações
+
+- **Editar** (`operacao_editar`) muda parceiro, data, observação e — se a operação
+  já estiver **liquidada** — o líquido creditado e a data do crédito. Trocar
+  parceiro ou data refaz o deságio estimado.
+  Se o líquido mudar depois de liquidada, a tela avisa que o título 3.07 no
+  Contas a Pagar ficou com o valor antigo — o ajuste lá é manual, de propósito.
+- **Editar títulos** (`operacao_itens`) troca o conteúdo do borderô sem trocar o
+  número da operação: tira e inclui duplicatas e corrige vencimentos. Ao salvar,
+  valor de face, prazo médio, deságio e líquido estimado são **refeitos**, os
+  títulos que saíram voltam a ficar livres e o vencimento corrigido volta para o
+  título. O servidor recusa:
+  - operação **liquidada** — o dinheiro entrou e o custo real já virou despesa
+    3.07; estorne no Contas a Pagar e cancele a operação antes de remontar;
+  - título **liquidado ou recomprado** saindo do pacote — encostou em dinheiro;
+  - **OS que já virou nota** saindo do pacote — a reconciliação depende dela;
+  - título antecipado em **outra** operação entrando — seria vender o mesmo
+    recebível duas vezes;
+  - pacote vazio — para isso existem cancelar e excluir.
+- **Excluir** (`operacao_excluir`) apaga operação, itens e antecipações de OS, e
+  devolve os títulos. Exige confirmação e é **recusada** quando a operação já
+  gerou despesa no Contas a Pagar ou quando alguma OS do borderô já virou nota.
+  O caminho normal continua sendo **cancelar**, que deixa rastro; excluir é para
+  o borderô lançado errado, que só suja o histórico.
+
+### Entradas sem documento (PIX, dinheiro, serviço sem nota)
+
+Entrou dinheiro e não há nota? Lance manualmente e **deixe a NF em branco**. O
+título conta na carteira, no fluxo de caixa e no BI como qualquer outro, mas
+**não vai para borderô** — fundo nenhum compra recebível sem documento.
+
+A trava anti-duplicidade existe para o sync do Genesis, que sempre traz NF. Dois
+PIX iguais do mesmo cliente no mesmo dia são dois recebimentos de verdade: a tela
+pergunta e, confirmado, grava com chave própria (`permitir_duplicado`).
 
 ---
 
@@ -305,6 +387,10 @@ nunca reordene.**
 **`RecParceiros`** — `id`, `nome`, `tipo`, `cnpj`, `contato`, `email`,
 `telefone`, `taxa_mes`, `tarifa_titulo`, `tac`, `dias_float`, `limite`, `ativo`,
 `observacao`, + auditoria
+
+**`RecPoliticas`** — as três últimas colunas (`regra_venc`, `dias_fixos`,
+`dia_semana`) foram acrescentadas **no fim**, como manda a regra acima: política
+antiga continua lendo certo e simplesmente fica sem regra de pagamento.
 
 **`RecPoliticas`** — `cliente_cod`, `cliente`, `permite_os`, `pct_max_os`,
 `dias_ate_faturar`, `dias_prazo_venc`, `teto_exposicao`, `ativo`, `observacao`,

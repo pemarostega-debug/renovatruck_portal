@@ -36,13 +36,13 @@
 
 'use strict';
 
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
 const RAIZ = path.join(__dirname, '..');
 const SAIDA = path.join(__dirname, 'migracao-contas-pagar.json');
-const CONFIG = path.join(__dirname, 'config.local.json');
 
 const args = process.argv.slice(2);
 const ARQUIVO = args.find(a => !a.startsWith('--'));
@@ -410,8 +410,8 @@ const limpo = s => String(s || '').toUpperCase().normalize('NFD').replace(/[\u03
 const nucleo = s => limpo(s).replace(RUIDO, ' ').replace(/\s+/g, ' ').trim();
 
 async function carregarFornecedores() {
-  if (!fs.existsSync(CONFIG)) {
-    console.warn('! Sem config.local.json: os títulos vão migrar SEM código de fornecedor.');
+  if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD) {
+    console.warn('! Sem variáveis de ambiente (.env): os títulos vão migrar SEM código de fornecedor.');
     console.warn('  A trava anti-duplicidade contra o Genesis fica mais fraca.');
     return null;
   }
@@ -419,7 +419,13 @@ async function carregarFornecedores() {
   try { mysql = require('mysql2/promise'); }
   catch (e) { console.warn('! mysql2 não instalado; seguindo sem código de fornecedor.'); return null; }
 
-  const cfg = JSON.parse(fs.readFileSync(CONFIG, 'utf8'));
+  const cfg = {
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT, 10),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE
+  };
   let cn;
   try {
     cn = await mysql.createConnection(Object.assign({}, cfg, { connectTimeout: 12000 }));

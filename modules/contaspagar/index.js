@@ -84,15 +84,12 @@ const cpBRLc = v => {
   return cpBRL(n);
 };
 
-/** 'YYYY-MM-DD' → 'DD/MM'. Sem new Date(): o fuso rouba um dia. */
+/** 'YYYY-MM-DD' → 'DD/MM/AAAA'. Sem new Date(): o fuso rouba um dia. */
 const cpData = s => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
   return m ? m[3] + '/' + m[2] + '/' + m[1] : '—';
 };
-const cpDataLonga = s => {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
-  return m ? m[3] + '/' + m[2] + '/' + m[1] : '—';
-};
+const cpDataLonga = cpData;
 
 /** Diferença em dias entre duas datas ISO, sem passar por Date/fuso. */
 function cpDias(de, ate) {
