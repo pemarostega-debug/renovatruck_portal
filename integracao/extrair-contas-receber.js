@@ -115,18 +115,42 @@ const normalizarChave = v =>
  * é R$ 281,46 da OS 4463 em 15/07 e também R$ 1.610,00 da OS 4267 em 04/08.
  * Sem a emissão na chave uma das duas seria descartada como duplicata, e a
  * empresa perderia o recebível calada.
+ *
+ * O TIPO (peça/serviço) também entra na chave, pelo mesmo motivo: o Genesis
+ * usa sequências de numeração separadas para cada um, então a NF 372 de
+ * serviço de uma OS pode colidir com a NF 372 de peça de outra OS, mesmo
+ * cliente e mesma emissão. Foi o caso da OS 4604 (NF 372/serviço vs. a NF 372
+ * de peça de outra OS) — sem o tipo, uma das duas some do lote como "repetida".
  */
 function chaveNatural(t) {
   const parc = num(t.parcela) || 1;
   const nf = normalizarChave(t.numero_nf);
   const cod = normalizarChave(t.cliente_cod);
   const emi = t.data_emissao || '';
+  const tipo = tipoNf(t.natureza_operacao || t.tipo_nf);
 
-  if (nf && cod) return 'NF|' + nf + '|' + cod + '|' + emi + '|' + parc;
-  if (nf) return 'NF|' + nf + '|' + normalizarChave(t.cliente) + '|' + emi + '|' + parc;
+  if (nf && cod) return 'NF|' + nf + '|' + cod + '|' + emi + '|' + parc + '|' + tipo;
+  if (nf) return 'NF|' + nf + '|' + normalizarChave(t.cliente) + '|' + emi + '|' + parc + '|' + tipo;
 
   return 'AV|' + normalizarChave(t.cliente) + '|' +
     (t.data_vencimento || '') + '|' + num(t.valor_total).toFixed(2) + '|' + parc;
+}
+
+/**
+ * PECA | SERVICO | '' a partir do texto de natureza_operacao do Genesis.
+ *
+ * SERVIÇO é checado ANTES de mercadoria: o Genesis grava "VENDA DE SERVIÇO"
+ * pra nota de serviço, que começa com "VENDA" igual à de peça — só o miolo do
+ * texto ("SERVIÇO" vs. "MERCADORIA") distingue as duas.
+ *
+ * Idem tipoNfRec() do contas-receber.gs — mudou aqui, mude lá.
+ */
+function tipoNf(valor) {
+  const v = normalizarChave(valor);
+  if (v === 'PECA' || v === 'SERVICO') return v;
+  if (v.indexOf('SERVICO') >= 0 || v.indexOf('SERVI') >= 0 || v.indexOf('PRESTA') >= 0) return 'SERVICO';
+  if (v.indexOf('MERCADORIA') >= 0 || v.indexOf('VENDA') === 0 || v.indexOf('REMESSA') === 0) return 'PECA';
+  return '';
 }
 
 /** "NF000369/3" → { nf: '369', parcela: 3 }. "NF000359" → { nf:'359', parcela:1 } */
@@ -351,6 +375,7 @@ async function extrair() {
         parcela: p.parcela,
         total_parcelas: p.total_parcelas,
         natureza_operacao: String(n.natureza_operacao || ''),
+        tipo_nf: tipoNf(n.natureza_operacao),
         forma_pagamento: String(n.forma_pagamento || ''),
         descricao: n.num_pedido ? 'OS ' + n.num_pedido : '',
         empresa: 'RENOVA',
