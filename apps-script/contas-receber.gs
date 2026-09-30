@@ -97,7 +97,13 @@ const CAB_REC_TITULOS = [
   'criado_em',
   'criado_por',
   'atualizado_em',
-  'atualizado_por'
+  'atualizado_por',
+  // O Genesis usa sequências de numeração separadas para NF de peça e de
+  // serviço: a NF 372 de serviço da OS 4604 pode ter o mesmo número que uma
+  // NF 372 de peça de outra OS, com o mesmo cliente e a mesma emissão. Sem
+  // esta coluna na chave, chaveNaturalRec() as via como a mesma nota
+  // duplicada e uma das duas era perdida ou barrada no cadastro.
+  'tipo_nf'            // PECA | SERVICO | '' (derivado de natureza_operacao)
 ];
 
 const RT = {};
@@ -537,6 +543,11 @@ function bootstrapRec() {
  * vencimento + valor, que é o que identifica um lançamento repetido digitado
  * à mão.
  *
+ * O TIPO (peça/serviço) também entra na chave: o Genesis usa sequências de
+ * numeração separadas para cada um, e "372" pode ser peça de uma OS e
+ * serviço de outra com o mesmo cliente e a mesma emissão — sem o tipo, a
+ * segunda nota que chegasse seria vista como duplicata da primeira.
+ *
  * Esta função existe idêntica em extrair-contas-receber.js. Mudou aqui, mude lá.
  */
 function chaveNaturalRec(t) {
@@ -544,12 +555,30 @@ function chaveNaturalRec(t) {
   const nf   = normalizarChaveRec(nfBaseRec(t.numero_nf, parc));
   const cod  = normalizarChaveRec(t.cliente_cod);
   const emi  = dataParaISORec(t.data_emissao);
+  const tipo = tipoNfRec(t.natureza_operacao || t.tipo_nf);
 
-  if (nf && cod) return 'NF|' + nf + '|' + cod + '|' + emi + '|' + parc;
-  if (nf)        return 'NF|' + nf + '|' + normalizarChaveRec(t.cliente) + '|' + emi + '|' + parc;
+  if (nf && cod) return 'NF|' + nf + '|' + cod + '|' + emi + '|' + parc + '|' + tipo;
+  if (nf)        return 'NF|' + nf + '|' + normalizarChaveRec(t.cliente) + '|' + emi + '|' + parc + '|' + tipo;
 
   return 'AV|' + normalizarChaveRec(t.cliente) + '|' +
          (dataParaISORec(t.data_vencimento) || '') + '|' + numeroRec(t.valor_total).toFixed(2) + '|' + parc;
+}
+
+/**
+ * PECA | SERVICO | '' a partir do texto de natureza_operacao (CFOP do
+ * Genesis). SERVIÇO é checado ANTES de mercadoria: o Genesis grava
+ * "VENDA DE SERVIÇO" pra nota de serviço, que começa com "VENDA" igual à de
+ * peça — só o miolo do texto ("SERVIÇO" vs. "MERCADORIA") distingue as duas.
+ *
+ * Aceita também já receber 'PECA'/'SERVICO' pronto (ex.: título editado na
+ * tela, que não tem mais o texto original do CFOP à mão).
+ */
+function tipoNfRec(valor) {
+  const v = normalizarChaveRec(valor);
+  if (v === 'PECA' || v === 'SERVICO') return v;
+  if (v.indexOf('SERVICO') >= 0 || v.indexOf('SERVI') >= 0 || v.indexOf('PRESTA') >= 0) return 'SERVICO';
+  if (v.indexOf('MERCADORIA') >= 0 || v.indexOf('VENDA') === 0 || v.indexOf('REMESSA') === 0) return 'PECA';
+  return '';
 }
 
 /**
@@ -665,6 +694,8 @@ function montarLinhaRec(t, existente, quem) {
   linha[RT.criado_por]        = (existente && existente[RT.criado_por]) || quem;
   linha[RT.atualizado_em]     = agora;
   linha[RT.atualizado_por]    = quem;
+  linha[RT.tipo_nf]           = tipoNfRec(t.tipo_nf || t.natureza_operacao) ||
+                                 (existente && existente[RT.tipo_nf]) || '';
 
   return linha;
 }

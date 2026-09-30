@@ -1330,7 +1330,7 @@ async function cpAbrirSync() {
   if (!cpPodeEditar()) { cpAviso('Seu acesso é de consulta.', 'info'); return; }
   cpAbrir('cp-modal-sync');
   document.getElementById('cp-tb-sync').innerHTML =
-    '<tr><td colspan="7" class="cp-vazio">Buscando notas do Genesis…</td></tr>';
+    '<tr><td colspan="8" class="cp-vazio">Buscando notas do Genesis…</td></tr>';
   document.getElementById('cp-sync-resumo').innerHTML = '';
   document.getElementById('cp-sync-aviso').innerHTML = '';
   CP.sync = { notas: [], marcadas: {}, existentes: {}, suspeitos: {}, naturezas: {} };
@@ -1345,7 +1345,7 @@ async function cpAbrirSync() {
 
     if (!CP.sync.notas.length) {
       document.getElementById('cp-tb-sync').innerHTML =
-        `<tr><td colspan="7" class="cp-vazio">A fila de aprovação está vazia.<br><br>
+        `<tr><td colspan="8" class="cp-vazio">A fila de aprovação está vazia.<br><br>
          Rode na máquina do escritório:<br>
          <code>node integracao/extrair-contas-pagar.js --enviar --api &lt;url&gt; --token &lt;token&gt;</code></td></tr>`;
       return;
@@ -1374,10 +1374,17 @@ async function cpAbrirSync() {
       `Extraído do Genesis em ${geradoEm} · janela ${p.janela ? cpDataLonga(p.janela.desde) + ' a ' + cpDataLonga(p.janela.ate) : '—'}`;
 
     cpSyncRenderResumo(p);
+
+    // Já lançada não tem mais o que aprovar — some da lista em vez de ficar
+    // ali desabilitada. Possível duplicata continua aparecendo: é ambíguo,
+    // quem decide é o operador.
+    CP.sync.notas = CP.sync.notas.filter(n => !CP.sync.existentes[n.chave_origem]);
+    CP.sync.notas.sort((a, b) => String(a.data_emissao || '').localeCompare(String(b.data_emissao || '')));
+
     cpSyncRender();
   } catch (e) {
     document.getElementById('cp-tb-sync').innerHTML =
-      `<tr><td colspan="7" class="cp-vazio">Não consegui ler a fila de aprovação.<br><br>
+      `<tr><td colspan="8" class="cp-vazio">Não consegui ler a fila de aprovação.<br><br>
        <b>${cpEsc(e.message)}</b></td></tr>`;
   }
 }
@@ -1408,6 +1415,13 @@ function cpSyncRenderResumo(p) {
 }
 
 function cpSyncRender() {
+  if (!CP.sync.notas.length) {
+    document.getElementById('cp-tb-sync').innerHTML =
+      '<tr><td colspan="8" class="cp-vazio">Nenhuma nota nova — tudo já foi lançado.</td></tr>';
+    cpSyncAtualizarRodape();
+    return;
+  }
+
   const analiticas = CP.plano.filter(c => c.tipo === 'ANALITICA' && c.ativo);
 
   document.getElementById('cp-tb-sync').innerHTML = CP.sync.notas.map(n => {
@@ -1432,6 +1446,7 @@ function cpSyncRender() {
     return `<tr class="cp-sync-linha ${classe}">
       <td><input type="checkbox" ${existe ? 'disabled' : ''} ${CP.sync.marcadas[k] ? 'checked' : ''}
                  onchange="cpSyncMarcar('${cpEsc(k)}', this.checked)" /></td>
+      <td style="white-space:nowrap;">${cpDataLonga(n.data_emissao)}</td>
       <td style="white-space:nowrap;font-weight:700;">${cpDataLonga(n.data_vencimento)}</td>
       <td class="cp-forn" title="${cpEsc(n.fornecedor)}">${cpEsc(n.fornecedor)}
         <div style="font-size:.66rem;color:var(--muted);font-weight:600;">cód. ${cpEsc(n.fornecedor_cod || '—')}</div></td>
