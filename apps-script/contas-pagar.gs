@@ -25,6 +25,19 @@
 
 const CP_PLANILHA_ID = '1EftBE75ZtNOolVwpYN-Zs1OqhdvbpDNm4-DieoHuW_E';
 
+// A planilha é compartilhada com o Contas a Receber (várias abas, muita
+// gente escrevendo) e SpreadsheetApp.openById() nela não é grátis. Antes,
+// cada função abria a planilha de novo — inclusive registrar(), chamada no
+// fim de toda gravação — então uma única requisição podia abrir o arquivo
+// duas vezes. Abrir uma vez e reaproveitar dentro da mesma execução (o cache
+// não atravessa requisições, só dura enquanto esta chamada estiver rodando)
+// foi o que tirou o doPost de sync_gravar de dezenas de segundos.
+let _cpSS = null;
+function abrirCP() {
+  if (!_cpSS) _cpSS = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  return _cpSS;
+}
+
 const ABA_TITULOS = 'Titulos';
 const ABA_PLANO   = 'PlanoContas';
 const ABA_FORN    = 'Fornecedores';
@@ -248,7 +261,7 @@ function doPost(e) {
 
 /** Rode uma vez, na mão, depois de colar o script. Idempotente. */
 function instalar() {
-  const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  const ss = abrirCP();
   garantirAba(ss, ABA_TITULOS, CAB_TITULOS);
   garantirAba(ss, ABA_PLANO,   CAB_PLANO);
   garantirAba(ss, ABA_FORN,    CAB_FORN);
@@ -351,7 +364,7 @@ function semearPlano(ss) {
  * Rode na mão pelo editor do Apps Script depois de colar uma versão nova.
  */
 function garantirContasNovas() {
-  const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  const ss = abrirCP();
   const sh = ss.getSheetByName(ABA_PLANO) || garantirAba(ss, ABA_PLANO, CAB_PLANO);
   formatarPlano(ss);
 
@@ -377,7 +390,7 @@ function garantirContasNovas() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 function abaTitulos() {
-  const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  const ss = abrirCP();
   let sh = ss.getSheetByName(ABA_TITULOS);
   if (!sh) { instalar(); sh = ss.getSheetByName(ABA_TITULOS); }
   return sh;
@@ -433,7 +446,7 @@ function listarTitulos(params) {
 }
 
 function lerPlano() {
-  const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  const ss = abrirCP();
   const sh = ss.getSheetByName(ABA_PLANO);
   if (!sh || sh.getLastRow() < 2) return [];
   const linhas = sh.getRange(2, 1, sh.getLastRow() - 1, CAB_PLANO.length).getValues();
@@ -448,7 +461,7 @@ function lerPlano() {
 }
 
 function lerFornecedores() {
-  const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  const ss = abrirCP();
   const sh = ss.getSheetByName(ABA_FORN);
   if (!sh || sh.getLastRow() < 2) return [];
   const linhas = sh.getRange(2, 1, sh.getLastRow() - 1, CAB_FORN.length).getValues();
@@ -1014,7 +1027,7 @@ function importar(titulos, origem, sessao) {
  * Nada aqui vira título — é uma sala de espera para o operador aprovar.
  */
 function gravarStaging(notas, geradoEm, janela, sessao, substituir) {
-  const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  const ss = abrirCP();
   const sh = ss.getSheetByName(ABA_SYNC) || garantirAba(ss, ABA_SYNC, CAB_SYNC);
   const carimbo = geradoEm || new Date().toISOString();
 
@@ -1040,7 +1053,7 @@ function gravarStaging(notas, geradoEm, janela, sessao, substituir) {
 }
 
 function lerStaging() {
-  const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  const ss = abrirCP();
   const sh = ss.getSheetByName(ABA_SYNC);
   if (!sh || sh.getLastRow() < 2) return { notas: [], gerado_em: '', janela: null };
 
@@ -1062,7 +1075,7 @@ function lerStaging() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 function salvarPlano(contas, sessao) {
-  const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  const ss = abrirCP();
   const sh = ss.getSheetByName(ABA_PLANO);
 
   const codigos = {};
@@ -1310,7 +1323,7 @@ function dataParaISO(v) {
 
 function registrar(quem, acao, id, detalhe) {
   try {
-    const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+    const ss = abrirCP();
     const sh = ss.getSheetByName(ABA_LOG) || garantirAba(ss, ABA_LOG, CAB_LOG);
     sh.appendRow([new Date(), quem || '', acao, id || '', detalhe || '']);
   } catch (e) {
@@ -1335,7 +1348,7 @@ function json(obj) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 function abaFixas() {
-  const ss = SpreadsheetApp.openById(CP_PLANILHA_ID);
+  const ss = abrirCP();
   let sh = ss.getSheetByName(ABA_FIXAS);
   if (!sh) { garantirAba(ss, ABA_FIXAS, CAB_FIXAS); sh = ss.getSheetByName(ABA_FIXAS); }
   return sh;
