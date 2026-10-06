@@ -53,11 +53,14 @@ async function rvTentar(url, opcoes, tentativas){
   for(let i = 0; i < vezes; i++){
     if(i) await new Promise(r => setTimeout(r, 400 * Math.pow(3, i - 1)));
     const cancelar = new AbortController();
-    const relogio = setTimeout(() => cancelar.abort(), 20000);
+    const relogio = setTimeout(() => cancelar.abort(), 60000);
     try{
       const r = await fetch(url, Object.assign({}, opcoes, { signal: cancelar.signal }));
       return await r.json();
     }catch(e){
+      // Timeout não é falha de rede: o servidor ainda está trabalhando, e
+      // reenviar só empilha mais requisições na fila dele.
+      if(e.name === 'AbortError') throw e;
       ultimo = e;
     }finally{
       clearTimeout(relogio);
