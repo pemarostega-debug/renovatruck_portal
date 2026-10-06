@@ -131,8 +131,10 @@ const crPodeEditar = () => typeof rvPodeEditar === 'function' ? rvPodeEditar() :
 // ── Comunicação com o Apps Script ────────────────────────────────────────────
 async function crGet(action, params) {
   const q = new URLSearchParams(Object.assign({ action: action }, params || {}));
-  const r = await fetch(CR.API + '?' + q.toString());
-  const d = await r.json();
+  // rvBuscar repete a leitura quando o Apps Script devolve resposta torta
+  // (ver core.js). crPost continua sem repetição, de propósito: gravação
+  // repetida duplica título.
+  const d = await rvBuscar(CR.API + '?' + q.toString());
   if (!d.success) throw new Error(d.error || 'Falha ao consultar o servidor.');
   return d.data;
 }

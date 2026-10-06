@@ -68,12 +68,7 @@ async function doLogin(){
   if(!usuario){ falhar('Informe o usuário.'); return; }
   botao.disabled = true; botao.textContent = 'Entrando…';
   try{
-    const r = await fetch(API_MANUAL, {
-      method:'POST', mode:'cors',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({action:'login', usuario, senha})
-    });
-    const d = await r.json();
+    const d = await rvPostar(API_MANUAL, {action:'login', usuario, senha});
     if(!d.success){ falhar(d.error || 'Usuário ou senha inválidos.'); return; }
     RV = { token:d.token, usuario:d.usuario, nome:d.nome, papel:d.papel, degradado:false };
     rvSalvarSessao(); rvEntrar();
@@ -89,7 +84,7 @@ async function doLogin(){
       rvSalvarSessao(); rvEntrar();
       setTimeout(()=>alert('Não consegui validar seu acesso no servidor agora.\n\nVocê entrou em modo consulta: dá para ver tudo, mas não para editar. Tente novamente mais tarde para voltar ao acesso completo.'), 400);
     } else {
-      falhar('Sem conexão com o servidor de acesso. Tente novamente.');
+      falhar('O servidor de acesso não respondeu, mesmo depois de três tentativas. Aguarde alguns instantes e tente de novo.');
     }
   }finally{
     botao.disabled = false; botao.textContent = 'Acessar';

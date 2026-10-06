@@ -36,6 +36,19 @@
 // Mesma planilha do Contas a Pagar: é o banco financeiro único da empresa.
 const CR_PLANILHA_ID = '1EftBE75ZtNOolVwpYN-Zs1OqhdvbpDNm4-DieoHuW_E';
 
+// A planilha é grande e compartilhada com o Contas a Pagar, e openById() nela
+// não é grátis. Antes, cada leitura abria o arquivo de novo — um único
+// bootstrap abria oito vezes — e a requisição estourava o tempo do Apps
+// Script, que o navegador mostra como ERR_CONNECTION_CLOSED / "Failed to
+// fetch". O cache não atravessa requisições: dura só enquanto esta chamada
+// roda, então o objeto nunca fica velho entre execuções. Mesma correção que
+// tirou o sync do Contas a Pagar de dezenas de segundos — ver abrirCP().
+let _crSS = null;
+function abrirCR() {
+  if (!_crSS) _crSS = SpreadsheetApp.openById(CR_PLANILHA_ID);
+  return _crSS;
+}
+
 /**
  * URL /exec do Contas a Pagar. É por aqui que o custo da operação vira despesa
  * financeira lançada e baixada — ver liquidarOperacao().
@@ -294,7 +307,7 @@ function doPost(e) {
 
 /** Rode uma vez, na mão, depois de colar o script. Idempotente. */
 function instalar() {
-  const ss = SpreadsheetApp.openById(CR_PLANILHA_ID);
+  const ss = abrirCR();
   garantirAbaRec(ss, ABA_REC_TITULOS,   CAB_REC_TITULOS);
   garantirAbaRec(ss, ABA_REC_PARCEIROS, CAB_REC_PARCEIROS);
   garantirAbaRec(ss, ABA_REC_POLITICAS, CAB_REC_POLITICAS);
@@ -356,7 +369,7 @@ function forcarTextoRec(sh, linha) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 function abaRec(nome, cabecalho) {
-  const ss = SpreadsheetApp.openById(CR_PLANILHA_ID);
+  const ss = abrirCR();
   let sh = ss.getSheetByName(nome);
   if (!sh) { instalar(); sh = ss.getSheetByName(nome); }
   return sh;
@@ -514,13 +527,17 @@ function lerAntecipacoesOS() {
  * custa mais em latência do que em processamento — o portal abre com um fetch.
  */
 function bootstrapRec() {
+  // RecTitulos é a aba maior do módulo. contarStagingRec() precisa das chaves
+  // de origem dela, então recebe o que já foi lido aqui: reler a aba inteira
+  // uma segunda vez na mesma requisição era metade do tempo do bootstrap.
+  const titulos = lerTitulosRec();
   return {
-    titulos: lerTitulosRec(),
+    titulos: titulos,
     parceiros: lerParceiros(),
     politicas: lerPoliticas(),
     operacoes: lerOperacoes(),
     antecipacoes_os: lerAntecipacoesOS(),
-    fila_sync: contarStagingRec(),
+    fila_sync: contarStagingRec(titulos),
     hoje: Utilities.formatDate(new Date(), 'GMT-3', 'yyyy-MM-dd')
   };
 }
@@ -2147,7 +2164,7 @@ function reconciliarAntecipacoesOS(sessao) {
  * valor a receber não podem sair daqui.
  */
 function gravarStagingRec(notas, geradoEm, janela, substituir) {
-  const ss = SpreadsheetApp.openById(CR_PLANILHA_ID);
+  const ss = abrirCR();
   const sh = ss.getSheetByName(ABA_REC_SYNC) || garantirAbaRec(ss, ABA_REC_SYNC, CAB_REC_SYNC);
 
   if (substituir && sh.getLastRow() > 1) {
@@ -2173,7 +2190,7 @@ function gravarStagingRec(notas, geradoEm, janela, substituir) {
 }
 
 function lerStagingRec() {
-  const ss = SpreadsheetApp.openById(CR_PLANILHA_ID);
+  const ss = abrirCR();
   const sh = ss.getSheetByName(ABA_REC_SYNC);
   if (!sh || sh.getLastRow() < 2) return { gerado_em: '', notas: [], existentes: {} };
 
@@ -2195,15 +2212,15 @@ function lerStagingRec() {
   };
 }
 
-function contarStagingRec() {
-  const ss = SpreadsheetApp.openById(CR_PLANILHA_ID);
+function contarStagingRec(titulos) {
+  const ss = abrirCR();
   const sh = ss.getSheetByName(ABA_REC_SYNC);
   if (!sh || sh.getLastRow() < 2) return { total: 0, novas: 0, gerado_em: '' };
 
   const linhas = sh.getRange(2, 1, sh.getLastRow() - 1, CAB_REC_SYNC.length).getValues();
   const existentes = {};
-  lerBruto(ABA_REC_TITULOS, CAB_REC_TITULOS).forEach(function (l) {
-    const k = String(l[RT.chave_origem] || '');
+  titulos.forEach(function (t) {
+    const k = String(t.chave_origem || '');
     if (k) existentes[k] = true;
   });
   let novas = 0;
@@ -2357,7 +2374,7 @@ function dataParaISORec(v) {
 
 function registrarRec(quem, acao, ref, detalhe) {
   try {
-    const ss = SpreadsheetApp.openById(CR_PLANILHA_ID);
+    const ss = abrirCR();
     const sh = ss.getSheetByName(ABA_REC_LOG) || garantirAbaRec(ss, ABA_REC_LOG, CAB_REC_LOG);
     sh.appendRow([new Date(), quem || '', acao, ref || '', detalhe || '']);
   } catch (e) {
