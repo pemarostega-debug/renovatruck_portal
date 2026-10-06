@@ -598,7 +598,11 @@ function montarLinha(t, existente, quem) {
   linha[COL.origem]          = String(t.origem || (existente ? existente[COL.origem] : 'MANUAL') || 'MANUAL');
   linha[COL.chave_origem]    = chaveNatural(t);
   linha[COL.empresa]         = String(t.empresa || 'RENOVA').toUpperCase();
-  linha[COL.data_emissao]    = paraData(t.data_emissao) || '';
+  // Lançamento sem NF (juros, aporte, aluguel pago direto) não tem emissão de
+  // verdade — sem isso o título some de toda análise por emissão (ver
+  // cpRenderSemEixo). O vencimento é a única data que sempre existe, então é
+  // o que usamos quando ninguém informou uma emissão.
+  linha[COL.data_emissao]    = paraData(t.data_emissao) || venc || '';
   linha[COL.data_vencimento] = venc || '';
   linha[COL.fornecedor]      = String(t.fornecedor || '').trim();
   linha[COL.fornecedor_cod]  = String(t.fornecedor_cod || '').trim();
@@ -1544,6 +1548,42 @@ function previaFixas(competencia) {
 }
 
 /**
+ * Backfill único (06/10/2026): preenche `data_emissao` dos títulos antigos
+ * sem NF (juros, aporte, aluguel pago direto) que ficaram de fora de toda
+ * análise por emissão — ver cpRenderSemEixo. Usa o próprio vencimento do
+ * título, mesma regra que entrou em montarLinha() para os lançamentos novos.
+ * Idempotente: só toca linha com data_emissao vazia. Rode uma vez pelo editor
+ * do Apps Script (menu de execução → backfillEmissaoVencimento) e apague
+ * depois, ou deixe — rodar de novo não faz nada se já não sobrar nenhuma.
+ */
+function backfillEmissaoVencimento() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = abaTitulos();
+    const ultima = sh.getLastRow();
+    if (ultima < 2) return { corrigidos: 0 };
+
+    const faixa = sh.getRange(2, 1, ultima - 1, CAB_TITULOS.length);
+    const linhas = faixa.getValues();
+    let corrigidos = 0;
+
+    linhas.forEach(function (l) {
+      if (!l[COL.data_emissao] && l[COL.data_vencimento]) {
+        l[COL.data_emissao] = l[COL.data_vencimento];
+        corrigidos++;
+      }
+    });
+
+    if (corrigidos) faixa.setValues(linhas);
+    Logger.log('Emissão preenchida em ' + corrigidos + ' título(s).');
+    return { corrigidos: corrigidos };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
  * Gera os títulos da competência a partir dos moldes.
  *
  * Idempotente pela chave natural: rodar de novo no mesmo mês não duplica nada,
@@ -1584,6 +1624,9 @@ function gerarFixas(competencia, ids, sessao) {
       linha[COL.origem]          = 'FIXA';
       linha[COL.chave_origem]    = chave;
       linha[COL.empresa]         = f.empresa || 'RENOVA';
+      // Conta fixa não tem NF/emissão real — usa o 1º dia da competência, senão
+      // o título fica fora de toda análise por emissão (ver cpRenderSemEixo).
+      linha[COL.data_emissao]    = vencimentoFixa(competencia, 1);
       linha[COL.data_vencimento] = vencimentoFixa(competencia, f.dia_vencimento);
       linha[COL.fornecedor]      = f.fornecedor;
       linha[COL.fornecedor_cod]  = f.fornecedor_cod;
