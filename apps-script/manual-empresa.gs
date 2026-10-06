@@ -404,6 +404,7 @@ function gravarCargos(cargos) {
 
 const PROP_PLANILHA_USUARIOS = 'planilha_usuarios_id';
 const PROP_SESSAO = 'sessao_';
+const PROP_ULTIMA_LIMPEZA = 'sessoes_limpeza_em';
 const HORAS_SESSAO = 12;
 const CAB_USUARIOS = ['login', 'nome', 'senha_hash', 'salt', 'papel', 'ativo', 'criado_em'];
 
@@ -412,7 +413,16 @@ function abaUsuarios() {
   let id = props.getProperty(PROP_PLANILHA_USUARIOS);
   let ss = null;
   if (id) {
-    try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; }
+    // NUNCA cair para "criar uma nova" quando já existe um ID gravado. Uma
+    // falha passageira do openById (timeout do Sheets) criaria uma planilha
+    // vazia, sobrescreveria o ID aqui e todos os acessos sumiriam de uma vez,
+    // sobrando só o admin padrão — com a planilha verdadeira órfã no Drive,
+    // sem ninguém saber. Melhor o login falhar e ser tentado de novo.
+    try {
+      ss = SpreadsheetApp.openById(id);
+    } catch (e) {
+      throw new Error('Não consegui abrir a planilha de usuários agora. Tente de novo em instantes.');
+    }
   }
   if (!ss) {
     ss = SpreadsheetApp.create('Renova - Usuarios do Portal (NAO COMPARTILHAR)');
@@ -518,8 +528,22 @@ function encerrarSessao(token) {
   if (token) PropertiesService.getScriptProperties().deleteProperty(PROP_SESSAO + token);
 }
 
+/**
+ * Varre as sessões vencidas no máximo uma vez por hora.
+ *
+ * Rodava a cada login, e é cara: carrega TODAS as propriedades do script e
+ * chama deleteProperty() uma vez por sessão vencida — tudo isso antes de o
+ * usuário entrar. Com sessões acumuladas, somava segundos ao login e podia
+ * estourar o limite de chamadas do PropertiesService, derrubando logins
+ * legítimos. Sessão vencida que ninguém varreu não autentica ninguém:
+ * lerSessao() confere a validade e apaga a que encontrar pelo caminho.
+ */
 function limparSessoesVencidas() {
   const props = PropertiesService.getScriptProperties();
+  const ultima = Number(props.getProperty(PROP_ULTIMA_LIMPEZA) || 0);
+  if (Date.now() - ultima < 3600 * 1000) return;
+  props.setProperty(PROP_ULTIMA_LIMPEZA, String(Date.now()));
+
   const todas = props.getProperties();
   Object.keys(todas).forEach(function (k) {
     if (k.indexOf(PROP_SESSAO) !== 0) return;

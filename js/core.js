@@ -31,6 +31,49 @@ const fmtMoney= v => (v||0).toLocaleString("pt-BR",{style:"currency",currency:"B
 function kbEsc(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ── FETCH ──
+
+/**
+ * Chamadas ao Apps Script com nova tentativa automática.
+ *
+ * O /exec responde 302 para o googleusercontent, e em partida a frio, pico de
+ * uso ou página de erro do Google o corpo volta em HTML — o r.json() estoura e
+ * a tela acusava "sem conexão" com a rede perfeita. Tentar de novo resolve na
+ * maioria das vezes: é exatamente o que a equipe vinha fazendo na mão,
+ * clicando três, quatro, cinco vezes. O relógio existe porque requisição
+ * pendurada não volta sozinha, e esperar para sempre é pior do que tentar de
+ * novo.
+ *
+ * Só para LEITURA e para o login. Repetir uma gravação é perigoso: a primeira
+ * tentativa pode ter gravado e só a resposta ter se perdido, e aí a segunda
+ * duplica o lançamento — em borderô isso é vender o mesmo recebível duas vezes.
+ */
+async function rvTentar(url, opcoes, tentativas){
+  const vezes = tentativas || 3;
+  let ultimo;
+  for(let i = 0; i < vezes; i++){
+    if(i) await new Promise(r => setTimeout(r, 400 * Math.pow(3, i - 1)));
+    const cancelar = new AbortController();
+    const relogio = setTimeout(() => cancelar.abort(), 20000);
+    try{
+      const r = await fetch(url, Object.assign({}, opcoes, { signal: cancelar.signal }));
+      return await r.json();
+    }catch(e){
+      ultimo = e;
+    }finally{
+      clearTimeout(relogio);
+    }
+  }
+  throw ultimo;
+}
+
+const rvBuscar = (url, tentativas) => rvTentar(url, {}, tentativas);
+
+const rvPostar = (url, corpo, tentativas) => rvTentar(url, {
+  method:'POST', mode:'cors',
+  headers:{'Content-Type':'text/plain;charset=utf-8'},
+  body: JSON.stringify(corpo)
+}, tentativas);
+
 // Busca o JSON gerado pela exportação periódica (exportar-dados.js).
 // O parâmetro t evita cache do CDN/navegador.
 async function fetchDados(){
