@@ -82,6 +82,7 @@ Opções úteis:
 | `--desde AAAA-MM-DD` | janela maior (padrão: 1º dia de 8 meses atrás, pela data de geração da OS) |
 | `--view <nome>` | se a view mudar de nome (o script já tenta achar `vw_os_produto_servi%` sozinho) |
 | `--de-arquivo integracao/resultado-semanal-sync.json` | reenviar a última extração sem consultar o banco |
+| `--amostra <nº da OS>` | mostra as linhas cruas daquela OS e marca as colunas que vêm iguais em todas (valor de cabeçalho repetido) — não envia nada |
 
 ## 4. Primeiro uso no portal
 
@@ -107,8 +108,25 @@ de geração daquelas OSs.
 
 ## Decisões que valem conhecer
 
+- **Semana ou mês.** A pílula "Semana · Mês" no topo troca o passo do mesmo
+  estudo: placar, rentabilidade, ABC, OSs, evolução, PDF e Excel seguem juntos.
+  Mês = dia 1º ao último. O fechamento salvo do mês não briga com o da semana.
 - **Semana = segunda a domingo.** Os dias trabalhados para a mão de obra contam
-  segunda a sábado e podem ser corrigidos na tela (feriado).
+  segunda a sábado e podem ser corrigidos na tela (feriado, sábado meio período:
+  o campo aceita 0,5). **No mês o padrão é a base de rateio** (`Dias de trabalho
+  no mês`), não o calendário: a folha mensal já é o custo do mês, e 26 dias
+  úteis contra uma base de 24 inflariam o custo em 8% todo mês.
+- **Desconto sai do valor, não do total.** Desconto de peça abate as peças (pode
+  deixar a peça negativa: na OS 4782, R$ 400 sobre R$ 381,50 de peças dão
+  −R$ 18,50 e total de R$ 781,50); desconto de item de serviço abate o serviço.
+- **Desconto repetido por linha.** Se a origem repetir o desconto do cabeçalho
+  da OS em cada linha do detalhe, o portal conta uma vez por OS e avisa na tela
+  — somar linha a linha daria 17× numa OS com 17 peças. Para ver o que a view
+  entrega de verdade numa OS:
+  `node integracao/extrair-resultado-semanal.js --amostra 4782`
+  (não envia nada; marca as colunas que vêm iguais em todas as linhas).
+- **Curva ABC sem DIV.** Sucata e recondicionada não se recompram: as peças DIV
+  saem da curva e têm tabela própria, uma linha por peça (OS, descrição, qtd, valor).
 - **OS finalizada** vem da planilha do gerente. OS repetida conta uma vez; OS relançada
   numa semana depois de já ter aparecido antes não é contada de novo (a tela avisa).
 - **Código com "DIV"** = peça sem custo de inventário. A análise sai com e sem DIV.

@@ -7,6 +7,7 @@
  *   node integracao/extrair-resultado-semanal.js --desde 2026-01-01 --enviar
  *   node integracao/extrair-resultado-semanal.js --de-arquivo integracao/resultado-semanal-sync.json --enviar
  *                                                                    (reenvia sem consultar o banco)
+ *   node integracao/extrair-resultado-semanal.js --amostra 4782      (mostra as linhas cruas de uma OS)
  *
  * Opções: --view <nome>  --campo-data <coluna>  --api <url /exec>  --token <chave>
  * Para o cron, RS_API_URL e RS_SYNC_TOKEN vêm do .env (fora do git).
@@ -52,14 +53,22 @@ const normH = s => String(s == null ? '' : s).trim().toLowerCase()
   .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
 
 // Colunas que a análise usa (nome normalizado). `obrig` = sem ela não há análise.
+// As "alternativas" existem porque a descrição do item troca de nome conforme a
+// versão da view — sem ela a curva ABC sai só com o código, sem dizer o que é a peça.
 const COLUNAS = [
   { n: 'numeroos', obrig: true }, { n: 'codigoproduto', obrig: true }, { n: 'precocusto', obrig: true },
-  { n: 'qtdproduto' }, { n: 'descricao' }, { n: 'valorpecas' }, { n: 'valortotal' }, { n: 'valordescontototal' },
-  { n: 'quantidadeservico' }, { n: 'descricaosservico' }, { n: 'siglaservico' }, { n: 'valorunitarioservico' },
+  { n: 'qtdproduto' }, { n: 'descricao' }, { n: 'descricaoproduto' }, { n: 'descricaoitem' },
+  { n: 'valorpecas' }, { n: 'valortotal' }, { n: 'valordescontototal' },
+  { n: 'valordescontocabecalho' }, { n: 'valordescontoitens' },
+  { n: 'quantidadeservico' }, { n: 'descricaosservico' }, { n: 'descricaoservico' },
+  { n: 'siglaservico' }, { n: 'valorunitarioservico' },
   { n: 'valortotalservico' }, { n: 'valordescontoitensservico' },
   { n: 'idcliente' }, { n: 'razaocliente' }, { n: 'idvendedor' }, { n: 'nomevendedor' }, { n: 'tiposervico' },
   { n: 'datageracao' }, { n: 'encerrada' }, { n: 'cancelada' }, { n: 'dataencerramentocancelamento' }
 ];
+// Ausências esperadas: a view traz um nome de cada par, nunca os dois. Avisar sobre
+// elas só treinaria o operador a ignorar o aviso.
+const ALTERNATIVAS = [['descricao', 'descricaoproduto', 'descricaoitem'], ['descricaosservico', 'descricaoservico']];
 
 /** Dos campos reais da view, escolhe os que a análise usa. */
 function escolherColunas(campos) {
@@ -112,7 +121,18 @@ async function lerDoBanco(DESDE) {
     const [, campos] = await c.query('SELECT * FROM ' + esc(view) + ' LIMIT 0');
     const sel = escolherColunas(campos.map(f => f.name));
     if (sel.obrigFaltando.length) throw new Error('A view não tem as colunas obrigatórias: ' + sel.obrigFaltando.join(', ') + '. Colunas encontradas: ' + campos.map(f => f.name).join(', '));
-    if (sel.faltando.length) console.log('Aviso — colunas ausentes na view (a análise segue sem elas): ' + sel.faltando.join(', '));
+    // Só reclama de ausência quando NENHUM nome do grupo apareceu.
+    const escolhidasNorm = sel.escolhidas.map(normH);
+    const ausentes = sel.faltando.filter(n => {
+      const grupo = ALTERNATIVAS.find(g => g.indexOf(n) >= 0);
+      return !grupo || !grupo.some(alt => escolhidasNorm.indexOf(alt) >= 0);
+    });
+    if (ausentes.length) console.log('Aviso — colunas ausentes na view (a análise segue sem elas): ' + ausentes.join(', '));
+    ALTERNATIVAS.forEach(g => {
+      if (!g.some(alt => escolhidasNorm.indexOf(alt) >= 0)) {
+        console.log('ATENÇÃO — nenhuma coluna de descrição do grupo "' + g.join('/') + '" existe na view: a curva ABC vai sair só com o código do item.');
+      }
+    });
 
     // Filtra por geração OU por encerramento/cancelamento: uma OS aberta antes da janela mas
     // finalizada dentro dela não pode ficar de fora — senão ela aparece no relatório como
@@ -159,6 +179,33 @@ async function enviar(payload, API, TOKEN, log = console.log) {
   return ultimo;
 }
 
+/**
+ * `--amostra 4782` imprime as linhas cruas de uma OS, sem enviar nada.
+ * É a forma de ver o que a view realmente entrega — se o valor e o desconto são
+ * da LINHA ou se são do cabeçalho da OS repetidos em cada item (o que inflaria a
+ * soma: 17 peças × o mesmo desconto de R$ 400 viram R$ 6.800).
+ */
+function mostrarAmostra(payload, os) {
+  const alvo = String(os).trim();
+  const i = payload.colunas.findIndex(c => normH(c) === 'numeroos');
+  const linhas = payload.linhas.filter(l => String(l[i]).trim().replace(/\.0+$/, '') === alvo);
+  console.log('\nOS ' + alvo + ': ' + linhas.length + ' linha(s) na view "' + (payload.view || payload.origem) + '".');
+  if (!linhas.length) { console.log('Nada encontrado — confira o número ou amplie a janela com --desde.'); return; }
+  payload.colunas.forEach((c, k) => {
+    const vs = linhas.map(l => l[k]);
+    const unicos = Array.from(new Set(vs));
+    const marca = unicos.length === 1 && linhas.length > 1 ? '  <- IGUAL em todas as linhas (valor de cabeçalho?)' : '';
+    console.log('  ' + c.padEnd(34) + vs.map(v => (v === '' ? '-' : String(v).slice(0, 14))).join(' | ').slice(0, 150) + marca);
+  });
+  const soma = nome => {
+    const k = payload.colunas.findIndex(c => normH(c) === nome);
+    if (k < 0) return null;
+    return linhas.reduce((s, l) => s + (parseFloat(String(l[k]).replace(',', '.')) || 0), 0);
+  };
+  console.log('\n  somando linha a linha: valor_total ' + soma('valortotal') + ' · desconto ' + soma('valordescontototal') + ' · serviço ' + soma('valortotalservico'));
+  console.log('  Se algum desses estiver marcado como IGUAL acima, somar linha a linha multiplica o valor — o portal já trata isso, mas vale conferir.');
+}
+
 async function main() {
   const DESDE = opt('desde', padraoDesde());
   let payload;
@@ -177,6 +224,9 @@ async function main() {
     fs.writeFileSync(SAIDA, JSON.stringify(payload));
     console.log(payload.resumo.oss + ' OS(s) · ' + (fs.statSync(SAIDA).size / 1024).toFixed(0) + ' KB em integracao/resultado-semanal-sync.json');
   }
+
+  const amostra = opt('amostra', '');
+  if (amostra) { mostrarAmostra(payload, amostra); return; }
 
   if (tem('enviar')) {
     const API = opt('api', process.env.RS_API_URL || '');

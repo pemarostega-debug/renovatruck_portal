@@ -70,13 +70,66 @@ const RS_CALC = (() => {
     return null;
   }
 
+  /** A descrição do item muda de nome conforme a origem (view, export do Genesis, planilha). */
+  const ALT_DESC_PEC = ['descricao', 'descricaoproduto', 'descricaoitem', 'descproduto', 'nomeproduto', 'produto'];
+  const ALT_DESC_SERV = ['descricaosservico', 'descricaoservico', 'descricaoservicos', 'descsservico', 'descservico', 'nomeservico'];
+
+  /**
+   * Algumas views repetem o valor do CABEÇALHO da OS em TODA linha do detalhe — o
+   * desconto da OS inteira aparece de novo em cada peça. Somar linha a linha daria
+   * N× o valor (foi o que inflou o desconto da OS 4782 para R$ 6.800 em vez de R$ 400).
+   *
+   * A decisão não pode ser por OS isolada: duas peças iguais na mesma OS têm rateio
+   * igual por coincidência. Olha o conjunto — se em praticamente toda OS com mais de
+   * uma linha o campo repete o mesmo número, ele é do cabeçalho. Rateio por item
+   * quase nunca sai idêntico em dezenas de OSs seguidas.
+   */
+  function nivelDoCampo(grupos, valorDe) {
+    let comVarias = 0, constantes = 0;
+    grupos.forEach(linhas => {
+      const vs = linhas.map(valorDe).filter(v => v > 0.0049);
+      if (vs.length < 2) return;
+      comVarias++;
+      if (vs.every(v => Math.abs(v - vs[0]) < 0.005)) constantes++;
+    });
+    return comVarias >= 3 && constantes / comVarias >= 0.9 ? 'cabecalho' : 'linha';
+  }
+
+  /** Desconto da OS a partir das linhas, respeitando o nível detectado. */
+  function descontoDaOS(linhas, valorDe, nivel) {
+    const vs = linhas.map(valorDe).filter(v => v > 0.0049);
+    if (!vs.length) return 0;
+    // No modo cabeçalho as linhas são todas iguais; o máximo é a escolha segura
+    // caso uma OS fuja ao padrão — o desconto do cabeçalho é sempre o maior.
+    return nivel === 'cabecalho' ? Math.max.apply(null, vs) : vs.reduce((s, v) => s + v, 0);
+  }
+
+  /**
+   * Desconto é dado sobre o conjunto, não sobre um item: rateia proporcionalmente
+   * à receita bruta de cada item do grupo. Quando o desconto é maior que o grupo
+   * (acontece: na OS 4782 o desconto de R$ 400 passou dos R$ 381,50 de peças), o
+   * item fica negativo de propósito — é assim que o total da OS fecha.
+   */
+  function ratearDesconto(itens, desconto) {
+    if (!(desconto > 0.0049) || !itens.length) return;
+    const bruto = itens.reduce((s, it) => s + it.receita, 0);
+    let resto = desconto;
+    itens.forEach((it, i) => {
+      const parte = i === itens.length - 1 ? resto : (bruto > 0 ? desconto * (it.receita / bruto) : desconto / itens.length);
+      resto -= parte;
+      it.desconto = parte;
+      it.receitaLiq = it.receita - parte;
+    });
+  }
+
   /**
    * abas: [{nome, rows}] — cada aba de cada arquivo, já em objetos por cabeçalho.
    * Reconhece a aba pelo cabeçalho, não pelo nome, então a planilha da reunião
    * (com TabDin, Finalizadas etc.) serve inteira.
    */
   function lerPlanilhas(abas) {
-    const res = { itens: [], oss: {}, osDetalhe: {}, fontes: [], ignoradas: [], descontos: 0, divCodigos: {}, canceladas: 0 };
+    const res = { itens: [], oss: {}, osDetalhe: {}, fontes: [], ignoradas: [], descontos: 0, divCodigos: {},
+      canceladas: 0, nivelDesconto: 'linha', semDescricao: 0 };
     const donoDetalhe = {}; // OS → aba que forneceu os itens (evita somar duas vezes a mesma OS)
     (abas || []).forEach((a, ia) => {
       const rows = a.rows || [];
@@ -84,8 +137,12 @@ const RS_CALC = (() => {
       const tipo = tipoDaAba(m);
       if (!tipo) { if (rows.length) res.ignoradas.push(a.nome); return; }
       const g = (r, campo) => (m[campo] === undefined ? null : r[m[campo]]);
+      const gAlt = (r, campos) => { for (const c of campos) { const v = g(r, c); if (v != null && String(v).trim() !== '') return v; } return null; };
       let usadas = 0;
       if (tipo === 'detalhe') {
+        // 1ª passada: agrupa por OS. Sem o grupo inteiro não dá para saber se o
+        // desconto vem do cabeçalho repetido nem para ratear sobre as peças.
+        const grupos = new Map();
         rows.forEach(r => {
           const os = osKey(g(r, 'numeroos'));
           if (!os) return;
@@ -93,31 +150,55 @@ const RS_CALC = (() => {
           if (donoDetalhe[os] !== undefined && donoDetalhe[os] !== ia) return;
           donoDetalhe[os] = ia;
           usadas++;
-          const cliente = String(g(r, 'razaocliente') || '').trim();
-          if (!res.osDetalhe[os]) res.osDetalhe[os] = { cliente, encerramento: toDia(g(r, 'dataencerramentocancelamento')) };
-          const cod = String(g(r, 'codigoproduto') == null ? '' : g(r, 'codigoproduto')).trim();
-          if (cod) {
-            const qtd = toNum(g(r, 'qtdproduto')) || 1;
-            let receita = toNum(g(r, 'valortotal'));
-            if (!receita) receita = toNum(g(r, 'valorpecas')) * qtd;
-            const div = /DIV/i.test(cod);
-            if (div) res.divCodigos[cod.toUpperCase()] = (res.divCodigos[cod.toUpperCase()] || 0) + 1;
-            const descPec = toNum(g(r, 'valordescontototal'));
-            res.descontos += descPec;
-            res.itens.push({ os, cliente, tipo: div ? 'div' : 'est', codigo: cod,
-              descricao: String(g(r, 'descricao') || '').trim(), qtd, receita, desconto: descPec,
-              custo: toNum(g(r, 'precocusto')) * qtd, custoUnit: toNum(g(r, 'precocusto')) });
+          if (!grupos.has(os)) grupos.set(os, []);
+          grupos.get(os).push(r);
+        });
+
+        const descPecDe = r => toNum(g(r, 'valordescontototal'));
+        const descServDe = r => toNum(g(r, 'valordescontoitensservico'));
+        const nivelPec = nivelDoCampo(grupos, descPecDe);
+        const nivelServ = nivelDoCampo(grupos, descServDe);
+        if (nivelPec === 'cabecalho' || nivelServ === 'cabecalho') res.nivelDesconto = 'cabecalho';
+
+        grupos.forEach((linhas, os) => {
+          const pecas = [], servicos = [];
+          linhas.forEach(r => {
+            const cliente = String(g(r, 'razaocliente') || '').trim();
+            if (!res.osDetalhe[os]) res.osDetalhe[os] = { cliente, encerramento: toDia(g(r, 'dataencerramentocancelamento')) };
+            const cod = String(g(r, 'codigoproduto') == null ? '' : g(r, 'codigoproduto')).trim();
+            if (cod) {
+              const qtd = toNum(g(r, 'qtdproduto')) || 1;
+              let receita = toNum(g(r, 'valortotal'));
+              if (!receita) receita = toNum(g(r, 'valorpecas')) * qtd;
+              const div = /DIV/i.test(cod);
+              if (div) res.divCodigos[cod.toUpperCase()] = (res.divCodigos[cod.toUpperCase()] || 0) + 1;
+              const descricao = String(gAlt(r, ALT_DESC_PEC) || '').trim();
+              if (!descricao) res.semDescricao++;
+              pecas.push({ os, cliente, tipo: div ? 'div' : 'est', codigo: cod, descricao, qtd, receita,
+                desconto: 0, receitaLiq: receita, custo: toNum(g(r, 'precocusto')) * qtd, custoUnit: toNum(g(r, 'precocusto')) });
+            }
+            const servDesc = String(gAlt(r, ALT_DESC_SERV) || '').trim();
+            const servTot = toNum(g(r, 'valortotalservico'));
+            if (servDesc || servTot) {
+              const qtdS = toNum(g(r, 'quantidadeservico')) || 1;
+              const receita = servTot || toNum(g(r, 'valorunitarioservico')) * qtdS;
+              servicos.push({ os, cliente, tipo: 'serv', codigo: String(g(r, 'siglaservico') || '').trim(),
+                descricao: servDesc, qtd: qtdS, receita, desconto: 0, receitaLiq: receita, custo: 0, custoUnit: 0 });
+            }
+          });
+
+          // Desconto só incide sobre peças (regra da oficina). Sem peça na OS, sobra para o serviço.
+          const descPec = descontoDaOS(linhas, descPecDe, nivelPec);
+          const descServ = descontoDaOS(linhas, descServDe, nivelServ);
+          if (pecas.length) {
+            ratearDesconto(pecas, descPec);
+            ratearDesconto(servicos, descServ);
+          } else {
+            ratearDesconto(servicos, descPec + descServ);
           }
-          const servDesc = String(g(r, 'descricaosservico') || '').trim();
-          const servTot = toNum(g(r, 'valortotalservico'));
-          if (servDesc || servTot) {
-            const qtdS = toNum(g(r, 'quantidadeservico')) || 1;
-            const receita = servTot || toNum(g(r, 'valorunitarioservico')) * qtdS;
-            const descServ = toNum(g(r, 'valordescontoitensservico'));
-            res.descontos += descServ;
-            res.itens.push({ os, cliente, tipo: 'serv', codigo: String(g(r, 'siglaservico') || '').trim(),
-              descricao: servDesc, qtd: qtdS, receita, desconto: descServ, custo: 0, custoUnit: 0 });
-          }
+          res.descontos += descPec + descServ;
+          pecas.forEach(it => res.itens.push(it));
+          servicos.forEach(it => res.itens.push(it));
         });
       } else {
         rows.forEach(r => {
@@ -126,7 +207,8 @@ const RS_CALC = (() => {
           if (ehSim(g(r, 'cancelada'))) { res.canceladas++; return; }
           usadas++;
           const serv = toNum(g(r, 'valorservicos')), pec = toNum(g(r, 'valorpecas'));
-          res.oss[os] = { cliente: String(g(r, 'razaocliente') || '').trim(), serv, pec,
+          const desconto = toNum(g(r, 'valordescontototal'));
+          res.oss[os] = { cliente: String(g(r, 'razaocliente') || '').trim(), serv, pec, desconto,
             total: toNum(g(r, 'valortotal')) || serv + pec, encerramento: toDia(g(r, 'dataencerramento')) };
         });
       }
@@ -198,22 +280,24 @@ const RS_CALC = (() => {
       const its = itensPorOS[l.os] || [];
       const cab = dados.oss[l.os];
       const r = { os: l.os, dia: l.dia, cliente: '', serv: 0, pecEst: 0, pecDiv: 0, custoEst: 0, custoDiv: 0,
-        semDetalhe: 0, desconto: 0, total: 0, situacao: 'ok', itens: its, totalCabecalho: null };
+        pecBruto: 0, servBruto: 0, semDetalhe: 0, desconto: 0, total: 0, situacao: 'ok', itens: its, totalCabecalho: null };
       if (its.length) {
+        // Valores já LÍQUIDOS de desconto: o desconto foi rateado sobre as peças na leitura.
         its.forEach(it => {
+          const liq = it.receitaLiq == null ? it.receita : it.receitaLiq;
           r.desconto += it.desconto || 0;
-          if (it.tipo === 'serv') r.serv += it.receita;
-          else if (it.tipo === 'div') { r.pecDiv += it.receita; r.custoDiv += it.custo; }
-          else { r.pecEst += it.receita; r.custoEst += it.custo; }
+          if (it.tipo === 'serv') { r.serv += liq; r.servBruto += it.receita; }
+          else if (it.tipo === 'div') { r.pecDiv += liq; r.pecBruto += it.receita; r.custoDiv += it.custo; }
+          else { r.pecEst += liq; r.pecBruto += it.receita; r.custoEst += it.custo; }
         });
         r.cliente = (dados.osDetalhe[l.os] || {}).cliente || '';
         if (cab && Math.abs(cab.total - (r.serv + r.pecEst + r.pecDiv)) > 1) { r.situacao = 'diverge'; r.totalCabecalho = cab.total; }
       } else if (dados.osDetalhe[l.os]) {
         r.cliente = dados.osDetalhe[l.os].cliente; // OS existe no detalhe, mas sem itens com valor
-        if (cab) { r.serv = cab.serv; r.semDetalhe = cab.pec; }
+        if (cab) { r.serv = cab.serv; r.semDetalhe = cab.pec - (cab.desconto || 0); r.desconto = cab.desconto || 0; }
         r.situacao = r.semDetalhe > 0 ? 'sem-detalhe' : 'ok';
       } else if (cab) {
-        r.serv = cab.serv; r.semDetalhe = cab.pec; r.cliente = cab.cliente;
+        r.serv = cab.serv; r.semDetalhe = cab.pec - (cab.desconto || 0); r.desconto = cab.desconto || 0; r.cliente = cab.cliente;
         r.situacao = cab.pec > 0 ? 'sem-detalhe' : 'ok';
       } else {
         r.semDetalhe = l.valor || 0;
@@ -225,6 +309,21 @@ const RS_CALC = (() => {
     });
     oss.sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : +a.os - +b.os));
     return { de, ate, oss, avisos };
+  }
+
+  /**
+   * Dias trabalhados que entram no custo da mão de obra.
+   *
+   * Na SEMANA é o calendário: segunda a sábado dentro do intervalo.
+   * No MÊS, não. A folha mensal já É o custo do mês inteiro — setembro tem 26
+   * dias de segunda a sábado contra a base de rateio de 24, e multiplicar por
+   * 26 ÷ 24 inflaria o custo em 8% todo mês, sem que nada tenha sido gasto a
+   * mais. O padrão do mês é a própria base; feriado prolongado se corrige no
+   * campo da tela.
+   */
+  function diasDoPeriodo(passo, de, ate, P) {
+    if (passo === 'mes' && P && P.diasMes > 0) return P.diasMes;
+    return diasUteis(de, ate);
   }
 
   /** Folha → custo do período. Mesma sequência da planilha: (folha + HE) ÷ dias do mês × encargos × dias. */
@@ -278,7 +377,7 @@ const RS_CALC = (() => {
     const abaixo = [];
     per.oss.forEach(o => o.itens.forEach(it => {
       if (it.tipo !== 'est') return;
-      const receita = it.receita * fp;
+      const receita = (it.receitaLiq == null ? it.receita : it.receitaLiq) * fp;
       const sobra = receita * (1 - despPec) - it.custo;
       if (sobra < -0.005) abaixo.push({ os: o.os, cliente: o.cliente, codigo: it.codigo, descricao: it.descricao, qtd: it.qtd,
         receita, custo: it.custo, sobra, margem: receita > 0 ? sobra / receita : null });
@@ -302,32 +401,49 @@ const RS_CALC = (() => {
 
   /** Segunda-feira da semana de uma data "AAAA-MM-DD". */
   const segundaDe = k => somarDias(k, -((deDia(k).getDay() + 6) % 7));
+  /** Dia 1º do mês de uma data, e o último dia desse mês. */
+  const primeiroDoMes = k => k.slice(0, 7) + '-01';
+  const ultimoDoMes = k => { const [y, m] = k.split('-').map(Number); return diaDe(new Date(y, m, 0)); };
+  const somarMeses = (k, n) => { const [y, m] = k.split('-').map(Number); return diaDe(new Date(y, m - 1 + n, 1)); };
 
-  /** Semanas (segunda a domingo) que têm OS finalizada, da mais recente para a mais antiga. */
-  function semanasDisponiveis(o) {
+  /**
+   * O fechamento é o mesmo estudo, mude o passo: 'semana' (segunda a domingo) ou
+   * 'mes' (dia 1º ao último). Tudo que é por período desce daqui.
+   */
+  const PASSO = {
+    semana: { inicio: segundaDe, fim: k => somarDias(k, 6), anda: (k, n) => somarDias(k, 7 * n), max: 104 },
+    mes: { inicio: primeiroDoMes, fim: ultimoDoMes, anda: somarMeses, max: 36 }
+  };
+  const passoDe = p => PASSO[p] || PASSO.semana;
+
+  /** Períodos que têm OS finalizada, do mais recente para o mais antigo. */
+  function periodosDisponiveis(o) {
+    const P = passoDe(o.passo);
     const contagem = {};
-    const conta = (os, dia) => { if (!dia) return; const s = segundaDe(dia); (contagem[s] = contagem[s] || new Set()).add(os); };
+    const conta = (os, dia) => { if (!dia) return; const s = P.inicio(dia); (contagem[s] = contagem[s] || new Set()).add(os); };
     if (o.fonte === 'encerramento') {
       const d = o.dados || { oss: {}, osDetalhe: {} };
       Object.keys(d.oss).forEach(os => conta(os, d.oss[os].encerramento));
       Object.keys(d.osDetalhe).forEach(os => conta(os, d.osDetalhe[os].encerramento));
     } else (o.finalizadas || []).forEach(f => conta(f.os, f.dia));
-    return Object.keys(contagem).sort().reverse().slice(0, 104)
-      .map(de => ({ de, ate: somarDias(de, 6), oss: contagem[de].size }));
+    return Object.keys(contagem).sort().reverse().slice(0, P.max)
+      .map(de => ({ de, ate: P.fim(de), oss: contagem[de].size }));
   }
+  const semanasDisponiveis = o => periodosDisponiveis(Object.assign({ passo: 'semana' }, o));
 
   /**
-   * Indicadores de N semanas terminando na semana de `ateSemana`, sempre com os
-   * MESMOS parâmetros (os da base) para as semanas serem comparáveis entre si.
+   * Indicadores de N períodos terminando no período de `atePeriodo`, sempre com os
+   * MESMOS parâmetros (os da base) para os períodos serem comparáveis entre si.
    * `cobertura` = parte do faturamento com peças e serviços abertos no detalhe.
    */
-  function serieSemanal(o) {
+  function seriePeriodica(o) {
+    const P = passoDe(o.passo);
     const out = [];
-    let de = somarDias(segundaDe(o.ateSemana), -7 * (o.n - 1));
-    for (let i = 0; i < o.n; i++, de = somarDias(de, 7)) {
-      const ate = somarDias(de, 6);
+    let de = P.anda(P.inicio(o.atePeriodo || o.ateSemana), -(o.n - 1));
+    for (let i = 0; i < o.n; i++, de = P.anda(de, 1)) {
+      const ate = P.fim(de);
       const per = montarPeriodo({ fonte: o.fonte, finalizadas: o.finalizadas, dados: o.dados, de, ate });
-      const mo = custoMaoDeObra(o.P, diasUteis(de, ate));
+      const mo = custoMaoDeObra(o.P, diasDoPeriodo(o.passo, de, ate, o.P));
       const r = calcular(per, o.P, mo && mo.total);
       const ind = indicadores(per, r);
       const semAbrir = r.t.semDetalhe;
@@ -337,8 +453,11 @@ const RS_CALC = (() => {
     }
     return out;
   }
+  const serieSemanal = o => seriePeriodica(Object.assign({ passo: 'semana' }, o));
 
-  return { toNum, toDia, diasUteis, somarDias, segundaDe, lerPlanilhas, lerFinalizadas, montarPeriodo, custoMaoDeObra, calcular, indicadores, semanasDisponiveis, serieSemanal, normH };
+  return { toNum, toDia, diasUteis, diasDoPeriodo, somarDias, somarMeses, segundaDe, primeiroDoMes, ultimoDoMes, passoDe,
+    lerPlanilhas, lerFinalizadas, montarPeriodo, custoMaoDeObra, calcular, indicadores,
+    periodosDisponiveis, semanasDisponiveis, seriePeriodica, serieSemanal, normH };
 })();
 /* RS-CALC-FIM */
 
@@ -369,7 +488,7 @@ const RS_CAMPOS = [
   { k: 'reajPec', l: 'Reajuste no preço das peças', s: 'negativo = desconto', u: '%', step: 1 },
   { k: 'custoDivPct', l: 'Custo estimado das peças DIV', s: '% do preço de venda', u: '%', step: 5 },
   { g: 'Metas do placar (opcionais)' },
-  { k: 'fat', l: 'Faturamento da semana', u: 'R$', step: 1000, meta: true },
+  { k: 'fat', l: 'Faturamento do período', s: 'meta da semana ou do mês, conforme o fechamento aberto', u: 'R$', step: 1000, meta: true },
   { k: 'divPct', l: 'Peças DIV — máximo', s: '% do total de peças', u: '%', step: 1, meta: true }
 ];
 
@@ -379,8 +498,17 @@ const RS = {
   API: CONFIG.RESULTADO_SEMANAL_API,
   iniciado: false, arquivos: {}, dados: null, finalizadas: null, finErro: null, carregandoFin: false,
   banco: null, bancoErro: null, carregandoBanco: false, fechamentos: [],
-  fonte: 'planilha', de: '', ate: '', diasManual: null, base: null, cen: null, metas: null,
+  fonte: 'planilha', passo: 'semana', de: '', ate: '', diasManual: null, base: null, cen: null, metas: null,
   grafico: null, graficosEvo: {}, ultimo: null };
+
+/** Tudo que muda de nome entre o fechamento da semana e o do mês fica aqui. */
+const RS_PASSOS = {
+  semana: { art: 'a', nome: 'semana', adj: 'semanal', plural: 'semanas', ritmo: 'semana a semana',
+    evo: [['8', '8 semanas'], ['12', '12 semanas'], ['26', '26 semanas']], evoPadrao: '12', arquivo: 'Resultado_semanal' },
+  mes: { art: 'o', nome: 'mês', adj: 'mensal', plural: 'meses', ritmo: 'mês a mês',
+    evo: [['6', '6 meses'], ['12', '12 meses'], ['24', '24 meses']], evoPadrao: '12', arquivo: 'Resultado_mensal' }
+};
+const rsPasso = () => RS_PASSOS[RS.passo] || RS_PASSOS.semana;
 
 const rs$ = id => document.getElementById(id);
 const rsEsc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -417,6 +545,8 @@ function initResultado() {
     RS.cen = rsLer('rs_params_cenario', RS.base);
     RS.metas = rsLer('rs_metas', RS_METAS_PADRAO);
     RS.fechamentos = rsFechamentosLocais();
+    try { RS.passo = localStorage.getItem('rs_passo') === 'mes' ? 'mes' : 'semana'; } catch (e) { /* sem storage: semanal */ }
+    rsAplicarPasso(false);
     rsPeriodoPreset('anterior', false);
     rsMontarCampos();
     rsLigarArrastar();
@@ -427,16 +557,56 @@ function initResultado() {
   if (!RS.finalizadas) rsRecarregarFinalizadas(); else rsRecalcular();
 }
 
-// ── Período ──
-function rsPeriodoPreset(qual, recalcular = true) {
-  const hoje = new Date();
-  const k = RS_CALC.toDia(hoje);
-  const dow = (hoje.getDay() + 6) % 7; // 0 = segunda
-  let seg = RS_CALC.somarDias(k, -dow);
-  if (qual === 'anterior') seg = RS_CALC.somarDias(seg, -7);
-  rsDefinirPeriodo(seg, RS_CALC.somarDias(seg, 6), recalcular);
+// ── Período (semana ou mês: o estudo é o mesmo, muda o passo) ──
+const rsPassoCalc = () => RS_CALC.passoDe(RS.passo);
+
+/** Troca entre o fechamento da semana e o do mês, mantendo a data em que se estava. */
+function rsMudarPasso(v) {
+  if (v !== 'semana' && v !== 'mes') return;
+  if (v === RS.passo) return;
+  RS.passo = v;
+  try { localStorage.setItem('rs_passo', v); } catch (e) { /* sem storage: vale só nesta sessão */ }
+  rsAplicarPasso(true);
+  const P = rsPassoCalc();
+  const base = RS.de || RS_CALC.toDia(new Date());
+  rsDefinirPeriodo(P.inicio(base), P.fim(P.inicio(base)));
 }
-function rsDeslocar(n) { rsDefinirPeriodo(RS_CALC.somarDias(RS.de, n), RS_CALC.somarDias(RS.ate, n)); }
+
+/** Ajusta rótulos e opções da tela ao passo escolhido. Não recalcula sozinho. */
+function rsAplicarPasso(redesenhar) {
+  const p = rsPasso();
+  document.querySelectorAll('.rs-passo-btn').forEach(b => {
+    const ativo = b.dataset.passo === RS.passo;
+    b.classList.toggle('on', ativo);
+    b.setAttribute('aria-selected', ativo ? 'true' : 'false');
+  });
+  const t = rs$('rs-titulo-passo'); if (t) t.textContent = 'Resultado d' + p.art + ' ' + p.nome;
+  const a = rs$('rs-btn-anterior'); if (a) a.textContent = (RS.passo === 'mes' ? 'Mês' : 'Semana') + ' anterior';
+  const ev = rs$('rs-evo-titulo'); if (ev) ev.textContent = 'Evolução ' + p.ritmo;
+  const sel = rs$('rs-evo-n');
+  if (sel && sel.dataset.passo !== RS.passo) {
+    sel.dataset.passo = RS.passo;
+    sel.innerHTML = p.evo.map(([v, l]) => '<option value="' + v + '"' + (v === p.evoPadrao ? ' selected' : '') + '>' + l + '</option>').join('');
+  }
+  const fat = rs$('rs-evo-t-fat'); if (fat) fat.textContent = 'Faturamento finalizado por ' + p.nome;
+  const mg = rs$('rs-evo-t-mg'); if (mg) mg.textContent = 'Margens por ' + p.nome;
+  const nota = rs$('rs-evo-nota');
+  if (nota) nota.innerHTML = 'Todos os ' + p.plural + ' usam os <b>parâmetros base atuais</b>, para serem comparáveis entre si — o número salvo no fechamento de cada período fica registrado na coluna "Fechamento". Clique num ' + p.nome + ' para abrir a análise dele.';
+  if (redesenhar) rsRenderFontes();
+}
+
+function rsPeriodoPreset(qual, recalcular = true) {
+  const P = rsPassoCalc();
+  let de = P.inicio(RS_CALC.toDia(new Date()));
+  if (qual === 'anterior') de = P.anda(de, -1);
+  rsDefinirPeriodo(de, P.fim(de), recalcular);
+}
+function rsDeslocar(n) {
+  const P = rsPassoCalc();
+  // No modo mês o botão anda um mês; na semana, os 7 dias de sempre.
+  if (RS.passo === 'mes') { const de = P.anda(P.inicio(RS.de), n > 0 ? 1 : -1); rsDefinirPeriodo(de, P.fim(de)); return; }
+  rsDefinirPeriodo(RS_CALC.somarDias(RS.de, n), RS_CALC.somarDias(RS.ate, n));
+}
 function rsMudarPeriodo() {
   let de = rs$('rs-de').value, ate = rs$('rs-ate').value;
   if (!de || !ate) return;
@@ -448,6 +618,17 @@ function rsDefinirPeriodo(de, ate, recalcular = true) {
   rs$('rs-de').value = de; rs$('rs-ate').value = ate;
   rs$('rs-titulo-periodo').textContent = rsDia(de) + ' a ' + rsDia(ate);
   if (recalcular) rsRecalcular();
+}
+
+/** "setembro de 2026" — só no modo mês; na semana o rótulo continua sendo o intervalo. */
+const RS_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+function rsRotuloPeriodo(de, ate, curto) {
+  if (RS.passo === 'mes') {
+    const [y, m] = de.split('-').map(Number);
+    const nome = RS_MESES[m - 1] || '';
+    return curto ? nome.slice(0, 3) + '/' + String(y).slice(2) : nome + ' de ' + y;
+  }
+  return (curto ? rsDiaCurto(de) + ' a ' + rsDiaCurto(ate) : rsDia(de) + ' a ' + rsDia(ate));
 }
 
 // ── Fontes ──
@@ -567,7 +748,7 @@ function rsRecalcular() {
   const per = RS_CALC.montarPeriodo({ fonte: RS.fonte, finalizadas: RS.finalizadas, dados: RS.dados, de: RS.de, ate: RS.ate });
   if (!per.oss.length) {
     return mostrarVazio('fa-calendar-xmark', 'Nenhuma OS finalizada entre ' + rsDia(RS.de) + ' e ' + rsDia(RS.ate) + '.',
-      RS.fonte === 'planilha' ? 'Confira se o gerente operacional já lançou a semana na planilha.' : 'Nenhuma OS do arquivo foi encerrada nesse intervalo.');
+      RS.fonte === 'planilha' ? 'Confira se o gerente operacional já lançou o período na planilha.' : 'Nenhuma OS do arquivo foi encerrada nesse intervalo.');
   }
   vazio.hidden = true; cont.hidden = false;
   RS.ultimo = { per };
@@ -575,10 +756,13 @@ function rsRecalcular() {
   rsRenderFontes();
 }
 
+/** Dias trabalhados do período aberto — calendário na semana, base do mês no mês. */
+const rsDiasPadrao = () => RS_CALC.diasDoPeriodo(RS.passo, RS.de, RS.ate, RS.cen);
+
 function rsRender() {
   if (!RS.ultimo) return;
   const per = RS.ultimo.per;
-  const dias = RS.diasManual != null ? RS.diasManual : RS_CALC.diasUteis(RS.de, RS.ate);
+  const dias = RS.diasManual != null ? RS.diasManual : rsDiasPadrao();
   const moBase = RS_CALC.custoMaoDeObra(RS.base, dias);
   const moCen = RS_CALC.custoMaoDeObra(RS.cen, dias);
   const rb = RS_CALC.calcular(per, RS.base, moBase && moBase.total);
@@ -606,7 +790,9 @@ function rsClassificarABC(itens) {
   itens.forEach(it => {
     const k = it.codigo || it.descricao || '(sem código)';
     const g = porCodigo[k] || (porCodigo[k] = { codigo: k, descricao: it.descricao, qtd: 0, receita: 0 });
-    g.qtd += it.qtd || 0; g.receita += it.receita || 0;
+    // A descrição pode faltar em algumas linhas do mesmo código — guarda a primeira que vier.
+    if (!g.descricao && it.descricao) g.descricao = it.descricao;
+    g.qtd += it.qtd || 0; g.receita += (it.receitaLiq == null ? it.receita : it.receitaLiq) || 0;
   });
   const ranked = Object.values(porCodigo).sort((a, b) => b.receita - a.receita);
   const total = ranked.reduce((s, x) => s + x.receita, 0);
@@ -625,9 +811,19 @@ function rsRenderABCTabela(destino, resumo, itens) {
     + (linhas.length > 60 ? '<tr class="sub"><td colspan="7">… e mais ' + (linhas.length - 60) + ' itens (todos no Excel).</td></tr>' : '') + '</tbody></table>';
 }
 
-function rsRenderABC(per) {
+/** Peças DIV ficam FORA da curva ABC: são sucata e recondicionada, não item de estoque
+ *  que se recompra — elas têm a tabela própria logo acima. */
+function rsItensABC(per) {
   const pecas = [], servicos = [];
-  per.oss.forEach(o => o.itens.forEach(it => { (it.tipo === 'serv' ? servicos : pecas).push(it); }));
+  per.oss.forEach(o => o.itens.forEach(it => {
+    if (it.tipo === 'serv') servicos.push(it);
+    else if (it.tipo !== 'div') pecas.push(it);
+  }));
+  return { pecas, servicos };
+}
+
+function rsRenderABC(per) {
+  const { pecas, servicos } = rsItensABC(per);
   rsRenderABCTabela('rs-tabela-abc-pec', 'rs-abc-pec-resumo', pecas);
   rsRenderABCTabela('rs-tabela-abc-serv', 'rs-abc-serv-resumo', servicos);
 }
@@ -643,7 +839,7 @@ function rsRenderAvisos(per, rb) {
   const diverge = per.oss.filter(o => o.situacao === 'diverge');
   const lista = arr => arr.map(o => o.os).join(', ');
   if (!RS.dados) {
-    av.push(['info', 'fa-circle-info', 'A planilha do gerente diz <b>quais OSs</b> fecharam na semana, mas ainda falta o <b>conteúdo</b> de cada uma — peças e serviços vêm da <b>vw_os_produto_serviço</b>. Publique o <code>apps-script/resultado-semanal.gs</code> e cole o /exec em <code>CONFIG.RESULTADO_SEMANAL_API</code> (guia em <code>integracao/LEIA-ME-resultado-semanal.md</code>). Enquanto isso, dá para arrastar o relatório "OSs detalhe" à mão.']);
+    av.push(['info', 'fa-circle-info', 'A planilha do gerente diz <b>quais OSs</b> fecharam no período, mas ainda falta o <b>conteúdo</b> de cada uma — peças e serviços vêm da <b>vw_os_produto_serviço</b>. Publique o <code>apps-script/resultado-semanal.gs</code> e cole o /exec em <code>CONFIG.RESULTADO_SEMANAL_API</code> (guia em <code>integracao/LEIA-ME-resultado-semanal.md</code>). Enquanto isso, dá para arrastar o relatório "OSs detalhe" à mão.']);
   } else if (semDados.length) {
     av.push(['', 'fa-triangle-exclamation', '<b>' + semDados.length + ' OS(s) finalizada(s) sem itens no detalhe</b> (banco ou arquivo) — ' + rsR(semDados.reduce((s, o) => s + o.semDetalhe, 0)) + ', valor da planilha do gerente, fica fora da rentabilidade: ' + lista(semDados) + '. Amplie a janela do extrator (--desde) ou use um arquivo com intervalo de datas maior.']);
   }
@@ -656,8 +852,15 @@ function rsRenderAvisos(per, rb) {
   const rep = per.avisos.filter(a => a.tipo === 'repetida');
   if (rep.length) av.push(['info', 'fa-clone', rep.length + ' OS(s) aparecem mais de uma vez na planilha no período e foram contadas uma vez só: ' + rep.map(a => a.os + ' (' + a.vezes + '×)').join(', ') + '.']);
   const ant = per.avisos.filter(a => a.tipo === 'anterior');
-  if (ant.length) av.push(['', 'fa-calendar-minus', ant.length + ' OS(s) relançadas nesta semana já tinham sido finalizadas antes e <b>não foram contadas de novo</b>: ' + ant.map(a => a.os + ' (1ª vez em ' + rsDiaCurto(a.primeira) + ')').join(', ') + '.']);
-  if (RS.dados && RS.dados.descontos > 0.005) av.push(['', 'fa-percent', 'O arquivo tem ' + rsR(RS.dados.descontos) + ' em descontos nos itens. Confira se o valor dos itens já vem líquido do desconto.']);
+  if (ant.length) av.push(['', 'fa-calendar-minus', ant.length + ' OS(s) relançadas neste período já tinham sido finalizadas antes e <b>não foram contadas de novo</b>: ' + ant.map(a => a.os + ' (1ª vez em ' + rsDiaCurto(a.primeira) + ')').join(', ') + '.']);
+  const desc = per.oss.reduce((s, o) => s + (o.desconto || 0), 0);
+  if (desc > 0.005) av.push(['info', 'fa-percent', rsR(desc) + ' em desconto nas OSs do período, já <b>abatido</b> do valor: desconto de peça sai das peças (pode deixar a peça negativa, como na OS 4782), desconto de item de serviço sai do serviço.']);
+  if (RS.dados && RS.dados.nivelDesconto === 'cabecalho') {
+    av.push(['', 'fa-clone', 'A origem está repetindo o <b>desconto do cabeçalho da OS em cada linha</b> do detalhe. O desconto foi contado <b>uma vez por OS</b>, não somado linha a linha — sem isso uma OS com 17 peças apareceria com 17× o desconto.']);
+  }
+  if (RS.dados && RS.dados.semDescricao > 0) {
+    av.push(['info', 'fa-font', rsN(RS.dados.semDescricao) + ' item(ns) chegaram <b>sem descrição</b> e aparecem só pelo código na curva ABC. Confira se a coluna <code>descricao</code> veio na extração da view.']);
+  }
   if (RS.dados && RS.dados.ignoradas.length) av.push(['info', 'fa-eye-slash', 'Abas ignoradas (cabeçalho não reconhecido): ' + RS.dados.ignoradas.map(rsEsc).join(', ') + '.']);
   if (rb.serv.semCusto) av.push(['', 'fa-helmet-safety', 'Informe a <b>folha mensal dos produtivos</b> no painel de parâmetros para calcular a rentabilidade dos serviços e a global.']);
   rs$('rs-avisos').innerHTML = av.map(a => '<div class="rs-aviso ' + a[0] + '"><i class="fa-solid ' + a[1] + '" style="margin-top:3px;"></i><div>' + a[2] + '</div></div>').join('');
@@ -752,7 +955,7 @@ async function rsSalvarFechamento() {
   RS.fechamentos = (RS.fechamentos || []).filter(x => !(x.de === f.de && x.ate === f.ate)).concat([f]);
   if (!remoto) rsGravar('rs_historico', RS.fechamentos.slice(-104));
   rsAtualizarSemanas(); rsRender();
-  alert('Fechamento de ' + rsDia(RS.de) + ' a ' + rsDia(RS.ate) + ' salvo ' + (remoto ? 'para todos os administradores.' : 'neste navegador.') + ' Na próxima semana o placar mostra a tendência contra ele.');
+  alert('Fechamento de ' + rsDia(RS.de) + ' a ' + rsDia(RS.ate) + ' salvo ' + (remoto ? 'para todos os administradores.' : 'neste navegador.') + ' N' + rsPasso().art + ' próxim' + rsPasso().art + ' ' + rsPasso().nome + ' o placar mostra a tendência contra ele.');
 }
 
 // ── Clientes ──
@@ -763,9 +966,10 @@ function rsAgruparClientes(per) {
   const m = {};
   per.oss.forEach(o => {
     const chave = RS_CALC.normH(rsNomeCurto(o.cliente)) || o.cliente;
-    const c = m[chave] || (m[chave] = { cliente: o.cliente, serv: 0, pec: 0, total: 0, n: 0 });
+    const c = m[chave] || (m[chave] = { cliente: o.cliente, serv: 0, pec: 0, sem: 0, desconto: 0, total: 0, n: 0 });
     if (o.cliente.length > c.cliente.length) c.cliente = o.cliente;
-    c.serv += o.serv; c.pec += o.pecEst + o.pecDiv + o.semDetalhe; c.total += o.total; c.n++;
+    c.serv += o.serv; c.pec += o.pecEst + o.pecDiv + o.semDetalhe; c.sem += o.semDetalhe;
+    c.desconto += o.desconto || 0; c.total += o.total; c.n++;
   });
   return Object.values(m).sort((a, b) => b.total - a.total);
 }
@@ -892,9 +1096,10 @@ function rsRenderRentabilidade(per, rb, rc, difs) {
 }
 
 function rsRenderMaoDeObra(mo, dias) {
-  const autoDias = RS_CALC.diasUteis(RS.de, RS.ate);
-  const inpDias = '<input type="number" min="0" max="31" step="1" value="' + dias + '" aria-label="Dias trabalhados no período" onchange="rsMudarDias(this.value)">';
-  const dicaDias = '<small>dias trabalhados' + (RS.diasManual != null && RS.diasManual !== autoDias ? ' (calendário: ' + autoDias + ')' : ' · seg a sáb') + '</small>';
+  const autoDias = rsDiasPadrao();
+  // Meio dia é comum (sábado até o almoço, feriado emendado): aceita 0,5.
+  const inpDias = '<input type="number" min="0" max="31" step="0.5" value="' + dias + '" aria-label="Dias trabalhados no período" onchange="rsMudarDias(this.value)">';
+  const dicaDias = '<small>dias trabalhados' + (RS.diasManual != null && RS.diasManual !== autoDias ? ' (padrão: ' + rsN(autoDias, autoDias % 1 ? 1 : 0) + ')' : (RS.passo === 'mes' ? ' · base do mês' : ' · seg a sáb')) + '</small>';
   if (!mo) {
     rs$('rs-memo').innerHTML = '<div class="rs-memo-passo" style="border-color:var(--rs-ruim);"><small>Folha mensal dos produtivos</small><b>não informada</b></div>'
       + '<div class="rs-memo-seta"><i class="fa-solid fa-arrow-right"></i></div><div class="rs-memo-passo">' + dicaDias + inpDias + '</div>'
@@ -912,8 +1117,8 @@ function rsRenderMaoDeObra(mo, dias) {
     + passo('Custo no período', rsR(mo.total), 'fim');
 }
 function rsMudarDias(v) {
-  const n = Math.max(0, Math.min(31, parseInt(v, 10) || 0));
-  RS.diasManual = n === RS_CALC.diasUteis(RS.de, RS.ate) ? null : n;
+  const n = Math.max(0, Math.min(31, Math.round((parseFloat(String(v).replace(',', '.')) || 0) * 2) / 2));
+  RS.diasManual = n === rsDiasPadrao() ? null : n;
   rsRender();
 }
 
@@ -927,16 +1132,25 @@ function rsRenderPecas(per, rc) {
       + ab.slice(0, 60).map(a => '<tr><td>' + rsEsc(a.os) + '</td><td title="' + rsEsc(a.cliente) + '">' + rsEsc(a.descricao || a.codigo) + '<br><span class="rs-nota">' + rsEsc(a.codigo) + '</span></td><td class="n">' + rsN(a.qtd, a.qtd % 1 ? 2 : 0) + '</td><td class="n">' + rsR(a.receita) + '</td><td class="n">' + rsR(a.custo) + '</td><td class="n neg">' + rsR(a.sobra) + '</td></tr>').join('')
       + (ab.length > 60 ? '<tr class="sub"><td colspan="6">… e mais ' + (ab.length - 60) + ' itens (todos no Excel).</td></tr>' : '') + '</tbody></table>';
 
-  const divs = [];
-  per.oss.forEach(o => o.itens.forEach(it => { if (it.tipo === 'div') divs.push(Object.assign({ cliente: o.cliente }, it)); }));
-  divs.sort((a, b) => b.receita - a.receita);
+  const divs = rsItensDiv(per);
   const codigos = RS.dados ? Object.keys(RS.dados.divCodigos) : [];
-  rs$('rs-div-resumo').textContent = divs.length ? '· ' + divs.length + ' itens · ' + rsR(divs.reduce((s, d) => s + d.receita, 0)) + (codigos.length ? ' · códigos: ' + codigos.join(', ') : '') : '';
+  rs$('rs-div-resumo').textContent = divs.length ? '· ' + divs.length + ' itens · ' + rsR(divs.reduce((s, d) => s + d.valor, 0)) + (codigos.length ? ' · códigos: ' + codigos.join(', ') : '') : '';
   rs$('rs-tabela-div').innerHTML = !RS.dados ? '<p class="rs-nota" style="padding:12px;">Aguardando o arquivo de detalhe.</p>'
     : !divs.length ? '<p class="rs-nota" style="padding:12px;">Nenhum item DIV nas OSs do período.</p>'
-    : '<table class="rs-t"><thead><tr><th>OS</th><th>Item</th><th class="n">Qtd</th><th class="n">Venda</th><th class="n">Custo lançado</th></tr></thead><tbody>'
-      + divs.slice(0, 60).map(d => '<tr><td>' + rsEsc(d.os) + '</td><td title="' + rsEsc(d.cliente) + '">' + rsEsc(d.descricao) + '<br><span class="rs-nota">' + rsEsc(d.codigo) + ' · ' + rsEsc(rsNomeCurto(d.cliente)) + '</span></td><td class="n">' + rsN(d.qtd, d.qtd % 1 ? 2 : 0) + '</td><td class="n">' + rsR(d.receita) + '</td><td class="n">' + rsR(d.custo) + '</td></tr>').join('')
-      + (divs.length > 60 ? '<tr class="sub"><td colspan="5">… e mais ' + (divs.length - 60) + ' itens (todos no Excel).</td></tr>' : '') + '</tbody></table>';
+    : '<table class="rs-t"><thead><tr><th>OS</th><th>Peça</th><th class="n">Qtd</th><th class="n">Valor</th></tr></thead><tbody>'
+      + divs.slice(0, 60).map(d => '<tr><td>' + rsEsc(d.os) + '</td><td>' + rsEsc(d.descricao || '—') + '<br><span class="rs-nota">' + rsEsc(d.codigo) + '</span></td><td class="n">' + rsN(d.qtd, d.qtd % 1 ? 2 : 0) + '</td><td class="n">' + rsR(d.valor) + '</td></tr>').join('')
+      + (divs.length > 60 ? '<tr class="sub"><td colspan="4">… e mais ' + (divs.length - 60) + ' itens (todos no Excel).</td></tr>' : '') + '</tbody></table>';
+}
+
+/** Uma linha por peça DIV: OS, descrição, quantidade e o valor daquela peça. */
+function rsItensDiv(per) {
+  const divs = [];
+  per.oss.forEach(o => o.itens.forEach(it => {
+    if (it.tipo !== 'div') return;
+    divs.push({ os: o.os, codigo: it.codigo, descricao: it.descricao, qtd: it.qtd,
+      valor: it.receitaLiq == null ? it.receita : it.receitaLiq, custo: it.custo });
+  }));
+  return divs.sort((a, b) => b.valor - a.valor);
 }
 
 // ── OSs ──
@@ -1036,15 +1250,20 @@ function rsSemanaISO(k) {
 function rsAtualizarSemanas() {
   const sel = rs$('rs-semana');
   if (!sel) return;
-  const lista = RS_CALC.semanasDisponiveis({ fonte: RS.fonte, finalizadas: RS.finalizadas, dados: RS.dados });
+  const lista = RS_CALC.periodosDisponiveis({ passo: RS.passo, fonte: RS.fonte, finalizadas: RS.finalizadas, dados: RS.dados });
   const fech = {};
   (RS.fechamentos || []).forEach(f => { fech[f.de + '_' + f.ate] = true; });
   const naLista = lista.some(s => s.de === RS.de && s.ate === RS.ate);
-  sel.innerHTML = (naLista ? '' : '<option value="">' + (RS.de ? 'Período ' + rsDiaCurto(RS.de) + ' a ' + rsDiaCurto(RS.ate) : 'Semanas…') + '</option>')
+  const p = rsPasso();
+  sel.setAttribute('aria-label', 'Escolher ' + p.nome);
+  const rotulo = s => RS.passo === 'mes'
+    ? rsRotuloPeriodo(s.de, s.ate)
+    : 'Sem. ' + rsSemanaISO(s.de) + ' · ' + rsDiaCurto(s.de) + ' a ' + rsDiaCurto(s.ate);
+  sel.innerHTML = (naLista ? '' : '<option value="">' + (RS.de ? 'Período ' + rsDiaCurto(RS.de) + ' a ' + rsDiaCurto(RS.ate) : p.plural + '…') + '</option>')
     + lista.map(s => '<option value="' + s.de + '"' + (s.de === RS.de && s.ate === RS.ate ? ' selected' : '') + '>'
-      + (fech[s.de + '_' + s.ate] ? '✓ ' : '') + 'Sem. ' + rsSemanaISO(s.de) + ' · ' + rsDiaCurto(s.de) + ' a ' + rsDiaCurto(s.ate) + ' · ' + s.oss + (s.oss === 1 ? ' OS' : ' OSs') + '</option>').join('');
+      + (fech[s.de + '_' + s.ate] ? '✓ ' : '') + rotulo(s) + ' · ' + s.oss + (s.oss === 1 ? ' OS' : ' OSs') + '</option>').join('');
 }
-function rsEscolherSemana(de) { if (de) rsDefinirPeriodo(de, RS_CALC.somarDias(de, 6)); }
+function rsEscolherSemana(de) { if (de) rsDefinirPeriodo(de, rsPassoCalc().fim(de)); }
 
 const rsValorCampo = (c, v) => v == null ? 'vazio' : c.u === 'R$' ? rsR(v, 0) : rsN(v, 1) + (c.u === '%' ? '%' : ' ' + c.u);
 function rsRenderBannerFechamento() {
@@ -1053,7 +1272,7 @@ function rsRenderBannerFechamento() {
   const f = rsFechamentoDoPeriodo();
   if (!f) { el.innerHTML = ''; return; }
   const difs = RS_CAMPOS.filter(c => c.k && !c.meta && f.base && f.base[c.k] !== undefined && f.base[c.k] !== RS.base[c.k]);
-  el.innerHTML = '<div class="rs-fech"><i class="fa-solid fa-thumbtack" style="margin-top:4px;"></i><div><b>Semana fechada</b> em ' + rsDataHora(f.salvoEm) + (f.salvoPor ? ' por ' + rsEsc(f.salvoPor) : '') + '.'
+  el.innerHTML = '<div class="rs-fech"><i class="fa-solid fa-thumbtack" style="margin-top:4px;"></i><div><b>' + (RS.passo === 'mes' ? 'Mês fechado' : 'Semana fechada') + '</b> em ' + rsDataHora(f.salvoEm) + (f.salvoPor ? ' por ' + rsEsc(f.salvoPor) : '') + '.'
     + (f.ind && f.ind.fat != null ? ' Apresentado na época: faturamento ' + rsR(f.ind.fat, 0) + ', margem global ' + rsP(f.ind.mGlobal) + '.' : '')
     + (difs.length ? '<br>Parâmetros da época diferentes dos atuais: ' + difs.map(c => rsEsc(c.l) + ' ' + rsValorCampo(c, f.base[c.k]) + ' (hoje ' + rsValorCampo(c, RS.base[c.k]) + ')').join('; ') + '.' : '')
     + '</div>' + (difs.length ? '<button class="rs-btn peq rs-bastidor" onclick="rsUsarParametrosDaEpoca()"><i class="fa-solid fa-clock-rotate-left"></i> Ver com os parâmetros da época</button>' : '') + '</div>';
@@ -1069,7 +1288,7 @@ function rsUsarParametrosDaEpoca() {
 // ── Evolução semana a semana ──
 /** Configurações dos dois gráficos — as mesmas servem à tela e ao PDF. */
 function rsCfgEvolucao(serie, idxAtual) {
-  const rot = serie.map(s => rsDiaEixo(s.de));
+  const rot = serie.map(s => RS.passo === 'mes' ? rsRotuloPeriodo(s.de, s.ate, true) : rsDiaEixo(s.de));
   const titulo = it => { const s = serie[it[0].dataIndex]; return rsDia(s.de) + ' a ' + rsDia(s.ate) + ' · ' + s.n + ' OSs'; };
   const faixa = {
     id: 'rsFaixa',
@@ -1129,17 +1348,17 @@ function rsRenderEvolucao() {
   if (!u || !u.per) return;
   if (RS.fonte === 'planilha' && !RS.finalizadas) return;
   const n = +(rs$('rs-evo-n').value || 12);
-  const serie = RS_CALC.serieSemanal({ fonte: RS.fonte, finalizadas: RS.finalizadas, dados: RS.dados, ateSemana: RS.ate, n, P: RS.base });
+  const serie = RS_CALC.seriePeriodica({ passo: RS.passo, fonte: RS.fonte, finalizadas: RS.finalizadas, dados: RS.dados, atePeriodo: RS.ate, n, P: RS.base });
   const idxAtual = serie.findIndex(s => s.de === RS.de && s.ate === RS.ate);
   u.serie = serie; u.serieIdx = idxAtual;
 
   const fech = {};
   (RS.fechamentos || []).forEach(f => { fech[f.de + '_' + f.ate] = f; });
-  rs$('rs-evo-tabela').innerHTML = '<table class="rs-t"><thead><tr><th>Semana</th><th class="n">OSs</th><th class="n">Faturamento</th><th class="n">Margem serviços</th><th class="n">Margem peças est.</th><th class="n">Margem global</th><th class="n">Peças DIV</th><th>Fechamento</th></tr></thead><tbody>'
+  rs$('rs-evo-tabela').innerHTML = '<table class="rs-t"><thead><tr><th>' + (RS.passo === 'mes' ? 'Mês' : 'Semana') + '</th><th class="n">OSs</th><th class="n">Faturamento</th><th class="n">Margem serviços</th><th class="n">Margem peças est.</th><th class="n">Margem global</th><th class="n">Peças DIV</th><th>Fechamento</th></tr></thead><tbody>'
     + serie.slice().reverse().map(s => {
       const f = fech[s.de + '_' + s.ate];
-      return '<tr class="clicavel' + (s.de === RS.de && s.ate === RS.ate ? ' atual' : '') + '" onclick="rsEscolherSemana(\'' + s.de + '\')" title="Abrir a análise desta semana">'
-        + '<td>' + rsDiaCurto(s.de) + ' a ' + rsDiaCurto(s.ate) + '</td><td class="n">' + s.n + '</td><td class="n">' + rsR(s.fat, 0) + '</td>'
+      return '<tr class="clicavel' + (s.de === RS.de && s.ate === RS.ate ? ' atual' : '') + '" onclick="rsEscolherSemana(\'' + s.de + '\')" title="Abrir a análise deste período">'
+        + '<td>' + rsRotuloPeriodo(s.de, s.ate, true) + '</td><td class="n">' + s.n + '</td><td class="n">' + rsR(s.fat, 0) + '</td>'
         + '<td class="n">' + rsP(s.mServ) + '</td><td class="n">' + rsP(s.mEst) + '</td><td class="n">' + rsP(s.mGlobal) + '</td><td class="n">' + rsP(s.divPct, 0) + '</td>'
         + '<td>' + (f ? '<span class="rs-chip neutro" title="Fechamento salvo por ' + rsEsc(f.salvoPor || '—') + '"><i class="fa-solid fa-thumbtack"></i>' + rsDataHora(f.salvoEm).slice(0, 5) + '</span>' : '') + '</td></tr>';
     }).join('') + '</tbody></table>';
@@ -1287,7 +1506,7 @@ async function rsGerarPdf() {
   try {
     await rsLibsPdf();
     const doc = await rsMontarPdf(u);
-    doc.save('Resultado_semanal_' + RS.de + '_a_' + RS.ate + '.pdf');
+    doc.save(rsPasso().arquivo + '_' + RS.de + '_a_' + RS.ate + '.pdf');
   } catch (e) {
     console.error('PDF:', e);
     alert('Não consegui gerar o PDF (' + e.message + ').\nVou abrir a impressão do navegador: escolha "Salvar como PDF".');
@@ -1347,14 +1566,14 @@ async function rsMontarPdf(u) {
   if (logo) doc.addImage(logo, 'JPEG', M, 5, 20, 20);
   const xT = logo ? M + 25 : M;
   fonte(7.5, 'bold', [148, 163, 184]); doc.text('GRUPO RENOVA  ·  REUNIÃO DE DIRETORIA', xT, 11);
-  fonte(17, 'bold', [255, 255, 255]); doc.text('Resultado da semana', xT, 19);
-  fonte(10, 'normal', [226, 232, 240]); doc.text(T(rsDia(RS.de) + ' a ' + rsDia(RS.ate) + '  ·  semana ' + rsSemanaISO(RS.de)), xT, 25.5);
+  fonte(17, 'bold', [255, 255, 255]); doc.text(T('Resultado d' + rsPasso().art + ' ' + rsPasso().nome), xT, 19);
+  fonte(10, 'normal', [226, 232, 240]); doc.text(T(rsDia(RS.de) + ' a ' + rsDia(RS.ate) + (RS.passo === 'mes' ? '  ·  ' + rsRotuloPeriodo(RS.de, RS.ate) : '  ·  semana ' + rsSemanaISO(RS.de))), xT, 25.5);
   fonte(7, 'normal', [148, 163, 184]);
   doc.text(T('Gerado em ' + new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + (RV && RV.nome ? ' por ' + RV.nome : '')), W - M, 25.5, { align: 'right' });
   y = 38;
 
   // ── Placar ──
-  secao('Placar da semana', 60);
+  secao('Placar d' + rsPasso().art + ' ' + rsPasso().nome, 60);
   const ant = rsFechamentoAnterior();
   const itens = rsIndicadoresPlacar(u.ind);
   const gap = 4, colW = (CW - 2 * gap) / 3, tileH = 25;
@@ -1382,7 +1601,7 @@ async function rsMontarPdf(u) {
   y += tileH + 8;
 
   // ── Leitura ──
-  secao('Leitura da semana', 40);
+  secao('Leitura d' + rsPasso().art + ' ' + rsPasso().nome, 40);
   rsFrases(u.per, u.rb, u.ind).forEach(f => {
     garantir(8);
     doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]); doc.circle(M + 1.2, y + 2.4, 0.75, 'F');
@@ -1402,7 +1621,7 @@ async function rsMontarPdf(u) {
   // ── Evolução ──
   if (u.serie && u.serie.length) {
     doc.addPage(); y = M + 2;
-    secao('Evolução semana a semana (' + u.serie.length + ' semanas, parâmetros base atuais)', 90);
+    secao('Evolução ' + rsPasso().ritmo + ' (' + u.serie.length + ' ' + rsPasso().plural + ', parâmetros base atuais)', 90);
     const cfg = rsCfgEvolucao(u.serie, u.serieIdx);
     const gw = (CW - 6) / 2, gh = 62;
     const [imgFat, imgMg] = await Promise.all([rsGraficoImagem(cfg.fat, 520, Math.round(520 * gh / gw)), rsGraficoImagem(cfg.mg, 520, Math.round(520 * gh / gw))]);
@@ -1411,8 +1630,8 @@ async function rsMontarPdf(u) {
     y += gh + 11;
     const fech = {};
     (RS.fechamentos || []).forEach(f => { fech[f.de + '_' + f.ate] = f; });
-    tabela(['Semana', 'OSs', 'Faturamento', 'Mg. serviços', 'Mg. peças est.', 'Mg. global', 'Peças DIV', 'Fechada'],
-      u.serie.slice().reverse().map(s => [rsDiaCurto(s.de) + ' a ' + rsDiaCurto(s.ate), s.n, rsR(s.fat, 0), rsP(s.mServ), rsP(s.mEst), rsP(s.mGlobal), rsP(s.divPct, 0), fech[s.de + '_' + s.ate] ? 'sim' : '']),
+    tabela([RS.passo === 'mes' ? 'Mês' : 'Semana', 'OSs', 'Faturamento', 'Mg. serviços', 'Mg. peças est.', 'Mg. global', 'Peças DIV', 'Fechada'],
+      u.serie.slice().reverse().map(s => [rsRotuloPeriodo(s.de, s.ate, true), s.n, rsR(s.fat, 0), rsP(s.mServ), rsP(s.mEst), rsP(s.mGlobal), rsP(s.divPct, 0), fech[s.de + '_' + s.ate] ? 'sim' : '']),
       { direita: [1, 2, 3, 4, 5, 6, 7], tam: 7.8, celula: d => { if (d.section === 'body' && u.serie.slice().reverse()[d.row.index].de === RS.de) d.cell.styles.fillColor = [238, 242, 255]; } });
   }
 
@@ -1481,14 +1700,12 @@ async function rsMontarPdf(u) {
       { direita: [3, 4, 5, 6], tam: 7.5, colunas: { 0: { cellWidth: 12 }, 3: { cellWidth: 10 }, 4: { cellWidth: 24 }, 5: { cellWidth: 24 }, 6: { cellWidth: 24 } },
         celula: d => { if (d.section === 'body' && d.column.index === 6) d.cell.styles.textColor = COR.ruim; } });
   }
-  const divs = [];
-  u.per.oss.forEach(o => o.itens.forEach(it => { if (it.tipo === 'div') divs.push(Object.assign({ cliente: o.cliente }, it)); }));
+  const divs = rsItensDiv(u.per);
   if (divs.length) {
-    divs.sort((a, b) => b.receita - a.receita);
-    secao('Itens DIV — sucata, recondicionada ou fora do inventário (' + divs.length + ' itens, ' + rsR(divs.reduce((s, d) => s + d.receita, 0), 0) + ')', 30);
-    tabela(['OS', 'Item', 'Cliente', 'Qtd', 'Venda', 'Custo lançado'],
-      divs.slice(0, 40).map(d => [d.os, d.descricao, rsNomeCurto(d.cliente), rsN(d.qtd, d.qtd % 1 ? 2 : 0), rsR(d.receita), rsR(d.custo)]),
-      { direita: [3, 4, 5], tam: 7.5, colunas: { 0: { cellWidth: 12 }, 3: { cellWidth: 10 }, 4: { cellWidth: 24 }, 5: { cellWidth: 22 } } });
+    secao('Itens DIV — sucata, recondicionada ou fora do inventário (' + divs.length + ' itens, ' + rsR(divs.reduce((s, d) => s + d.valor, 0), 0) + ')', 30);
+    tabela(['OS', 'Peça', 'Código', 'Qtd', 'Valor'],
+      divs.slice(0, 40).map(d => [d.os, d.descricao || '—', d.codigo, rsN(d.qtd, d.qtd % 1 ? 2 : 0), rsR(d.valor)]),
+      { direita: [3, 4], tam: 7.5, colunas: { 0: { cellWidth: 12 }, 2: { cellWidth: 26 }, 3: { cellWidth: 12 }, 4: { cellWidth: 26 } } });
     if (divs.length > 40) texto('… e mais ' + (divs.length - 40) + ' itens (lista completa no Excel).', { tam: 7.5, cor: MUTED });
   }
 
@@ -1503,10 +1720,9 @@ async function rsMontarPdf(u) {
         celula: d => { if (d.section === 'body' && d.column.index === 6) { const cls = linhas[d.row.index].cls; d.cell.styles.textColor = cls === 'A' ? COR.bom : cls === 'B' ? COR.alerta : CINZA; } } });
     if (linhas.length > 25) texto('… e mais ' + (linhas.length - 25) + ' itens (lista completa no Excel).', { tam: 7.5, cor: MUTED });
   };
-  const pecasAbc = [], servicosAbc = [];
-  u.per.oss.forEach(o => o.itens.forEach(it => (it.tipo === 'serv' ? servicosAbc : pecasAbc).push(it)));
-  abcTabela('Peças', pecasAbc);
-  abcTabela('Serviços', servicosAbc);
+  const abcItens = rsItensABC(u.per); // sem as peças DIV: elas têm tabela própria
+  abcTabela('Peças (sem DIV)', abcItens.pecas);
+  abcTabela('Serviços', abcItens.servicos);
 
   // ── OSs ──
   const temDescontoPdf = u.per.oss.some(o => (o.desconto || 0) > 0.005);
@@ -1525,10 +1741,10 @@ async function rsMontarPdf(u) {
     doc.setPage(p);
     doc.setDrawColor(LINHA[0], LINHA[1], LINHA[2]); doc.setLineWidth(0.3); doc.line(M, H - 11, W - M, H - 11);
     fonte(7, 'normal', MUTED);
-    doc.text(T('Confidencial — uso interno da diretoria  ·  Resultado da semana ' + rsDia(RS.de) + ' a ' + rsDia(RS.ate)), M, H - 7);
+    doc.text(T('Confidencial — uso interno da diretoria  ·  Resultado d' + rsPasso().art + ' ' + rsPasso().nome + ' ' + rsDia(RS.de) + ' a ' + rsDia(RS.ate)), M, H - 7);
     doc.text('Página ' + p + ' de ' + paginas, W - M, H - 7, { align: 'right' });
   }
-  doc.setProperties({ title: 'Resultado da semana ' + rsDia(RS.de) + ' a ' + rsDia(RS.ate), subject: 'Reunião de diretoria', author: 'Grupo Renova', creator: 'Sistema de Gestão Renova' });
+  doc.setProperties({ title: 'Resultado d' + rsPasso().art + ' ' + rsPasso().nome + ' ' + rsDia(RS.de) + ' a ' + rsDia(RS.ate), subject: 'Reunião de diretoria', author: 'Grupo Renova', creator: 'Sistema de Gestão Renova' });
   return doc;
 }
 
@@ -1545,7 +1761,7 @@ function rsTextoResumo() {
   if (!u || !u.ind) return '';
   const tira = s => String(s).replace(/<[^>]+>/g, '');
   const icone = { bom: '🟢', alerta: '🟡', ruim: '🔴' };
-  const linhas = ['*Resultado da semana — ' + rsDia(RS.de) + ' a ' + rsDia(RS.ate) + '*', ''];
+  const linhas = ['*Resultado d' + rsPasso().art + ' ' + rsPasso().nome + ' — ' + rsDia(RS.de) + ' a ' + rsDia(RS.ate) + '*', ''];
   rsIndicadoresPlacar(u.ind).forEach(i => {
     linhas.push((i.st ? icone[i.st] + ' ' : '• ') + i.l + ': ' + (i.v == null ? '—' : i.f(i.v)) + (i.meta != null ? ' (meta ' + i.fm(i.meta) + ')' : ''));
   });
@@ -1573,7 +1789,7 @@ function rsBaixarExcel() {
   const r2 = v => v == null ? null : Math.round(v * 100) / 100;
   const r4 = v => v == null ? null : Math.round(v * 10000) / 10000;
 
-  add('Placar', [['Resultado semanal', rsDia(RS.de) + ' a ' + rsDia(RS.ate)], [], ['Indicador', 'Valor', 'Meta', 'Status']]
+  add('Placar', [['Resultado ' + rsPasso().adj, rsDia(RS.de) + ' a ' + rsDia(RS.ate)], [], ['Indicador', 'Valor', 'Meta', 'Status']]
     .concat(rsIndicadoresPlacar(u.ind).map(i => [i.l, i.dif === 'pp' ? r4(i.v) : r2(i.v), i.meta == null ? null : (i.dif === 'pp' ? r4(i.meta) : r2(i.meta)), i.st ? RS_STATUS[i.st][1] : '']))
     .concat([[], ['Leitura']], rsFrases(u.per, u.rb, u.ind).map(f => [String(f).replace(/<[^>]+>/g, '')])));
 
@@ -1588,20 +1804,22 @@ function rsBaixarExcel() {
   add('OSs', [['OS', 'Finalizada', 'Cliente', 'Serviços', 'Peças estoque', 'Peças DIV', 'Custo estoque', 'Custo DIV', 'Desconto', 'Total', 'Situação']]
     .concat(u.per.oss.map(o => [o.os, rsDia(o.dia), o.cliente, r2(o.serv), r2(o.pecEst), r2(o.pecDiv), r2(o.custoEst), r2(o.custoDiv), r2(o.desconto || 0), r2(o.total), RS_SITUACAO[o.situacao][2]])));
 
-  const itens = [['OS', 'Cliente', 'Tipo', 'Código', 'Descrição', 'Qtd', 'Venda', 'Desconto', 'Custo']];
-  u.per.oss.forEach(o => o.itens.forEach(it => itens.push([o.os, o.cliente, it.tipo === 'serv' ? 'Serviço' : it.tipo === 'div' ? 'Peça DIV' : 'Peça estoque', it.codigo, it.descricao, it.qtd, r2(it.receita), r2(it.desconto || 0), r2(it.custo)])));
+  const itens = [['OS', 'Cliente', 'Tipo', 'Código', 'Descrição', 'Qtd', 'Venda bruta', 'Desconto', 'Venda líquida', 'Custo']];
+  u.per.oss.forEach(o => o.itens.forEach(it => itens.push([o.os, o.cliente, it.tipo === 'serv' ? 'Serviço' : it.tipo === 'div' ? 'Peça DIV' : 'Peça estoque',
+    it.codigo, it.descricao, it.qtd, r2(it.receita), r2(it.desconto || 0), r2(it.receitaLiq == null ? it.receita : it.receitaLiq), r2(it.custo)])));
 
   const abcCab = [['Código', 'Descrição', 'Qtd', 'Receita', '%', 'Acumulado %', 'Classe']];
   const abcLinhas = g => rsClassificarABC(g).linhas.map(x => [x.codigo, x.descricao, r2(x.qtd), r2(x.receita), r4(x.pct / 100), r4(x.acc / 100), x.cls]);
-  const pecasTodas = [], servicosTodos = [];
-  u.per.oss.forEach(o => o.itens.forEach(it => (it.tipo === 'serv' ? servicosTodos : pecasTodas).push(it)));
-  add('Curva ABC - Peças', abcCab.concat(abcLinhas(pecasTodas)));
-  add('Curva ABC - Serviços', abcCab.concat(abcLinhas(servicosTodos)));
+  const abcItens = rsItensABC(u.per);
+  add('Curva ABC - Peças', abcCab.concat(abcLinhas(abcItens.pecas)));
+  add('Curva ABC - Serviços', abcCab.concat(abcLinhas(abcItens.servicos)));
   add('Itens', itens);
+  const divsXls = rsItensDiv(u.per);
+  if (divsXls.length) add('Itens DIV', [['OS', 'Código', 'Descrição', 'Qtd', 'Valor']].concat(divsXls.map(d => [d.os, d.codigo, d.descricao, d.qtd, r2(d.valor)])));
   add('Abaixo do custo', [['OS', 'Cliente', 'Código', 'Descrição', 'Qtd', 'Venda', 'Custo', 'Sobra']].concat(u.rc.abaixo.map(a => [a.os, a.cliente, a.codigo, a.descricao, a.qtd, r2(a.receita), r2(a.custo), r2(a.sobra)])));
-  if (u.serie) add('Evolução', [['Semana (segunda)', 'Até', 'OSs', 'Faturamento', 'Serviços', 'Peças estoque', 'Peças DIV', 'Margem serviços', 'Margem peças estoque', 'Margem global sem DIV', 'Peças DIV / peças']]
+  if (u.serie) add('Evolução', [[RS.passo === 'mes' ? 'Mês (1º dia)' : 'Semana (segunda)', 'Até', 'OSs', 'Faturamento', 'Serviços', 'Peças estoque', 'Peças DIV', 'Margem serviços', 'Margem peças estoque', 'Margem global sem DIV', 'Peças DIV / peças']]
     .concat(u.serie.map(s => [rsDia(s.de), rsDia(s.ate), s.n, r2(s.fat), r2(s.serv), r2(s.pecEst), r2(s.pecDiv), r4(s.mServ), r4(s.mEst), r4(s.mGlobal), r4(s.divPct)])));
   add('Parâmetros', [['Parâmetro', 'Base', 'Cenário']].concat(RS_CAMPOS.filter(c => c.k && !c.meta).map(c => [c.l + ' (' + c.u + ')', RS.base[c.k], RS.cen[c.k]])));
 
-  XLSX.writeFile(wb, 'Resultado_semanal_' + RS.de + '_a_' + RS.ate + '.xlsx');
+  XLSX.writeFile(wb, rsPasso().arquivo + '_' + RS.de + '_a_' + RS.ate + '.xlsx');
 }

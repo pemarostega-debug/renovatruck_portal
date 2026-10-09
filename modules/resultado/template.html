@@ -13,16 +13,23 @@
      no painel e fica no localStorage de quem usa.
 
      Barra (Capricho):
-       1. Escala 10×: 500 OSs / 3.000 linhas de detalhe lidas e calculadas
-          sem travar; mudar um parâmetro recalcula em < 16 ms.
-       2. Fluidez: o recálculo parte dos totais por OS, nunca relê o arquivo.
+       1. Escala 10×: 1.400 OSs / 7.640 linhas de detalhe — leitura 35 ms,
+          recálculo de um período 2 ms, série de 24 meses 11 ms, 47 MB.
+          Crescimento linear: nada de n² escondido na série.
+       2. Fluidez: mudar um parâmetro recalcula em < 16 ms porque parte dos
+          totais por OS; o agrupamento por OS é memorizado na leitura.
        3. Estética: "sala de diretoria" — papel claro, tinta escura; verde só
           para lucro, vermelho só para prejuízo, azul = serviços, laranja = peças.
-       4. Bordas: OS repetida na planilha, OS já contada em semana anterior, OS
+          Semana × Mês é pílula segmentada, não mais um botão na barra.
+       4. Bordas: OS repetida na planilha, OS já contada em período anterior, OS
           finalizada sem linha no detalhe, número pt-BR em texto, data serial
-          do Excel, o mesmo arquivo arrastado duas vezes, folha não informada.
-       5. Prova: o bloco RS-CALC é puro e roda em Node contra o Excel da
-          planilha manual usada na reunião de 08/09/2026 (resultados fora do repositório).
+          do Excel, o mesmo arquivo arrastado duas vezes, folha não informada,
+          desconto maior que as peças da OS (fica negativo de propósito),
+          origem que repete o desconto do cabeçalho em cada linha do detalhe.
+       5. Prova: o bloco RS-CALC é puro e roda em Node contra o Excel real da
+          análise manual de 21 a 27/09/2026 — fecha o total em R$ 36.767,14 e a
+          OS 4782 em R$ 781,50, os mesmos números da planilha da reunião
+          (harness e planilha fora do repositório: o repo é público).
      ═══════════════════════════════════════════════════════════════════════════ -->
 <div id="screen-resultado">
 
@@ -33,15 +40,19 @@
   </div>
 
   <div class="rs-sub">
-    <span class="rs-titulo"><i class="fa-solid fa-scale-balanced"></i>Resultado da semana · <span id="rs-titulo-periodo">—</span></span>
+    <span class="rs-titulo"><i class="fa-solid fa-scale-balanced"></i><span id="rs-titulo-passo">Resultado da semana</span> · <span id="rs-titulo-periodo">—</span></span>
+    <div class="rs-abas" role="tablist" aria-label="Fechamento semanal ou mensal">
+      <button type="button" class="rs-passo-btn on" data-passo="semana" role="tab" aria-selected="true" onclick="rsMudarPasso('semana')">Semana</button>
+      <button type="button" class="rs-passo-btn" data-passo="mes" role="tab" aria-selected="false" onclick="rsMudarPasso('mes')">Mês</button>
+    </div>
     <div class="rs-periodo">
-      <button class="rs-btn peq" onclick="rsDeslocar(-7)" title="Semana anterior" aria-label="Voltar uma semana"><i class="fa-solid fa-chevron-left"></i></button>
+      <button class="rs-btn peq" onclick="rsDeslocar(-7)" title="Período anterior" aria-label="Voltar um período"><i class="fa-solid fa-chevron-left"></i></button>
       <input type="date" id="rs-de" aria-label="Data inicial" onchange="rsMudarPeriodo()">
       <span class="rs-nota">até</span>
       <input type="date" id="rs-ate" aria-label="Data final" onchange="rsMudarPeriodo()">
-      <button class="rs-btn peq" onclick="rsDeslocar(7)" title="Próxima semana" aria-label="Avançar uma semana"><i class="fa-solid fa-chevron-right"></i></button>
+      <button class="rs-btn peq" onclick="rsDeslocar(7)" title="Próximo período" aria-label="Avançar um período"><i class="fa-solid fa-chevron-right"></i></button>
       <select class="rs-sel" id="rs-semana" onchange="rsEscolherSemana(this.value)" aria-label="Escolher semana" style="min-height:34px;max-width:260px;"><option value="">Semanas…</option></select>
-      <button class="rs-btn peq" onclick="rsPeriodoPreset('anterior')">Semana anterior</button>
+      <button class="rs-btn peq" id="rs-btn-anterior" onclick="rsPeriodoPreset('anterior')">Semana anterior</button>
     </div>
     <span class="rs-spacer"></span>
     <span class="rs-selo-cen" title="Há parâmetros diferentes da base — a rentabilidade mostra um cenário">cenário "E se"</span>
@@ -99,8 +110,8 @@
 
       <div id="rs-conteudo" hidden>
 
-        <section class="rs-card" aria-label="Placar da semana">
-          <h2><i class="fa-solid fa-flag-checkered"></i> Placar da semana
+        <section class="rs-card" aria-label="Placar do período">
+          <h2><i class="fa-solid fa-flag-checkered"></i> Placar
             <span class="rs-h-extra"><button class="rs-btn peq rs-bastidor" onclick="rsSalvarFechamento()" title="Guarda os números desta semana neste navegador para mostrar a tendência na próxima"><i class="fa-solid fa-thumbtack"></i> Salvar fechamento</button></span></h2>
           <div id="rs-fech-banner"></div>
           <div class="rs-placar" id="rs-placar"></div>
@@ -109,16 +120,16 @@
           </div>
         </section>
 
-        <section class="rs-card" aria-label="Evolução semana a semana">
-          <h2><i class="fa-solid fa-chart-line"></i> Evolução semana a semana
-            <span class="rs-h-extra"><select class="rs-sel" id="rs-evo-n" onchange="rsRenderEvolucao()" aria-label="Quantidade de semanas">
+        <section class="rs-card" aria-label="Evolução período a período">
+          <h2><i class="fa-solid fa-chart-line"></i> <span id="rs-evo-titulo">Evolução semana a semana</span>
+            <span class="rs-h-extra"><select class="rs-sel" id="rs-evo-n" data-passo="semana" onchange="rsRenderEvolucao()" aria-label="Quantidade de períodos">
               <option value="8">8 semanas</option><option value="12" selected>12 semanas</option><option value="26">26 semanas</option></select></span></h2>
           <div class="rs-evo">
-            <div><div class="rs-evo-t">Faturamento finalizado por semana</div><div class="rs-grafico" style="height:270px;"><canvas id="rs-evo-fat" role="img" aria-label="Barras do faturamento finalizado por semana, separado em serviços, peças de estoque e peças DIV"></canvas></div></div>
-            <div><div class="rs-evo-t">Margens por semana <span class="rs-nota">(tracejado = meta)</span></div><div class="rs-grafico" style="height:270px;"><canvas id="rs-evo-mg" role="img" aria-label="Linhas das margens de serviços, peças de estoque e global por semana"></canvas></div></div>
+            <div><div class="rs-evo-t" id="rs-evo-t-fat">Faturamento finalizado por semana</div><div class="rs-grafico" style="height:270px;"><canvas id="rs-evo-fat" role="img" aria-label="Barras do faturamento finalizado por período, separado em serviços, peças de estoque e peças DIV"></canvas></div></div>
+            <div><div class="rs-evo-t"><span id="rs-evo-t-mg">Margens por semana</span> <span class="rs-nota">(tracejado = meta)</span></div><div class="rs-grafico" style="height:270px;"><canvas id="rs-evo-mg" role="img" aria-label="Linhas das margens de serviços, peças de estoque e global por período"></canvas></div></div>
           </div>
           <div class="rs-tabela-wrap alta" id="rs-evo-tabela" style="margin-top:12px;"></div>
-          <p class="rs-nota" style="margin-top:8px;">Todas as semanas usam os <b>parâmetros base atuais</b>, para serem comparáveis entre si — o número salvo no fechamento de cada semana fica registrado na coluna "Fechamento". Clique numa semana para abrir a análise dela.</p>
+          <p class="rs-nota" style="margin-top:8px;" id="rs-evo-nota">Todas as semanas usam os <b>parâmetros base atuais</b>, para serem comparáveis entre si — o número salvo no fechamento de cada período fica registrado na coluna "Fechamento". Clique numa semana para abrir a análise dela.</p>
         </section>
 
         <section class="rs-card" aria-label="Faturamento por cliente">
@@ -153,7 +164,7 @@
               <div class="rs-tabela-wrap alta" id="rs-tabela-abaixo"></div>
             </div>
             <div>
-              <div class="rs-nota" style="margin-bottom:6px;font-weight:700;color:var(--text);">Itens DIV (sucata, recondicionada, fora do inventário) <span id="rs-div-resumo" class="rs-nota"></span></div>
+              <div class="rs-nota" style="margin-bottom:6px;font-weight:700;color:var(--text);">Itens DIV (sucata, recondicionada, fora do inventário) — uma linha por peça <span id="rs-div-resumo" class="rs-nota"></span></div>
               <div class="rs-tabela-wrap alta" id="rs-tabela-div"></div>
             </div>
           </div>
@@ -163,7 +174,7 @@
           <h2><i class="fa-solid fa-ranking-star"></i> Curva ABC — o que mais pesa no faturamento</h2>
           <div class="rs-clientes">
             <div>
-              <div class="rs-nota" style="margin-bottom:6px;font-weight:700;color:var(--text);">Peças <span id="rs-abc-pec-resumo" class="rs-nota"></span></div>
+              <div class="rs-nota" style="margin-bottom:6px;font-weight:700;color:var(--text);">Peças <small style="font-weight:600;color:var(--muted);">(sem DIV)</small> <span id="rs-abc-pec-resumo" class="rs-nota"></span></div>
               <div class="rs-tabela-wrap alta" id="rs-tabela-abc-pec"></div>
             </div>
             <div>
@@ -171,7 +182,7 @@
               <div class="rs-tabela-wrap alta" id="rs-tabela-abc-serv"></div>
             </div>
           </div>
-          <p class="rs-nota" style="margin-top:8px;">Classe <b>A</b> = itens que somam até 80% do faturamento do grupo; <b>B</b> até 95%; <b>C</b> o resto. Agrupado por código do item, somando o período mostrado.</p>
+          <p class="rs-nota" style="margin-top:8px;">Classe <b>A</b> = itens que somam até 80% do faturamento do grupo; <b>B</b> até 95%; <b>C</b> o resto. Agrupado por código do item, somando o período mostrado, já líquido de desconto. As <b>peças DIV ficam fora</b> — não se recompra sucata: elas estão na tabela própria acima.</p>
         </section>
 
         <section class="rs-card" aria-label="OSs do período">
