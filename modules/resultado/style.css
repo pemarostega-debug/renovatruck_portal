@@ -11,6 +11,12 @@
   #screen-resultado .rs-layout{padding:12px 16px;}
   #screen-resultado .rs-card{padding:14px;}
 }
+/* Semana × Mês: o mesmo estudo em dois passos. Pílula segmentada, não um botão a mais. */
+#screen-resultado .rs-abas{display:inline-flex;background:#f1f5f9;border:1.5px solid var(--border);border-radius:10px;padding:2px;gap:2px;}
+#screen-resultado .rs-passo-btn{border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:.78rem;font-weight:800;padding:6px 14px;border-radius:8px;cursor:pointer;min-height:30px;transition:background .15s,color .15s;}
+#screen-resultado .rs-passo-btn:hover{color:var(--rs);}
+#screen-resultado .rs-passo-btn.on{background:#fff;color:var(--rs);box-shadow:0 1px 3px rgba(15,23,42,.12);}
+#screen-resultado .rs-passo-btn:focus-visible{outline:2px solid var(--rs);outline-offset:2px;}
 #screen-resultado .rs-periodo{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 #screen-resultado .rs-periodo input[type=date]{border:1.5px solid var(--border);border-radius:9px;padding:6px 8px;font-size:.82rem;font-weight:700;font-family:inherit;color:var(--text);background:#fff;}
 #screen-resultado .rs-periodo input[type=date]:focus{outline:none;border-color:var(--rs);}
