@@ -123,13 +123,48 @@ const RS_CALC = (() => {
   }
 
   /**
+   * Decide, olhando o CONJUNTO de linhas (não uma só), se "valor_pecas" é preço
+   * UNITÁRIO (precisa × qtd) ou já o TOTAL da linha. O relatório "OSs detalhe"
+   * do Genesis sempre traz valor_total pronto — só se usa valor_pecas quando
+   * essa coluna falta, caso da vw_os_produto_serviço ao vivo, e lá valor_pecas
+   * JÁ é o total (achado em produção: a OS 4826 batia R$ 1.763,47 ao centavo
+   * contra o relatório oficial sem multiplicar, e R$ 42.060,89 multiplicando).
+   *
+   * Não dá pra simplesmente assumir uma coisa ou outra pro nome da coluna — o
+   * mesmo nome normalizado significa coisas diferentes em cada origem. O jeito
+   * de descobrir sem adivinhar: comparar com o custo. Preço de venda plausível
+   * fica numa faixa de margem razoável sobre o custo; a interpretação errada
+   * produz margem absurda (negativa demais ou perto de 100%) nas linhas com
+   * quantidade maior que 1 — são elas que desmascaram a diferença.
+   */
+  function nivelValorPeca(rows, g) {
+    const MARGEM_MIN = -0.5, MARGEM_MAX = 0.97;
+    let unitPlausivel = 0, totalPlausivel = 0, amostras = 0;
+    rows.forEach(r => {
+      const qtd = toNum(g(r, 'qtdproduto'));
+      const custo = toNum(g(r, 'precocusto'));
+      const vp = toNum(g(r, 'valorpecas'));
+      if (!(qtd > 1.01) || !(custo > 0) || !(vp > 0)) return; // só qtd>1 separa as duas leituras
+      amostras++;
+      const custoLinha = custo * qtd;
+      const margemUnit = (vp * qtd - custoLinha) / (vp * qtd);
+      const margemTotal = (vp - custoLinha) / vp;
+      if (margemUnit > MARGEM_MIN && margemUnit < MARGEM_MAX) unitPlausivel++;
+      if (margemTotal > MARGEM_MIN && margemTotal < MARGEM_MAX) totalPlausivel++;
+    });
+    // Poucas linhas pra decidir com segurança: mantém o padrão histórico (unitário).
+    if (amostras < 5) return 'unitario';
+    return totalPlausivel > unitPlausivel ? 'total' : 'unitario';
+  }
+
+  /**
    * abas: [{nome, rows}] — cada aba de cada arquivo, já em objetos por cabeçalho.
    * Reconhece a aba pelo cabeçalho, não pelo nome, então a planilha da reunião
    * (com TabDin, Finalizadas etc.) serve inteira.
    */
   function lerPlanilhas(abas) {
     const res = { itens: [], oss: {}, osDetalhe: {}, fontes: [], ignoradas: [], descontos: 0, divCodigos: {},
-      canceladas: 0, nivelDesconto: 'linha', semDescricao: 0 };
+      canceladas: 0, nivelDesconto: 'linha', nivelValorPeca: 'unitario', semDescricao: 0 };
     const donoDetalhe = {}; // OS → aba que forneceu os itens (evita somar duas vezes a mesma OS)
     (abas || []).forEach((a, ia) => {
       const rows = a.rows || [];
@@ -159,6 +194,9 @@ const RS_CALC = (() => {
         const nivelPec = nivelDoCampo(grupos, descPecDe);
         const nivelServ = nivelDoCampo(grupos, descServDe);
         if (nivelPec === 'cabecalho' || nivelServ === 'cabecalho') res.nivelDesconto = 'cabecalho';
+        // Só entra em jogo quando falta valor_total (a origem não calcula o total pronto).
+        const nivelVP = nivelValorPeca(rows, g);
+        if (nivelVP === 'total') res.nivelValorPeca = 'total';
 
         grupos.forEach((linhas, os) => {
           const pecas = [], servicos = [];
@@ -168,8 +206,14 @@ const RS_CALC = (() => {
             const cod = String(g(r, 'codigoproduto') == null ? '' : g(r, 'codigoproduto')).trim();
             if (cod) {
               const qtd = toNum(g(r, 'qtdproduto')) || 1;
+              // valor_total é o total da linha quando existe (relatório "OSs detalhe" do
+              // Genesis). Quando falta — caso da vw_os_produto_serviço ao vivo — valor_pecas
+              // pode já SER o total: nivelValorPeca() descobriu isso pelo conjunto, não
+              // adivinhou. Achado em produção: OS 4826 batia R$ 1.763,47 ao centavo contra
+              // o relatório oficial sem multiplicar, e R$ 42.060,89 multiplicando — foi essa
+              // dobra que inflou o faturamento da semana de R$ 36.767 para R$ 239 mil.
               let receita = toNum(g(r, 'valortotal'));
-              if (!receita) receita = toNum(g(r, 'valorpecas')) * qtd;
+              if (!receita) receita = toNum(g(r, 'valorpecas')) * (nivelVP === 'total' ? 1 : qtd);
               const div = /DIV/i.test(cod);
               if (div) res.divCodigos[cod.toUpperCase()] = (res.divCodigos[cod.toUpperCase()] || 0) + 1;
               const descricao = String(gAlt(r, ALT_DESC_PEC) || '').trim();
@@ -308,7 +352,40 @@ const RS_CALC = (() => {
       return r;
     });
     oss.sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : +a.os - +b.os));
+    marcarDominantes(oss);
     return { de, ate, oss, avisos };
+  }
+
+  /**
+   * Marca OS cujo item SOZINHO vale muito mais que o resto da OS inteira —
+   * sinal de erro de digitação lá na origem (Genesis): quantidade ou preço
+   * trocados na hora de lançar a peça. É uma rede de segurança, não um
+   * diagnóstico confirmado: pode disparar por engano numa OS legitimamente
+   * dominada por um item caro (um motor, por exemplo).
+   *
+   * (Numa investigação em 09/10/2026 esta checagem chegou a apontar a OS 4786
+   * e a 4826 como suspeitas — eram, na verdade, dado correto: o bug real era
+   * nivelValorPeca() não existir ainda, e "valor_pecas × qtd" dobrar o valor
+   * de cada peça na origem que já entrega o total pronto. Ver o comentário
+   * ali. Esta função continua útil para erros de digitação de verdade.)
+   *
+   * Não adivinha o valor certo (não há como saber se era a quantidade ou o
+   * preço que estava errado) — só avisa, bem visível, pra ninguém levar um
+   * número inflado pra reunião. A correção é no Genesis.
+   */
+  function marcarDominantes(oss) {
+    const LIMITE_RAZAO = 5, PISO = 3000;
+    oss.forEach(o => {
+      const itens = o.itens || [];
+      if (itens.length < 2) return;
+      const total = itens.reduce((s, it) => s + (it.receita || 0), 0);
+      itens.forEach(it => {
+        const resto = total - (it.receita || 0);
+        if (it.receita > PISO && it.receita > resto * LIMITE_RAZAO && (!o.dominante || it.receita > o.dominante.receita)) {
+          o.dominante = { codigo: it.codigo, descricao: it.descricao, qtd: it.qtd, custoUnit: it.custoUnit, receita: it.receita, resto };
+        }
+      });
+    });
   }
 
   /**
@@ -834,6 +911,11 @@ function rsDiferencas() {
 
 function rsRenderAvisos(per, rb) {
   const av = [];
+  const dominantes = per.oss.filter(o => o.dominante);
+  if (dominantes.length) {
+    av.push(['ruim', 'fa-triangle-exclamation', '<b>' + dominantes.length + ' OS(s) com um item que sozinho vale muito mais que o resto da OS</b> — provável erro de quantidade ou preço lançado no Genesis, não dá pra saber qual dos dois sem olhar a OS: '
+      + dominantes.map(o => 'OS ' + o.os + ' — <b>' + rsEsc(o.dominante.descricao || o.dominante.codigo) + '</b> (' + rsEsc(o.dominante.codigo) + '): qtd ' + rsN(o.dominante.qtd, o.dominante.qtd % 1 ? 2 : 0) + ' × ' + rsR(o.dominante.qtd ? o.dominante.receita / o.dominante.qtd : o.dominante.receita) + ' = <b>' + rsR(o.dominante.receita, 0) + '</b>, contra ' + rsR(o.dominante.resto, 0) + ' do resto da OS').join('; ') + '. <b>Confira e corrija no Genesis</b> — o portal não altera o valor, só avisa.']);
+  }
   const semDet = per.oss.filter(o => o.situacao === 'sem-detalhe');
   const semDados = per.oss.filter(o => o.situacao === 'sem-dados');
   const diverge = per.oss.filter(o => o.situacao === 'diverge');
@@ -857,6 +939,9 @@ function rsRenderAvisos(per, rb) {
   if (desc > 0.005) av.push(['info', 'fa-percent', rsR(desc) + ' em desconto nas OSs do período, já <b>abatido</b> do valor: desconto de peça sai das peças (pode deixar a peça negativa, como na OS 4782), desconto de item de serviço sai do serviço.']);
   if (RS.dados && RS.dados.nivelDesconto === 'cabecalho') {
     av.push(['', 'fa-clone', 'A origem está repetindo o <b>desconto do cabeçalho da OS em cada linha</b> do detalhe. O desconto foi contado <b>uma vez por OS</b>, não somado linha a linha — sem isso uma OS com 17 peças apareceria com 17× o desconto.']);
+  }
+  if (RS.dados && RS.dados.nivelValorPeca === 'total') {
+    av.push(['info', 'fa-circle-info', 'Esta origem não traz <code>valor_total</code> pronto, e o valor de cada peça (<code>valor_pecas</code>) já veio como <b>total da linha</b>, não preço unitário — detectado pelo conjunto (comparando com o custo) e usado sem multiplicar por quantidade. Se uma OS parecer com valor estranho, confira esta leitura primeiro.']);
   }
   if (RS.dados && RS.dados.semDescricao > 0) {
     av.push(['info', 'fa-font', rsN(RS.dados.semDescricao) + ' item(ns) chegaram <b>sem descrição</b> e aparecem só pelo código na curva ABC. Confira se a coluna <code>descricao</code> veio na extração da view.']);
@@ -1167,10 +1252,11 @@ function rsRenderOSs(per) {
   rs$('rs-tabela-oss').innerHTML = '<table class="rs-t"><thead><tr><th>OS</th><th>Finalizada</th><th>Cliente</th><th class="n">Serviços</th><th class="n">Peças estoque</th><th class="n">Peças DIV</th>' + '<th class="n">Custo peças</th>' + (temDesconto ? '<th class="n">Desconto</th>' : '') + '<th class="n">Total</th><th>Situação</th></tr></thead><tbody>'
     + per.oss.map(o => {
       const s = RS_SITUACAO[o.situacao];
+      const dom = o.dominante ? ' <span class="rs-chip ruim" title="' + rsEsc(o.dominante.descricao || o.dominante.codigo) + ': ' + rsEsc(rsR(o.dominante.receita, 0)) + ' sozinha, contra ' + rsEsc(rsR(o.dominante.resto, 0)) + ' do resto da OS. Confira a quantidade/preço no Genesis."><i class="fa-solid fa-circle-exclamation"></i>Valor suspeito</span>' : '';
       return '<tr><td><b>' + rsEsc(o.os) + '</b></td><td>' + rsDiaCurto(o.dia) + '</td><td title="' + rsEsc(o.cliente) + '">' + rsEsc(rsNomeCurto(o.cliente)) + '</td><td class="n">' + rsR(o.serv) + '</td><td class="n">' + rsR(o.pecEst) + '</td><td class="n">' + rsR(o.pecDiv) + '</td>'
         + '<td class="n">' + rsR(o.custoEst + o.custoDiv) + '</td>'
         + (temDesconto ? '<td class="n' + (o.desconto > 0.005 ? ' neg' : '') + '">' + (o.desconto > 0.005 ? rsR(o.desconto) : '—') + '</td>' : '') + '<td class="n"><b>' + rsR(o.total) + '</b></td>'
-        + '<td><span class="rs-chip ' + s[0] + '"><i class="fa-solid ' + s[1] + '"></i>' + s[2] + '</span></td></tr>';
+        + '<td><span class="rs-chip ' + s[0] + '"><i class="fa-solid ' + s[1] + '"></i>' + s[2] + '</span>' + dom + '</td></tr>';
     }).join('')
     + '<tr class="tot"><td colspan="3">Total</td><td class="n">' + rsR(t.serv) + '</td><td class="n">' + rsR(t.est) + '</td><td class="n">' + rsR(t.div) + '</td>' + '<td class="n">' + rsR(t.custo) + '</td>' + (temDesconto ? '<td class="n">' + rsR(t.desconto) + '</td>' : '') + '<td class="n">' + rsR(t.total) + '</td><td></td></tr></tbody></table>';
 }
@@ -1801,8 +1887,9 @@ function rsBaixarExcel() {
     lin('Financeiro', 'fin'), lin('Comissão', 'com'), lin('Resultado', 'lucro'), lin('Margem', 'margem', r4), lin('Meta', 'meta', r4), lin('Preço mínimo', 'precoMin'), lin('Folga', 'folga'),
     [], ['Mão de obra no período', r2(u.moCen && u.moCen.total), 'dias', u.dias]]);
 
-  add('OSs', [['OS', 'Finalizada', 'Cliente', 'Serviços', 'Peças estoque', 'Peças DIV', 'Custo estoque', 'Custo DIV', 'Desconto', 'Total', 'Situação']]
-    .concat(u.per.oss.map(o => [o.os, rsDia(o.dia), o.cliente, r2(o.serv), r2(o.pecEst), r2(o.pecDiv), r2(o.custoEst), r2(o.custoDiv), r2(o.desconto || 0), r2(o.total), RS_SITUACAO[o.situacao][2]])));
+  add('OSs', [['OS', 'Finalizada', 'Cliente', 'Serviços', 'Peças estoque', 'Peças DIV', 'Custo estoque', 'Custo DIV', 'Desconto', 'Total', 'Situação', 'Item suspeito (confira no Genesis)']]
+    .concat(u.per.oss.map(o => [o.os, rsDia(o.dia), o.cliente, r2(o.serv), r2(o.pecEst), r2(o.pecDiv), r2(o.custoEst), r2(o.custoDiv), r2(o.desconto || 0), r2(o.total), RS_SITUACAO[o.situacao][2],
+      o.dominante ? (o.dominante.descricao || o.dominante.codigo) + ' — qtd ' + o.dominante.qtd + ' × ' + r2(o.dominante.qtd ? o.dominante.receita / o.dominante.qtd : o.dominante.receita) + ' = ' + r2(o.dominante.receita) : ''])));
 
   const itens = [['OS', 'Cliente', 'Tipo', 'Código', 'Descrição', 'Qtd', 'Venda bruta', 'Desconto', 'Venda líquida', 'Custo']];
   u.per.oss.forEach(o => o.itens.forEach(it => itens.push([o.os, o.cliente, it.tipo === 'serv' ? 'Serviço' : it.tipo === 'div' ? 'Peça DIV' : 'Peça estoque',

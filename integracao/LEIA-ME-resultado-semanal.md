@@ -127,6 +127,15 @@ de geração daquelas OSs.
   (não envia nada; marca as colunas que vêm iguais em todas as linhas).
 - **Curva ABC sem DIV.** Sucata e recondicionada não se recompram: as peças DIV
   saem da curva e têm tabela própria, uma linha por peça (OS, descrição, qtd, valor).
+- **`valor_pecas`: unitário ou já total, depende da origem.** O relatório "OSs
+  detalhe" do Genesis traz `valor_total` pronto. A `vw_os_produto_serviço` ao
+  vivo não tem essa coluna, e nela `valor_pecas` **já é o total da linha**, não
+  preço unitário — foi isso (multiplicar de novo por quantidade) que inflou o
+  faturamento da semana de R$ 36.767 para R$ 239 mil em 09/10/2026. O portal
+  detecta pelo conjunto (`nivelValorPeca`, compara a margem sobre o custo nas
+  duas leituras possíveis) e avisa na tela quando usa o modo "total". Se um
+  faturamento parecer alto demais, é o primeiro lugar pra olhar — confira com
+  `--amostra <OS>` se os valores de peça batem com o relatório oficial.
 - **OS finalizada** vem da planilha do gerente. OS repetida conta uma vez; OS relançada
   numa semana depois de já ter aparecido antes não é contada de novo (a tela avisa).
 - **Código com "DIV"** = peça sem custo de inventário. A análise sai com e sem DIV.

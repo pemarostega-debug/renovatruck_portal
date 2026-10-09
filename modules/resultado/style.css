@@ -50,6 +50,7 @@
 #screen-resultado .rs-avisos{display:flex;flex-direction:column;gap:6px;}
 #screen-resultado .rs-aviso{font-size:.78rem;line-height:1.45;padding:8px 12px;border-radius:10px;background:var(--rs-alerta-bg);color:var(--rs-alerta);border:1px solid #f5dc9a;display:flex;gap:8px;}
 #screen-resultado .rs-aviso.info{background:#eef4fb;color:#1e3a5f;border-color:#cfdef0;}
+#screen-resultado .rs-aviso.ruim{background:var(--rs-ruim-bg);color:var(--rs-ruim);border-color:#f3c6c6;}
 #screen-resultado .rs-aviso details summary{cursor:pointer;font-weight:700;}
 /* Placar */
 #screen-resultado .rs-placar{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));gap:12px;}
