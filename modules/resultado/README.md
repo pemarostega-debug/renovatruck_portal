@@ -26,6 +26,28 @@ mais de uma linha o campo repete o mesmo número, é cabeçalho e conta uma vez 
 Rateio de verdade quase nunca sai idêntico em dezenas de OSs seguidas. Quando a
 detecção dispara, a tela avisa.
 
+## valor_pecas: unitário ou já total? (`nivelValorPeca`)
+
+O relatório "OSs detalhe" do Genesis sempre traz `valor_total` pronto (linha já
+calculada). A `vw_os_produto_serviço` ao vivo **não tem essa coluna** — e nela
+`valor_pecas` não é preço unitário, já é o total da linha. Mesmo nome de coluna,
+semântica diferente por origem; não dá pra simplesmente escolher uma das duas.
+
+`nivelValorPeca()` decide olhando o conjunto (mesma família do `nivelDoCampo`
+do desconto): nas linhas com quantidade > 1, calcula a margem sobre o custo nas
+duas leituras possíveis (unitário × qtd, ou já total) e fica com a que dá margem
+plausível. Achado em produção em 09/10/2026: a OS 4826 batia R$ 1.763,47 ao
+centavo contra o relatório oficial tratando `valor_pecas` como total, e
+R$ 42.060,89 multiplicando por quantidade — foi essa dobra, espalhada por várias
+OSs da semana, que inflou o faturamento de R$ 36.767 para R$ 239 mil no portal.
+Quando a detecção acha "total", a tela avisa (`nivelValorPeca === 'total'`).
+
+Duas OSs dessa mesma investigação (4786, 4826) pareciam ter erro de digitação
+no Genesis — não tinham: era exatamente essa dobra. `marcarDominantes()` (que
+avisa quando um item sozinho domina a OS) continua no código como rede de
+segurança para erros de digitação de verdade, mas o comentário ali foi
+corrigido para não repetir o diagnóstico errado.
+
 ## Mão de obra: semana × mês
 
 Na semana, os dias trabalhados vêm do calendário (segunda a sábado). No mês,
