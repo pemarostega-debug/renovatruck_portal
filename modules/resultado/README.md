@@ -26,6 +26,18 @@ mais de uma linha o campo repete o mesmo número, é cabeçalho e conta uma vez 
 Rateio de verdade quase nunca sai idêntico em dezenas de OSs seguidas. Quando a
 detecção dispara, a tela avisa.
 
+## Peças DIV entram sem custo
+
+DIV é sucata e peça fora do inventário. O Genesis às vezes traz um `preco_custo`
+marcado nessas linhas, mas ele não é confiável e **não entra na conta** — é
+decisão da diretoria, para bater com a análise manual. O único custo que a DIV
+pode receber é a estimativa do parâmetro "Custo estimado das peças DIV"
+(% do preço de venda), que vale **0** por padrão.
+
+O custo marcado continua nos dados e na exportação para Excel; só não entra no
+resultado. Por isso a coluna da tabela de OSs se chama **Custo peças estoque**:
+é o custo que de fato pesa na margem.
+
 ## valor_pecas: unitário ou já total? (`nivelValorPeca`)
 
 O relatório "OSs detalhe" do Genesis sempre traz `valor_total` pronto (linha já
@@ -50,8 +62,14 @@ corrigido para não repetir o diagnóstico errado.
 
 ## Mão de obra: semana × mês
 
-Na semana, os dias trabalhados vêm do calendário (segunda a sábado). No mês,
-**não**: a folha mensal já é o custo do mês inteiro, e setembro com 26 dias de
-segunda a sábado contra a base de rateio de 24 inflaria o custo em 8% todo mês.
-O padrão do mês é a própria base (`diasMes`) — `RS_CALC.diasDoPeriodo`. O campo
-na tela aceita meio dia (0,5) para sábado curto ou feriado emendado.
+Na semana, os dias trabalhados vêm do calendário, e **o sábado não vale um dia
+inteiro**: na oficina se trabalha só até o almoço. O peso do sábado é o
+parâmetro `sabado` (padrão **0,5**), então a semana cheia dá **5,5 dias**, não 6
+— é assim que a folha de R$ 45.000 + 10% de HE ÷ 24 × 1,52 × 5,5 fecha os
+R$ 17.242,50 da planilha manual da diretoria.
+
+No mês, **não** se usa o calendário: a folha mensal já é o custo do mês inteiro,
+e um mês de cinco sábados passaria da base de rateio de 24 e inflaria o custo
+sem nada ter sido gasto a mais. O padrão do mês é a própria base (`diasMes`) —
+`RS_CALC.diasDoPeriodo`. O campo na tela aceita meio dia (0,5) para feriado
+emendado ou sábado que não abriu.

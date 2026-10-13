@@ -49,14 +49,23 @@ const RS_CALC = (() => {
   };
   const ehSim = v => /^(s|sim|1|true)$/i.test(String(v == null ? '' : v).trim());
 
-  /** Segunda a sábado dentro do intervalo — a semana de trabalho da oficina. */
-  function diasUteis(de, ate) {
+  /**
+   * Dias de oficina dentro do intervalo — a semana de trabalho da Renova.
+   * Segunda a sexta valem 1; o sábado vale o que o parâmetro mandar (padrão
+   * 0,5, porque só se trabalha até o almoço); domingo não conta. Semana cheia
+   * dá 5,5 dias, não 6.
+   */
+  const SABADO_PADRAO = 0.5;
+  function diasUteis(de, ate, pesoSabado) {
     if (!de || !ate || de > ate) return 0;
+    const sab = (pesoSabado == null || !isFinite(pesoSabado)) ? SABADO_PADRAO : pesoSabado;
     let n = 0;
     for (let k = de, guarda = 0; k <= ate && guarda < 400; k = somarDias(k, 1), guarda++) {
-      if (deDia(k).getDay() !== 0) n++;
+      const d = deDia(k).getDay();
+      if (d === 0) continue;
+      n += d === 6 ? sab : 1;
     }
-    return n;
+    return Math.round(n * 100) / 100;
   }
 
   function mapaColunas(rows) {
@@ -391,16 +400,16 @@ const RS_CALC = (() => {
   /**
    * Dias trabalhados que entram no custo da mão de obra.
    *
-   * Na SEMANA é o calendário: segunda a sábado dentro do intervalo.
-   * No MÊS, não. A folha mensal já É o custo do mês inteiro — setembro tem 26
-   * dias de segunda a sábado contra a base de rateio de 24, e multiplicar por
-   * 26 ÷ 24 inflaria o custo em 8% todo mês, sem que nada tenha sido gasto a
-   * mais. O padrão do mês é a própria base; feriado prolongado se corrige no
-   * campo da tela.
+   * Na SEMANA é o calendário: segunda a sexta cheias e o sábado pelo peso do
+   * parâmetro (0,5 na Renova), ou seja 5,5 dias na semana cheia.
+   * No MÊS, não. A folha mensal já É o custo do mês inteiro, e o calendário de
+   * um mês de cinco sábados passa da base de rateio de 24 — multiplicar por
+   * essa sobra inflaria o custo sem que nada tenha sido gasto a mais. O padrão
+   * do mês é a própria base; feriado prolongado se corrige no campo da tela.
    */
   function diasDoPeriodo(passo, de, ate, P) {
     if (passo === 'mes' && P && P.diasMes > 0) return P.diasMes;
-    return diasUteis(de, ate);
+    return diasUteis(de, ate, P && P.sabado);
   }
 
   /** Folha → custo do período. Mesma sequência da planilha: (folha + HE) ÷ dias do mês × encargos × dias. */
@@ -445,7 +454,12 @@ const RS_CALC = (() => {
     const rDiv = t.pecDiv * fp;
     const serv = bloco('serv', 'Serviços', t.serv * fs, custoMO == null ? null : custoMO, P.comissao, P.metaServ);
     const est = bloco('est', 'Peças de estoque', t.pecEst * fp, t.custoEst, P.comissao, P.metaPec);
-    const div = bloco('div', 'Peças DIV', rDiv, t.custoDiv + rDiv * P.custoDivPct / 100, P.comissao, P.metaPec);
+    // DIV é sucata e peça fora do inventário: o custo que vier marcado no Genesis
+    // não é confiável e, por decisão da diretoria, NÃO entra — vale zero. O único
+    // custo possível aqui é a estimativa do parâmetro (% do preço de venda), que
+    // é 0 por padrão. O custo marcado continua nos dados e na exportação, só não
+    // entra na conta.
+    const div = bloco('div', 'Peças DIV', rDiv, rDiv * P.custoDivPct / 100, P.comissao, P.metaPec);
     const pecas = somar('pecas', 'Peças (todas)', [est, div]);
     const globalEst = somar('globalEst', 'Global sem DIV', [serv, est]);
     const globalTodas = somar('globalTodas', 'Global com DIV', [serv, est, div]);
@@ -542,7 +556,7 @@ const RS_CALC = (() => {
 // Resultado Semanal — tela
 // ═══════════════════════════════════════════════════════════════════════════
 const RS_PADRAO = { simples: 12, adm: 5, fin: 5, comissao: 0, metaServ: 25, metaPec: 25,
-  folha: null, he: 10, encargos: 52, diasMes: 24, reajServ: 0, reajPec: 0, custoDivPct: 0 };
+  folha: null, he: 10, encargos: 52, diasMes: 24, sabado: 0.5, reajServ: 0, reajPec: 0, custoDivPct: 0 };
 const RS_METAS_PADRAO = { fat: 75000, divPct: null };
 
 // Cada campo do painel. `cen:false` = só existe na base (metas do placar).
@@ -559,11 +573,12 @@ const RS_CAMPOS = [
   { k: 'folha', l: 'Folha mensal dos produtivos', s: 'só colaboradores produtivos', u: 'R$', step: 500, obrig: true },
   { k: 'he', l: 'Hora extra estimada', u: '%', step: 1 },
   { k: 'encargos', l: 'Encargos', u: '%', step: 1 },
-  { k: 'diasMes', l: 'Dias de trabalho no mês', u: 'dias', step: 1 },
+  { k: 'diasMes', l: 'Dias de trabalho no mês', s: 'base de rateio da folha', u: 'dias', step: 1 },
+  { k: 'sabado', l: 'Sábado conta como', s: 'na oficina só se trabalha até o almoço', u: 'dias', step: 0.5 },
   { g: 'E se… (simulação)' },
   { k: 'reajServ', l: 'Reajuste no preço dos serviços', s: 'negativo = desconto', u: '%', step: 1 },
   { k: 'reajPec', l: 'Reajuste no preço das peças', s: 'negativo = desconto', u: '%', step: 1 },
-  { k: 'custoDivPct', l: 'Custo estimado das peças DIV', s: '% do preço de venda', u: '%', step: 5 },
+  { k: 'custoDivPct', l: 'Custo estimado das peças DIV', s: '% do preço de venda; 0 = DIV sem custo, como na análise da diretoria', u: '%', step: 5 },
   { g: 'Metas do placar (opcionais)' },
   { k: 'fat', l: 'Faturamento do período', s: 'meta da semana ou do mês, conforme o fechamento aberto', u: 'R$', step: 1000, meta: true },
   { k: 'divPct', l: 'Peças DIV — máximo', s: '% do total de peças', u: '%', step: 1, meta: true }
@@ -1022,7 +1037,7 @@ function rsFrases(per, rb, ind) {
     fr.push('A rentabilidade dos serviços aguarda a folha dos produtivos no painel de parâmetros.');
   }
   if (rb.t.pecDiv > 0 && rb.globalEst.margem != null && rb.globalTodas.margem != null) {
-    fr.push('Peças DIV somaram <b>' + rsR(rb.t.pecDiv, 0) + '</b> (' + rsP(ind.divPct, 0) + ' das peças) praticamente sem custo registrado: com elas a margem global vai de ' + rsP(rb.globalEst.margem) + ' para <b>' + rsP(rb.globalTodas.margem) + '</b> — a diferença é lucro que depende de sucata e peça fora do inventário.');
+    fr.push('Peças DIV somaram <b>' + rsR(rb.t.pecDiv, 0) + '</b> (' + rsP(ind.divPct, 0) + ' das peças) e entram sem custo (sucata e peça fora do inventário): com elas a margem global vai de ' + rsP(rb.globalEst.margem) + ' para <b>' + rsP(rb.globalTodas.margem) + '</b> — a diferença é lucro que depende de sucata e peça fora do inventário.');
   } else if (rb.abaixo.length) {
     fr.push(rb.abaixo.length + ' itens de estoque foram vendidos abaixo do custo mais despesas, somando ' + rsR(-rb.abaixo.reduce((s, a) => s + a.sobra, 0), 0) + ' de prejuízo.');
   }
@@ -1184,7 +1199,7 @@ function rsRenderMaoDeObra(mo, dias) {
   const autoDias = rsDiasPadrao();
   // Meio dia é comum (sábado até o almoço, feriado emendado): aceita 0,5.
   const inpDias = '<input type="number" min="0" max="31" step="0.5" value="' + dias + '" aria-label="Dias trabalhados no período" onchange="rsMudarDias(this.value)">';
-  const dicaDias = '<small>dias trabalhados' + (RS.diasManual != null && RS.diasManual !== autoDias ? ' (padrão: ' + rsN(autoDias, autoDias % 1 ? 1 : 0) + ')' : (RS.passo === 'mes' ? ' · base do mês' : ' · seg a sáb')) + '</small>';
+  const dicaDias = '<small>dias trabalhados' + (RS.diasManual != null && RS.diasManual !== autoDias ? ' (padrão: ' + rsN(autoDias, autoDias % 1 ? 1 : 0) + ')' : (RS.passo === 'mes' ? ' · base do mês' : ' · seg a sex + sáb ' + rsN(RS.cen.sabado, 1))) + '</small>';
   if (!mo) {
     rs$('rs-memo').innerHTML = '<div class="rs-memo-passo" style="border-color:var(--rs-ruim);"><small>Folha mensal dos produtivos</small><b>não informada</b></div>'
       + '<div class="rs-memo-seta"><i class="fa-solid fa-arrow-right"></i></div><div class="rs-memo-passo">' + dicaDias + inpDias + '</div>'
@@ -1246,15 +1261,15 @@ const RS_SITUACAO = {
   'sem-dados': ['ruim', 'fa-circle-xmark', 'Sem itens no detalhe']
 };
 function rsRenderOSs(per) {
-  const t = per.oss.reduce((s, o) => ({ serv: s.serv + o.serv, est: s.est + o.pecEst, div: s.div + o.pecDiv, desconto: s.desconto + (o.desconto || 0), custo: s.custo + o.custoEst + o.custoDiv, total: s.total + o.total }), { serv: 0, est: 0, div: 0, desconto: 0, custo: 0, total: 0 });
+  const t = per.oss.reduce((s, o) => ({ serv: s.serv + o.serv, est: s.est + o.pecEst, div: s.div + o.pecDiv, desconto: s.desconto + (o.desconto || 0), custo: s.custo + o.custoEst, total: s.total + o.total }), { serv: 0, est: 0, div: 0, desconto: 0, custo: 0, total: 0 });
   const temDesconto = t.desconto > 0.005;
   rs$('rs-oss-resumo').textContent = per.oss.length + ' OSs · ' + rsR(t.total) + (temDesconto ? ' · ' + rsR(t.desconto) + ' em desconto' : '');
-  rs$('rs-tabela-oss').innerHTML = '<table class="rs-t"><thead><tr><th>OS</th><th>Finalizada</th><th>Cliente</th><th class="n">Serviços</th><th class="n">Peças estoque</th><th class="n">Peças DIV</th>' + '<th class="n">Custo peças</th>' + (temDesconto ? '<th class="n">Desconto</th>' : '') + '<th class="n">Total</th><th>Situação</th></tr></thead><tbody>'
+  rs$('rs-tabela-oss').innerHTML = '<table class="rs-t"><thead><tr><th>OS</th><th>Finalizada</th><th>Cliente</th><th class="n">Serviços</th><th class="n">Peças estoque</th><th class="n">Peças DIV</th>' + '<th class="n">Custo peças estoque</th>' + (temDesconto ? '<th class="n">Desconto</th>' : '') + '<th class="n">Total</th><th>Situação</th></tr></thead><tbody>'
     + per.oss.map(o => {
       const s = RS_SITUACAO[o.situacao];
       const dom = o.dominante ? ' <span class="rs-chip ruim" title="' + rsEsc(o.dominante.descricao || o.dominante.codigo) + ': ' + rsEsc(rsR(o.dominante.receita, 0)) + ' sozinha, contra ' + rsEsc(rsR(o.dominante.resto, 0)) + ' do resto da OS. Confira a quantidade/preço no Genesis."><i class="fa-solid fa-circle-exclamation"></i>Valor suspeito</span>' : '';
       return '<tr><td><b>' + rsEsc(o.os) + '</b></td><td>' + rsDiaCurto(o.dia) + '</td><td title="' + rsEsc(o.cliente) + '">' + rsEsc(rsNomeCurto(o.cliente)) + '</td><td class="n">' + rsR(o.serv) + '</td><td class="n">' + rsR(o.pecEst) + '</td><td class="n">' + rsR(o.pecDiv) + '</td>'
-        + '<td class="n">' + rsR(o.custoEst + o.custoDiv) + '</td>'
+        + '<td class="n">' + rsR(o.custoEst) + '</td>'
         + (temDesconto ? '<td class="n' + (o.desconto > 0.005 ? ' neg' : '') + '">' + (o.desconto > 0.005 ? rsR(o.desconto) : '—') + '</td>' : '') + '<td class="n"><b>' + rsR(o.total) + '</b></td>'
         + '<td><span class="rs-chip ' + s[0] + '"><i class="fa-solid ' + s[1] + '"></i>' + s[2] + '</span>' + dom + '</td></tr>';
     }).join('')
@@ -1768,7 +1783,7 @@ async function rsMontarPdf(u) {
   });
   if (u.moCen) {
     const P = RS.cen;
-    texto('Mão de obra produtiva: folha ' + rsR(u.moCen.folha, 0) + ' + ' + rsN(P.he, 0) + '% hora extra = ' + rsR(u.moCen.comHE, 0) + ' ÷ ' + rsN(P.diasMes, 0) + ' dias = ' + rsR(u.moCen.dia) + '/dia + ' + rsN(P.encargos, 0) + '% encargos = ' + rsR(u.moCen.diaEnc) + '/dia × ' + u.dias + ' dias trabalhados = ' + rsR(u.moCen.total) + ' no período.', { tam: 8, cor: CINZA });
+    texto('Mão de obra produtiva: folha ' + rsR(u.moCen.folha, 0) + ' + ' + rsN(P.he, 0) + '% hora extra = ' + rsR(u.moCen.comHE, 0) + ' ÷ ' + rsN(P.diasMes, 0) + ' dias = ' + rsR(u.moCen.dia) + '/dia + ' + rsN(P.encargos, 0) + '% encargos = ' + rsR(u.moCen.diaEnc) + '/dia × ' + rsN(u.dias, u.dias % 1 ? 1 : 0) + ' dias trabalhados = ' + rsR(u.moCen.total) + ' no período.', { tam: 8, cor: CINZA });
   }
   texto('Resultado = receita - custo direto - Simples - administrativo - financeiro - comissão. Preço mínimo = custo ÷ (1 - despesas - meta).', { tam: 7.5, cor: MUTED, depois: 5 });
 
