@@ -167,7 +167,9 @@
 #screen-contasreceber .cr-ajuda{font-size:.68rem;color:var(--muted);font-weight:600;line-height:1.45;margin-top:3px;}
 #screen-contasreceber .cr-g2{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
 #screen-contasreceber .cr-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;}
-@media(max-width:560px){#screen-contasreceber .cr-g2,#screen-contasreceber .cr-g3{grid-template-columns:1fr;}}
+#screen-contasreceber .cr-g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:11px;}
+@media(max-width:860px){#screen-contasreceber .cr-g4{grid-template-columns:1fr 1fr;}}
+@media(max-width:560px){#screen-contasreceber .cr-g2,#screen-contasreceber .cr-g3,#screen-contasreceber .cr-g4{grid-template-columns:1fr;}}
 
 /* ── Barra de seleção em lote ── */
 #screen-contasreceber .cr-lote{display:none;align-items:center;gap:12px;flex-wrap:wrap;background:#064e3b;color:#fff;border-radius:12px;padding:10px 16px;margin-bottom:12px;font-size:.8rem;font-weight:700;}

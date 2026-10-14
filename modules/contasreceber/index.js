@@ -934,6 +934,7 @@ function crAbrirTitulo(id) {
   v('cr-t-emissao', t ? t.data_emissao : CR.hoje);
   v('cr-t-vencimento', t ? t.data_vencimento : '');
   v('cr-t-nf', t ? t.numero_nf : '');
+  v('cr-t-tipo', t ? crTipoNF(t) : '');
   v('cr-t-os', t ? t.num_os : '');
   v('cr-t-empresa', t ? (t.empresa || 'RENOVA') : 'RENOVA');
   v('cr-t-parcela', t ? t.parcela : 1);
@@ -968,6 +969,7 @@ async function crSalvarTitulo() {
     data_emissao: g('cr-t-emissao'),
     data_vencimento: g('cr-t-vencimento'),
     numero_nf: g('cr-t-nf').trim(),
+    tipo_nf: g('cr-t-tipo'),
     num_os: g('cr-t-os').trim(),
     empresa: g('cr-t-empresa'),
     parcela: Number(g('cr-t-parcela')) || 1,
@@ -980,6 +982,19 @@ async function crSalvarTitulo() {
     observacao: g('cr-t-obs').trim(),
     origem: CR.editando ? undefined : 'MANUAL'
   };
+
+  // Edição devolve ao servidor dois campos que a tela não mostra: a chave
+  // natural e a natureza de operação do Genesis. Sem eles o backend recalcula
+  // a chave a partir do formulário, ela muda, e a fila volta a oferecer a
+  // mesma nota como "nova" — ou seja, editar um título criava o caminho para
+  // duplicá-lo. A natureza é a origem do tipo peça/serviço e sumia junto.
+  if (CR.editando) {
+    const orig = CR.titulos.filter(x => x.id === CR.editando)[0];
+    if (orig) {
+      titulo.chave_origem = orig.chave_origem || '';
+      titulo.natureza_operacao = orig.natureza_operacao || '';
+    }
+  }
   if (!titulo.cliente) { crAviso('Informe o cliente.', 'erro'); return; }
   if (!titulo.data_vencimento) { crAviso('Informe o vencimento.', 'erro'); return; }
   if (titulo.valor_total <= 0) { crAviso('Informe o valor do título.', 'erro'); return; }
