@@ -124,6 +124,13 @@
 #screen-contasreceber .cr-sub{font-size:.62rem;font-weight:600;color:var(--muted);margin-top:2px;}
 
 /* ── Pílulas ── */
+/* Selo de peca x servico. Deliberadamente fora da paleta de dinheiro (verde /
+   roxo / vermelho): o tipo da nota nao diz de quem e o valor, e reaproveitar
+   essas cores faria o olho ler significado que nao existe. */
+#screen-contasreceber .cr-tipo{font-size:.58rem;font-weight:900;line-height:1;padding:2px 5px;border-radius:5px;
+  display:inline-block;vertical-align:1px;border:1px solid transparent;letter-spacing:.02em;}
+#screen-contasreceber .cr-tipo-p{background:#e2e8f0;color:#475569;border-color:#cbd5e1;}
+#screen-contasreceber .cr-tipo-s{background:#e0f2fe;color:#0369a1;border-color:#bae6fd;}
 #screen-contasreceber .cr-pill{font-size:.62rem;font-weight:800;padding:2px 8px;border-radius:20px;display:inline-block;white-space:nowrap;}
 #screen-contasreceber .cr-pill-ABERTO{background:#e0f2fe;color:#0369a1;}
 #screen-contasreceber .cr-pill-RECEBIDO{background:#dcfce7;color:#15803d;}
