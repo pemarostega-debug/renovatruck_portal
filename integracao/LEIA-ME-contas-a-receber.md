@@ -136,6 +136,19 @@ extrator do contas a pagar.
 Janela padrão = 1º dia de **três** meses atrás (maior que a do contas a pagar,
 porque prazo de recebível é mais longo: 30/60/90 é comum).
 
+**Nota já vencida não vai para a fila** (decisão de 14/10/2026). A fila é onde o
+operador monta borderô, e vencido não é antecipável: com 396 linhas para as 10
+notas do dia, o excesso atrapalhava mais do que ajudava. O corte derrubou a
+fila de 396 para 204. Título já aprovado **não** é afetado — continua no portal
+com vencimento, status e baixa; o corte é só na porta de entrada.
+
+Quando precisar da carteira antiga (backfill, conferência), rode com
+`--com-vencidas`. Nesse modo só ficam de fora as vencidas **e** baixadas no
+Genesis — regra que hoje não corta nada, porque a `vw_contas_a_receber` não é
+alimentada com baixa (em 14/10/2026, 0 de 396 notas tinham `data_baixa` ou
+`valor_pago`). Ela volta a valer sozinha se o financeiro do Genesis passar a dar
+baixa por lá.
+
 ---
 
 ## Como o módulo funciona no dia a dia

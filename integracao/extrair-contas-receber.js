@@ -93,6 +93,8 @@ const num = v => {
   return isNaN(n) ? 0 : n;
 };
 
+const hojeISO = () => iso(new Date());
+
 const pad2 = n => String(n).padStart(2, '0');
 
 /** Mesma normalização do contas-receber.gs. As duas pontas TÊM de bater. */
@@ -424,13 +426,37 @@ async function extrair() {
   }
 
   // ── Chave natural + dedupe dentro do próprio lote ──
+  //
+  // Nota já vencida não vai para a fila. A fila é onde o operador monta
+  // borderô, e vencido não é antecipável — fundo nenhum compra recebível
+  // vencido. Com 396 linhas para as 10 notas do dia, o excesso atrapalhava
+  // mais do que a informação ajudava.
+  //
+  // O que NÃO se perde: título já aprovado continua no portal com vencimento,
+  // status e baixa — o corte é só na porta de entrada. E `--com-vencidas`
+  // traz tudo de volta, para backfill ou conferência de carteira antiga.
+  //
+  // Por que não "vencida e paga", que seria o corte exato: a
+  // vw_contas_a_receber do Genesis não é alimentada com baixa — em 14/10/2026,
+  // 0 das 396 notas tinham data_baixa ou valor_pago. Do lado do banco toda
+  // vencida parece em aberto, então o filtro por pagamento cortaria zero. A
+  // regra de pagamento fica abaixo e volta a valer sozinha no dia em que o
+  // financeiro do Genesis passar a dar baixa lá.
+  const COM_VENCIDAS = tem('com-vencidas');
+  const foraDaFila = r => {
+    if (!r.data_vencimento) return false;
+    if (r.status === 'RECEBIDO' && r.data_vencimento < hojeISO()) return true;
+    return !COM_VENCIDAS && r.data_vencimento < hojeISO();
+  };
+
   const vistos = new Set();
   const finais = [];
-  let repetidosNoLote = 0;
+  let repetidosNoLote = 0, vencidasFora = 0;
   for (const r of registros) {
     r.chave_origem = chaveNatural(r);
     if (vistos.has(r.chave_origem)) { repetidosNoLote++; continue; }
     vistos.add(r.chave_origem);
+    if (foraDaFila(r)) { vencidasFora++; continue; }
     finais.push(r);
   }
   finais.sort((a, b) => (a.data_vencimento || '').localeCompare(b.data_vencimento || ''));
@@ -454,6 +480,8 @@ async function extrair() {
       confirmados_pela_view_cr: confirmados,
       notas_com_vencimento_projetado: projetados,
       repetidos_descartados: repetidosNoLote,
+      vencidas_fora_da_fila: vencidasFora,
+      inclui_vencidas: COM_VENCIDAS,
       valor_total: Math.round(finais.reduce((s, r) => s + r.valor_total, 0) * 100) / 100,
       os_aguardando_pedido: os.length,
       valor_os_aguardando_pedido: Math.round(os.reduce((s, o) => s + o.valor_total, 0) * 100) / 100
@@ -468,6 +496,8 @@ async function extrair() {
   console.log(`  confirmados pela vw_contas_a_receber: ${confirmados}`);
   console.log(`  notas com vencimento projetado:       ${projetados}`);
   console.log(`  repetidos no lote:                    ${repetidosNoLote}`);
+  console.log(`  vencidas fora da fila:                ${vencidasFora}` +
+              (COM_VENCIDAS ? '  (--com-vencidas: só as pagas saíram)' : '  (use --com-vencidas para incluir)'));
   console.log(`  valor total:                          R$ ${payload.resumo.valor_total.toLocaleString('pt-BR')}`);
   console.log(`  OS em AGUARDANDO PEDIDO:              ${os.length} · R$ ${payload.resumo.valor_os_aguardando_pedido.toLocaleString('pt-BR')}`);
 

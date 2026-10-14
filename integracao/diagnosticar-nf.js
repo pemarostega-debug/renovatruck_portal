@@ -79,9 +79,20 @@ function tipoNf(valor) {
  */
 const naturezaEntra = n => /^(venda|presta)/i.test(String(n.natureza_operacao || '').trim());
 
+/**
+ * O primeiro vencimento da nota já passou? Usa Venc01, que é o que o Genesis
+ * preenche na parcela 1 — basta para explicar a ausência na fila, porque o
+ * extrator deixou de mandar nota vencida.
+ */
+const vencimentoPassou = n => {
+  const v = iso(n.Venc01);
+  return !!v && v > iso(n.data) && v < hoje;
+};
+
 const SQL = `
   SELECT cod_id, num_nf, data, natureza_operacao, cancelada, cr_emitida,
-         codigo_cliente, razao_cli, valor_total_nf, numero_parcelas, num_pedido
+         codigo_cliente, razao_cli, valor_total_nf, numero_parcelas, num_pedido,
+         Venc01
   FROM vw_notas_fiscais
   WHERE data >= ? AND (num_nf IN (?) OR num_pedido = ?)
   ORDER BY num_nf, data`;
@@ -211,7 +222,10 @@ async function doPortal(action, corpo) {
         (!tipo || tipoNf(f.natureza_operacao || f.tipo_nf) === tipo));
       console.log('   na fila de aprovação: ' + (naFila.length ? naFila.length + ' parcela(s)' : 'NÃO'));
       if (!naFila.length) {
-        motivos.push('não está na fila: a última extração não a trouxe (cron atrasado ou janela curta)');
+        motivos.push(vencimentoPassou(n)
+          ? 'não está na fila porque já venceu: o extrator não manda vencida ' +
+            '(rode com --com-vencidas se precisar dela)'
+          : 'não está na fila: a última extração não a trouxe (cron atrasado ou janela curta)');
       }
     }
 
