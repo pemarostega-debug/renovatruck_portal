@@ -3057,7 +3057,7 @@ async function crAbrirSync() {
   if (!crPodeEditar()) return;
   crAbrir('cr-modal-sync');
   document.getElementById('cr-tb-sync').innerHTML =
-    '<tr><td colspan="7" class="cr-vazio"><i class="fa-solid fa-spinner fa-spin"></i> Lendo a fila…</td></tr>';
+    '<tr><td colspan="6" class="cr-vazio"><i class="fa-solid fa-spinner fa-spin"></i> Lendo a fila…</td></tr>';
   try {
     const d = await crPost('sync_ler', {});
     CR.sync = { notas: d.notas || [], existentes: d.existentes || {}, marcadas: {} };
@@ -3071,7 +3071,7 @@ async function crAbrirSync() {
     crSyncRender();
   } catch (e) {
     document.getElementById('cr-tb-sync').innerHTML =
-      '<tr><td colspan="7" class="cr-vazio">Não consegui ler a fila.<br>' + crEsc(e.message) + '</td></tr>';
+      '<tr><td colspan="6" class="cr-vazio">Não consegui ler a fila.<br>' + crEsc(e.message) + '</td></tr>';
   }
 }
 
@@ -3088,27 +3088,30 @@ function crSyncRender() {
 
   const tb = document.getElementById('cr-tb-sync');
   if (!notas.length) {
-    tb.innerHTML = '<tr><td colspan="7" class="cr-vazio">A fila está vazia.<br>' +
+    tb.innerHTML = '<tr><td colspan="6" class="cr-vazio">A fila está vazia.<br>' +
       'Rode <code>node integracao/extrair-contas-receber.js --enviar</code> numa máquina com acesso ao Genesis.</td></tr>';
+  } else if (!novas.length) {
+    tb.innerHTML = '<tr><td colspan="6" class="cr-vazio">Nada novo para lançar.<br>' +
+      'As ' + notas.length + ' nota(s) da última extração já viraram título.</td></tr>';
   } else {
-    tb.innerHTML = notas.slice()
+    // Só as novas aparecem. Nota já lançada não tem ação possível nesta tela —
+    // a linha existia só para dizer "esta já foi", e com a fila cheia isso
+    // empurrava para baixo exatamente o que o usuário veio aprovar. A contagem
+    // continua no chip "Já lançadas", que é onde ela serve para conferência.
+    tb.innerHTML = novas.slice()
       .sort((a, b) => String(a.data_vencimento).localeCompare(String(b.data_vencimento)))
       .map(n => {
-        const existe = CR.sync.existentes[n.chave_origem];
         const marcada = !!CR.sync.marcadas[n.chave_origem];
         const nf = Number(n.total_parcelas) > 1
           ? n.numero_nf + '/' + String(n.parcela).padStart(2, '0') : n.numero_nf;
-        return '<tr class="cr-sync-linha' + (existe ? ' existe' : '') + '">' +
-          '<td>' + (existe ? '' : '<input type="checkbox" ' + (marcada ? 'checked' : '') +
-            ' onchange="crSyncMarcar(\'' + crEsc(n.chave_origem) + '\',this.checked)" />') + '</td>' +
+        return '<tr class="cr-sync-linha">' +
+          '<td><input type="checkbox" ' + (marcada ? 'checked' : '') +
+            ' onchange="crSyncMarcar(\'' + crEsc(n.chave_origem) + '\',this.checked)" /></td>' +
           '<td style="white-space:nowrap;">' + crDataLonga(n.data_vencimento) + '</td>' +
           '<td class="cr-cli" title="' + crEsc(n.cliente) + '">' + crEsc(n.cliente) + '</td>' +
           '<td>' + crEsc(nf) + '</td>' +
           '<td class="cr-col-apoio">' + crEsc(n.num_os || '—') + '</td>' +
-          '<td class="cr-num" style="font-weight:800;">' + crBRL(n.valor_total) + '</td>' +
-          '<td>' + (existe
-            ? '<span class="cr-pill cr-pill-existe">já lançada</span>'
-            : '<span class="cr-pill cr-pill-nova">nova</span>') + '</td></tr>';
+          '<td class="cr-num" style="font-weight:800;">' + crBRL(n.valor_total) + '</td></tr>';
       }).join('');
   }
   document.getElementById('cr-sync-todos').checked =
