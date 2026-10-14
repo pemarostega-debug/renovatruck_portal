@@ -744,6 +744,45 @@ function crRotuloNF(t) {
     : t.numero_nf;
 }
 
+/**
+ * PECA | SERVICO | '' — mesma regra do extrator e do contas-receber.gs.
+ *
+ * O Genesis numera peça e serviço em séries separadas, então a NF 387 de peça
+ * e a 387 de serviço convivem, de clientes e OSs diferentes. Título antigo
+ * gravado antes da coluna `tipo_nf` cai no texto da natureza, que é de onde o
+ * tipo sempre veio.
+ */
+function crTipoNF(t) {
+  const bruto = String(t.tipo_nf || t.natureza_operacao || '')
+    .trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9]/g, '');
+  if (bruto === 'PECA' || bruto === 'SERVICO') return bruto;
+  if (bruto.indexOf('SERVICO') >= 0 || bruto.indexOf('SERVI') >= 0 || bruto.indexOf('PRESTA') >= 0) return 'SERVICO';
+  if (bruto.indexOf('MERCADORIA') >= 0 || bruto.indexOf('VENDA') === 0 || bruto.indexOf('REMESSA') === 0) return 'PECA';
+  return '';
+}
+
+const CR_TIPO_NF = {
+  PECA:    { letra: 'P', nome: 'Nota de peça' },
+  SERVICO: { letra: 'S', nome: 'Nota de serviço' }
+};
+
+/** O selo P/S. Fora da paleta de dinheiro do módulo, de propósito: peça x
+ *  serviço não diz nada sobre de quem é o dinheiro. */
+function crSeloTipo(t) {
+  const tipo = crTipoNF(t);
+  if (!tipo) return '';
+  const d = CR_TIPO_NF[tipo];
+  return ' <span class="cr-tipo cr-tipo-' + d.letra.toLowerCase() + '" title="' + d.nome + '">' + d.letra + '</span>';
+}
+
+const CR_LEGENDA_TIPO = '<span class="cr-tipo cr-tipo-p">P</span> peça · '
+  + '<span class="cr-tipo cr-tipo-s">S</span> serviço';
+
+/** Número da NF com o selo do tipo — use nas tabelas, no lugar de crRotuloNF. */
+function crNFHtml(t) {
+  return crEsc(crRotuloNF(t)) + (t.numero_nf ? crSeloTipo(t) : '');
+}
+
 function crRenderTitulos() {
   const lista = crFiltrar();
   const tb = document.getElementById('cr-tb-titulos');
@@ -772,7 +811,7 @@ function crRenderTitulos() {
         '<td style="white-space:nowrap;">' + crDataLonga(t.data_vencimento) +
           '<div class="cr-sub">emit. ' + crData(t.data_emissao) + '</div></td>' +
         '<td class="cr-cli" title="' + crEsc(t.cliente) + '">' + crEsc(t.cliente) + '</td>' +
-        '<td class="cr-col-apoio">' + crEsc(crRotuloNF(t)) + '</td>' +
+        '<td class="cr-col-apoio">' + crNFHtml(t) + '</td>' +
         '<td class="cr-col-apoio">' + (t.num_os ? crEsc(t.num_os) : '—') + '</td>' +
         '<td class="cr-num" style="font-weight:800;">' + crBRL(t.valor_total) + '</td>' +
         '<td class="cr-num cr-col-apoio">' + (Number(t.valor_recebido) > 0 ? crBRL(t.valor_recebido) : '—') + '</td>' +
@@ -824,13 +863,13 @@ function crAtualizarLote() {
 function crExportar() {
   const lista = crFiltrar();
   if (!lista.length) { crAviso('Nada para exportar com esses filtros.', 'info'); return; }
-  const cab = ['Vencimento', 'Emissão', 'Cliente', 'Cód. cliente', 'NF', 'OS', 'Parcela',
+  const cab = ['Vencimento', 'Emissão', 'Cliente', 'Cód. cliente', 'NF', 'Tipo', 'OS', 'Parcela',
                'Valor', 'Recebido', 'Status', 'Recebimento', 'Antecipação', 'Operação', 'Parceiro'];
   const linhas = lista.map(t => {
     const op = t.operacao_id ? crOperacao(t.operacao_id) : null;
     return [
       crDataLonga(t.data_vencimento), crDataLonga(t.data_emissao), t.cliente, t.cliente_cod,
-      crRotuloNF(t), t.num_os, t.parcela + '/' + t.total_parcelas,
+      crRotuloNF(t), (CR_TIPO_NF[crTipoNF(t)] || {}).nome || '', t.num_os, t.parcela + '/' + t.total_parcelas,
       (Number(t.valor_total) || 0).toFixed(2).replace('.', ','),
       (Number(t.valor_recebido) || 0).toFixed(2).replace('.', ','),
       t.status, t.data_recebimento ? crDataLonga(t.data_recebimento) : '',
@@ -989,7 +1028,8 @@ function crAbrirBaixa(id) {
   const t = CR.titulos.filter(x => x.id === id)[0];
   if (!t) return;
   CR.baixaAlvo = { ids: [id], origem: 'titulos', lote: false };
-  document.getElementById('cr-b-sub').textContent = t.cliente + ' · NF ' + crRotuloNF(t);
+  document.getElementById('cr-b-sub').textContent = t.cliente + ' · NF ' + crRotuloNF(t) +
+    (crTipoNF(t) ? ' (' + CR_TIPO_NF[crTipoNF(t)].nome.toLowerCase().replace('nota de ', '') + ')' : '');
   const inp = document.getElementById('cr-b-valor');
   inp.value = crSaldo(t).toFixed(2).replace('.', ',');
   inp.placeholder = '0,00';
@@ -1209,7 +1249,7 @@ function crRenderAntecipar() {
       '</td>' +
       '<td class="cr-cli" title="' + crEsc(t.cliente) + '">' + crEsc(t.cliente) +
         (crTemRegra(pol) ? ' ' + crRegraTexto(pol) : '') + '</td>' +
-      '<td class="cr-col-apoio">' + crEsc(crRotuloNF(t)) + '</td>' +
+      '<td class="cr-col-apoio">' + crNFHtml(t) + '</td>' +
       '<td class="cr-num" style="font-weight:800;">' + crBRL(t.valor_total) + '</td>' +
       '<td class="cr-num">' + prazo + 'd</td></tr>';
   }).join('') : (bloqueados.length ? '' :
@@ -1222,8 +1262,7 @@ function crRenderAntecipar() {
       '<td style="white-space:nowrap;">' + crData(t.data_vencimento) + '</td>' +
       '<td class="cr-cli" title="' + crEsc(t.cliente) + '">' + crEsc(t.cliente) +
         '<div class="cr-sub">' + crEsc(t.bloqueio) + '</div></td>' +
-      '<td class="cr-col-apoio">' + crEsc(crRotuloNF(t)) +
-        (t.tipo_nf ? '<div class="cr-sub">' + crEsc(t.tipo_nf === 'SERVICO' ? 'serviço' : 'peça') + '</div>' : '') + '</td>' +
+      '<td class="cr-col-apoio">' + crNFHtml(t) + '</td>' +
       '<td class="cr-num" style="font-weight:800;">' + crBRL(t.valor_total) + '</td>' +
       '<td class="cr-num">—</td></tr>';
   }).join('');
@@ -1300,6 +1339,7 @@ function crNotaDuplicatas(bloqueados) {
   }
   partes.push('Última extração do Genesis: <b>' + quando + '</b>.' +
     (Number(fila.total) ? ' ' + fila.total + ' nota(s) na fila.' : ''));
+  partes.push('No número da NF: ' + CR_LEGENDA_TIPO + ' — o Genesis numera as duas séries separadamente.');
 
   el.innerHTML = partes.join(' ');
 }
@@ -1883,7 +1923,7 @@ function crAbrirOperacao(id) {
         return '<tr>' +
           '<td>' + (i.tipo === 'OS' ? '<span class="cr-pill cr-pill-ant">OS</span>' : 'Duplicata') + '</td>' +
           '<td class="cr-cli">' + crEsc(i.cliente) + '</td>' +
-          '<td>' + (i.tipo === 'OS' ? 'OS ' + crEsc(i.num_os) : 'NF ' + crEsc(t ? crRotuloNF(t) : i.numero_nf)) + '</td>' +
+          '<td>' + (i.tipo === 'OS' ? 'OS ' + crEsc(i.num_os) : 'NF ' + (t ? crNFHtml(t) : crEsc(i.numero_nf))) + '</td>' +
           '<td style="white-space:nowrap;">' + crDataLonga(i.vencimento) + '</td>' +
           '<td class="cr-num">' + (Number(i.prazo_dias) || 0) + 'd</td>' +
           '<td class="cr-num" style="font-weight:800;">' + crBRL(i.valor) + '</td>' +
@@ -2073,7 +2113,7 @@ function crRenderItensOperacao() {
         '<tr>' +
         '<td style="white-space:nowrap;">' + crData(t.data_vencimento) + '</td>' +
         '<td class="cr-cli" title="' + crEsc(t.cliente) + '">' + crEsc(t.cliente) + '</td>' +
-        '<td class="cr-col-apoio">' + crEsc(crRotuloNF(t)) + '</td>' +
+        '<td class="cr-col-apoio">' + crNFHtml(t) + '</td>' +
         '<td class="cr-num" style="font-weight:800;">' + crBRL(t.valor_total) + '</td>' +
         '<td><button class="cr-acao ant" onclick="crItemAdicionar(\'' + t.id + '\')" title="Incluir no borderô">' +
           '<i class="fa-solid fa-plus"></i></button></td></tr>').join('')
@@ -2351,7 +2391,7 @@ function crRenderCarteira() {
       '<td style="white-space:nowrap;">' + crDataLonga(t.data_vencimento) +
         (dias > 0 ? ' <span class="cr-pill cr-pill-atraso">' + dias + 'd</span>' : '') + '</td>' +
       '<td class="cr-cli" title="' + crEsc(t.cliente) + '">' + crEsc(t.cliente) + '</td>' +
-      '<td class="cr-col-apoio">' + crEsc(crRotuloNF(t)) + '</td>' +
+      '<td class="cr-col-apoio">' + crNFHtml(t) + '</td>' +
       '<td class="cr-col-apoio">' + (op ? crEsc(op.numero || op.id) : '—') + '</td>' +
       '<td>' + crEsc(parc ? parc.nome : '—') + '</td>' +
       '<td class="cr-num" style="font-weight:800;">' + crBRL(crSaldo(t) || t.valor_total) + '</td>' +
@@ -3065,9 +3105,9 @@ async function crAbrirSync() {
     // tudo marcado faria o usuário desmarcar uma a uma.
     CR.sync.notas.forEach(n => { if (!CR.sync.existentes[n.chave_origem]) CR.sync.marcadas[n.chave_origem] = true; });
     const q = d.gerado_em ? new Date(d.gerado_em) : null;
-    document.getElementById('cr-sync-sub').textContent = q && !isNaN(q)
+    document.getElementById('cr-sync-sub').innerHTML = (q && !isNaN(q)
       ? 'Extração de ' + q.toLocaleDateString('pt-BR') + ' ' + q.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      : 'Notas do Genesis aguardando sua aprovação';
+      : 'Notas do Genesis aguardando sua aprovação') + ' · ' + CR_LEGENDA_TIPO;
     crSyncRender();
   } catch (e) {
     document.getElementById('cr-tb-sync').innerHTML =
@@ -3102,14 +3142,16 @@ function crSyncRender() {
       .sort((a, b) => String(a.data_vencimento).localeCompare(String(b.data_vencimento)))
       .map(n => {
         const marcada = !!CR.sync.marcadas[n.chave_origem];
-        const nf = Number(n.total_parcelas) > 1
-          ? n.numero_nf + '/' + String(n.parcela).padStart(2, '0') : n.numero_nf;
+        // Na fila a confusao e maior que na carteira: a mesma extracao traz a
+        // NF 387 de peca e a 387 de servico, de OSs diferentes, uma embaixo da
+        // outra. O selo vem do tipo_nf que o extrator ja manda.
+        const nf = crNFHtml(n);
         return '<tr class="cr-sync-linha">' +
           '<td><input type="checkbox" ' + (marcada ? 'checked' : '') +
             ' onchange="crSyncMarcar(\'' + crEsc(n.chave_origem) + '\',this.checked)" /></td>' +
           '<td style="white-space:nowrap;">' + crDataLonga(n.data_vencimento) + '</td>' +
           '<td class="cr-cli" title="' + crEsc(n.cliente) + '">' + crEsc(n.cliente) + '</td>' +
-          '<td>' + crEsc(nf) + '</td>' +
+          '<td>' + nf + '</td>' +
           '<td class="cr-col-apoio">' + crEsc(n.num_os || '—') + '</td>' +
           '<td class="cr-num" style="font-weight:800;">' + crBRL(n.valor_total) + '</td></tr>';
       }).join('');
