@@ -1081,6 +1081,56 @@ function crTitulosAntecipaveis() {
 }
 
 /**
+ * Por que este título NÃO pode ir para um borderô hoje. '' = pode.
+ *
+ * Existe para a lista não precisar mentir por omissão. Até aqui a aba só
+ * mostrava o que estava liberado, e todo título barrado simplesmente não
+ * aparecia — o que transformava "a NF 414 não está na lista" numa investigação
+ * no banco, toda semana. A regra é a mesma que o backend aplica em
+ * criarOperacao(); divergir aqui faria a tela liberar o que o servidor recusa.
+ */
+function crMotivoNaoAntecipavel(t) {
+  if (t.status === 'CANCELADO') return 'Título cancelado';
+  if (t.status === 'RECEBIDO') {
+    return 'Já recebido' + (t.data_recebimento ? ' em ' + crData(t.data_recebimento) : '') +
+           ' — recebível pago não se vende';
+  }
+  if (!crEmAberto(t)) return 'Status ' + (t.status || '—');
+  if (String(t.antecipado).toUpperCase() === 'SIM') {
+    const op = crOperacao(t.operacao_id);
+    const onde = (op && op.numero) || t.operacao_id || '?';
+    return t.situacao_antec === 'RECOMPRADO'
+      ? 'Recomprado da operação ' + onde + ' — título recomprado não volta para a fila'
+      : 'Já antecipado na operação ' + onde;
+  }
+  if (!t.data_vencimento) return 'Título sem vencimento — corrija na aba Títulos';
+  if (t.data_vencimento <= CR.hoje) {
+    return 'Vencido em ' + crData(t.data_vencimento) + ' — fundo nenhum compra recebível vencido';
+  }
+  return '';
+}
+
+/**
+ * Os títulos barrados que casam com a busca da tela, com o motivo de cada um.
+ *
+ * Só com busca preenchida, de propósito: a lista limpa é o uso normal, e
+ * despejar centenas de títulos vencidos e antecipados ali embaixo tornaria a
+ * montagem do borderô ilegível. Quando o financeiro procura uma nota
+ * específica, aí sim a tela precisa responder onde ela está.
+ */
+function crTitulosBloqueados() {
+  const busca = (document.getElementById('cr-a-busca').value || '').toLowerCase().trim();
+  if (!busca) return [];
+  return CR.titulos.filter(t => {
+    const alvo = [t.cliente, t.numero_nf, t.num_os, t.id].join(' ').toLowerCase();
+    if (!alvo.includes(busca)) return false;
+    return !!crMotivoNaoAntecipavel(t);
+  }).map(t => Object.assign({}, t, { bloqueio: crMotivoNaoAntecipavel(t) }))
+    .sort((a, b) => (b.data_vencimento || '').localeCompare(a.data_vencimento || ''))
+    .slice(0, 40);
+}
+
+/**
  * OSs em AGUARDANDO PEDIDO com a política do cliente já aplicada.
  *
  * Devolve sempre TODAS, inclusive as bloqueadas, com o motivo do bloqueio. OS
@@ -1134,8 +1184,9 @@ function crRenderAntecipar() {
   const oss = crOSAntecipaveis();
   const podeEditar = crPodeEditar();
 
+  const bloqueados = crTitulosBloqueados();
   const tbT = document.getElementById('cr-tb-a-titulos');
-  tbT.innerHTML = titulos.length ? titulos.map(t => {
+  tbT.innerHTML = (titulos.length ? titulos.map(t => {
     const marcado = !!CR.selAntTit[t.id];
     const venc = crVencDe(t);
     const mudou = venc !== t.data_vencimento;
@@ -1161,11 +1212,26 @@ function crRenderAntecipar() {
       '<td class="cr-col-apoio">' + crEsc(crRotuloNF(t)) + '</td>' +
       '<td class="cr-num" style="font-weight:800;">' + crBRL(t.valor_total) + '</td>' +
       '<td class="cr-num">' + prazo + 'd</td></tr>';
-  }).join('') : '<tr><td colspan="6" class="cr-vazio">Nenhuma duplicata em aberto e a vencer com esses filtros.</td></tr>';
+  }).join('') : (bloqueados.length ? '' :
+    '<tr><td colspan="6" class="cr-vazio">Nenhuma duplicata em aberto e a vencer com esses filtros.</td></tr>'))
+  // Os barrados entram cinza, com o motivo escrito ao lado: é a resposta para
+  // "procurei a NF 414 e ela não está aqui".
+  + bloqueados.map(t => {
+    return '<tr class="bloq" title="' + crEsc(t.bloqueio) + '">' +
+      '<td><i class="fa-solid fa-lock" style="color:var(--muted);font-size:.72rem;"></i></td>' +
+      '<td style="white-space:nowrap;">' + crData(t.data_vencimento) + '</td>' +
+      '<td class="cr-cli" title="' + crEsc(t.cliente) + '">' + crEsc(t.cliente) +
+        '<div class="cr-sub">' + crEsc(t.bloqueio) + '</div></td>' +
+      '<td class="cr-col-apoio">' + crEsc(crRotuloNF(t)) +
+        (t.tipo_nf ? '<div class="cr-sub">' + crEsc(t.tipo_nf === 'SERVICO' ? 'serviço' : 'peça') + '</div>' : '') + '</td>' +
+      '<td class="cr-num" style="font-weight:800;">' + crBRL(t.valor_total) + '</td>' +
+      '<td class="cr-num">—</td></tr>';
+  }).join('');
 
   const totalT = titulos.reduce((s, t) => s + (Number(t.valor_total) || 0), 0);
   document.getElementById('cr-a-tit-resumo').textContent =
     titulos.length ? titulos.length + ' · ' + crBRL(totalT) : '—';
+  crNotaDuplicatas(bloqueados);
 
   const tbO = document.getElementById('cr-tb-a-os');
   tbO.innerHTML = oss.length ? oss.map(o => {
@@ -1197,6 +1263,45 @@ function crRenderAntecipar() {
 
   document.getElementById('cr-btn-registrar').disabled = !podeEditar;
   crSimular();
+}
+
+/**
+ * O rodapé que diz onde mais procurar uma nota que não está na lista.
+ *
+ * Uma nota pode estar em três lugares antes de virar duplicata disponível:
+ * parada na fila de aprovação do Genesis, barrada por status/vencimento (aí
+ * aparece cinza acima), ou ainda não extraída — e nesse último caso a data da
+ * última extração é a informação que resolve a dúvida sozinha.
+ */
+function crNotaDuplicatas(bloqueados) {
+  const el = document.getElementById('cr-a-tit-nota');
+  if (!el) return;
+  const busca = (document.getElementById('cr-a-busca').value || '').trim();
+  const fila = CR.filaSync || {};
+  const q = fila.gerado_em ? new Date(fila.gerado_em) : null;
+  const quando = q && !isNaN(q)
+    ? q.toLocaleDateString('pt-BR') + ' ' + q.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : 'data desconhecida';
+
+  const partes = [];
+  if (busca) {
+    partes.push(bloqueados.length
+      ? '<b>' + bloqueados.length + ' título(s) de "' + crEsc(busca) + '" estão na lista em cinza</b>, ' +
+        'com o motivo de cada um.'
+      : 'Nenhum título barrado casa com "' + crEsc(busca) + '".');
+  } else {
+    partes.push('Procure pela NF ou pela OS no campo acima: os títulos que <b>não podem</b> ' +
+      'ser antecipados aparecem em cinza, com o motivo.');
+  }
+  if (Number(fila.novas) > 0) {
+    partes.push('<b>' + fila.novas + ' nota(s) do Genesis ainda esperando aprovação</b> — ' +
+      'nota na fila não é título e não entra em borderô. ' +
+      '<a href="#" onclick="crAbrirSync();return false;" style="font-weight:800;">Abrir a fila</a>.');
+  }
+  partes.push('Última extração do Genesis: <b>' + quando + '</b>.' +
+    (Number(fila.total) ? ' ' + fila.total + ' nota(s) na fila.' : ''));
+
+  el.innerHTML = partes.join(' ');
 }
 
 /** O vencimento que vale na montagem: o corrigido à mão, ou o do título. */

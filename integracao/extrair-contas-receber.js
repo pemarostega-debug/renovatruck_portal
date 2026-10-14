@@ -281,10 +281,26 @@ async function extrair() {
     database: process.env.DB_DATABASE
   };
 
-  // Para o cron: se --token / --api não vieram na linha de comando, usa o que
-  // estiver no .env (fora do git).
-  if (!TOKEN) TOKEN = String(process.env.SYNC_TOKEN || '');
-  if (!API) API = String(process.env.SYNC_API_URL || '');
+  // Para o cron: se --token / --api não vieram na linha de comando, procura
+  // primeiro as chaves ESPECÍFICAS do contas a receber em
+  // integracao/config.local.json e só depois cai no .env.
+  //
+  // A ordem não é capricho. `SYNC_API_URL` / `SYNC_TOKEN` são os mesmos nomes
+  // que o extrator do contas a PAGAR usa, e um .env só guarda um valor por
+  // nome: se ele estiver apontando para a implantação do contas a pagar — que
+  // também aceita `sync_gravar` com chave de serviço —, as notas de SAÍDA vão
+  // calmamente para a fila do contas a pagar, com "ok" na tela, e a fila do
+  // contas a receber nunca é atualizada. É exatamente o tipo de falha muda que
+  // faz a nota "desaparecer" semanas depois.
+  if (!TOKEN || !API) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.local.json'), 'utf8'));
+      if (!TOKEN && cfg.syncTokenReceber) TOKEN = String(cfg.syncTokenReceber);
+      if (!API && cfg.apiReceber) API = String(cfg.apiReceber);
+    } catch (e) { /* sem config.local.json: segue para o .env */ }
+  }
+  if (!TOKEN) TOKEN = String(process.env.SYNC_TOKEN_RECEBER || process.env.SYNC_TOKEN || '');
+  if (!API) API = String(process.env.SYNC_API_URL_RECEBER || process.env.SYNC_API_URL || '');
 
   console.log(`Janela: ${DESDE} → ${ATE}`);
   let cn;
@@ -319,16 +335,41 @@ async function extrair() {
   // notas diferentes em 7 casos e a conferência escolheria a errada. A OS
   // desempata — a vw_contas_a_receber traz `num_os` justamente para isso.
   // O índice sem OS fica de reserva para os títulos que vieram sem ela.
+  //
+  // Os dois índices guardam LISTA, não um título só. A mesma OS costuma gerar
+  // duas notas — uma de peça e uma de serviço — e o Genesis numera as duas
+  // séries separadamente, então `nf|cliente|parcela|os` casa com as duas ao
+  // mesmo tempo. Guardando um único título, peça e serviço herdavam o MESMO
+  // vencimento, o MESMO valor e a MESMA baixa: se o título da conferência
+  // estava pago, as duas notas nasciam RECEBIDAS e desapareciam da aba
+  // Antecipar sem motivo visível.
   const porOS = new Map();
   const porTitulo = new Map();
+  const empilhar = (mapa, chave, t) => {
+    if (!mapa.has(chave)) mapa.set(chave, []);
+    mapa.get(chave).push(t);
+  };
   for (const t of receber) {
     const ref = lerTituloCR(t.titulo);
     if (!ref) continue;
     const base = ref.nf + '|' + String(t.codigo_cliente) + '|' + ref.parcela;
     const os = String(t.num_os || t.os_fat || '').trim();
-    if (os) porOS.set(base + '|' + os, t);
-    if (!porTitulo.has(base)) porTitulo.set(base, t);
+    if (os) empilhar(porOS, base + '|' + os, t);
+    empilhar(porTitulo, base, t);
   }
+
+  /**
+   * Escolhe, entre os títulos de conferência candidatos, um que ainda não foi
+   * usado por outra nota — preferindo o de valor igual ao da parcela, que é o
+   * que desempata peça x serviço da mesma OS.
+   */
+  const escolherConf = (candidatos, valorParcela, usados) => {
+    if (!candidatos || !candidatos.length) return null;
+    const livres = candidatos.filter(t => !usados.has(t.codigo_id));
+    if (!livres.length) return null;
+    const igual = livres.filter(t => Math.abs(num(t.valor) - valorParcela) < 0.01);
+    return igual.length ? igual[0] : livres[0];
+  };
 
   const registros = [];
   let confirmados = 0, projetados = 0;
@@ -341,11 +382,8 @@ async function extrair() {
       const base = String(n.num_nf) + '|' + String(n.codigo_cliente) + '|' + p.parcela;
       // Pela OS primeiro; sem OS, cai no índice solto — mas nunca reaproveita
       // um título de conferência que já casou com outra nota.
-      let conf = os ? porOS.get(base + '|' + os) : null;
-      if (!conf) {
-        const solto = porTitulo.get(base);
-        if (solto && !confUsados.has(solto.codigo_id)) conf = solto;
-      }
+      let conf = os ? escolherConf(porOS.get(base + '|' + os), p.valor, confUsados) : null;
+      if (!conf) conf = escolherConf(porTitulo.get(base), p.valor, confUsados);
       if (conf) { confirmados++; confUsados.add(conf.codigo_id); }
 
       // Quando a view de contas a receber tem o título, ela manda: é o número
@@ -444,6 +482,30 @@ async function extrair() {
 async function enviar(payload) {
   if (!API) { console.error('Informe --api <url do /exec do contas-receber>.'); process.exitCode = 1; return; }
   if (!TOKEN) { console.error('Informe --token <token da sessão>. Pegue no console do portal: RV.token'); process.exitCode = 1; return; }
+
+  // Confere que a URL é mesmo a do contas a RECEBER antes de gravar. O `ping`
+  // devolve o ID da planilha que o script atende; a implantação do contas a
+  // pagar aceitaria `sync_gravar` sem reclamar, e o lote inteiro iria para a
+  // fila errada sem uma linha de erro. Só vale quando GS_CONTAS_RECEBER_ID
+  // está no .env — sem ele, segue com um aviso.
+  const esperado = String(process.env.GS_CONTAS_RECEBER_ID || '').trim();
+  if (esperado) {
+    try {
+      const ping = await fetch(API + '?action=ping').then(r => r.json());
+      if (ping && ping.planilha && String(ping.planilha) !== esperado) {
+        console.error('ABORTADO: essa URL atende a planilha ' + ping.planilha +
+          ', e não a do contas a receber (' + esperado + ').');
+        console.error('→ Corrija "apiReceber" em integracao/config.local.json ' +
+          '(ou SYNC_API_URL_RECEBER no .env). Provavelmente está apontando para o contas a PAGAR.');
+        process.exitCode = 1;
+        return;
+      }
+    } catch (e) {
+      console.log('(não consegui conferir a implantação pelo ping: ' + e.message + ' — seguindo)');
+    }
+  } else {
+    console.log('(sem GS_CONTAS_RECEBER_ID no .env: não dá para conferir se a URL é a do contas a receber)');
+  }
 
   const chamar = corpo => fetch(API, {
     method: 'POST',
