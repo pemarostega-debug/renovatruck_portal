@@ -505,8 +505,15 @@
         <div class="cr-campo"><label class="cr-lbl">Emissão</label><input type="date" id="cr-t-emissao" class="cr-inp" /></div>
         <div class="cr-campo"><label class="cr-lbl">Vencimento *</label><input type="date" id="cr-t-vencimento" class="cr-inp" onchange="crConferirRegraTitulo()" /></div>
       </div>
-      <div class="cr-g3">
+      <div class="cr-g4">
         <div class="cr-campo"><label class="cr-lbl">Número NF</label><input type="text" id="cr-t-nf" class="cr-inp" /></div>
+        <div class="cr-campo"><label class="cr-lbl">Tipo da nota</label>
+          <select id="cr-t-tipo" class="cr-inp" title="O Genesis numera peça e serviço em séries separadas: a NF 387 de peça e a 387 de serviço são notas diferentes.">
+            <option value="">Não informado</option>
+            <option value="PECA">Peça</option>
+            <option value="SERVICO">Serviço</option>
+          </select>
+        </div>
         <div class="cr-campo"><label class="cr-lbl">OS de origem</label><input type="text" id="cr-t-os" class="cr-inp" /></div>
         <div class="cr-campo"><label class="cr-lbl">Empresa</label>
           <select id="cr-t-empresa" class="cr-inp"><option value="RENOVA">Renova</option><option value="VALE">Vale</option></select>

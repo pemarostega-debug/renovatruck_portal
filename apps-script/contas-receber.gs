@@ -742,6 +742,20 @@ function salvarTituloRec(t, sessao) {
       t.situacao_antec = String(anterior[RT.situacao_antec] || '');
       t.recompra_em    = anterior[RT.recompra_em];
 
+      // A chave natural de um título que já existe NÃO se recalcula. A tela de
+      // edição não mostra natureza de operação nem a própria chave, então
+      // montarLinhaRec recomputava a chave sem esses campos: ela mudava, a fila
+      // de sincronização parava de reconhecer a nota como já lançada e voltava
+      // a oferecê-la como "nova" — editar um título abria o caminho para
+      // duplicá-lo. A natureza segue a mesma regra: é a origem do tipo
+      // peça/serviço e some se a tela não a devolver.
+      if (!String(t.chave_origem || '').trim()) {
+        t.chave_origem = String(anterior[RT.chave_origem] || '');
+      }
+      if (!String(t.natureza_operacao || '').trim()) {
+        t.natureza_operacao = String(anterior[RT.natureza_operacao] || '');
+      }
+
       const nova = montarLinhaRec(t, anterior, quem);
       forcarTextoRec(sh, i + 2);
       sh.getRange(i + 2, 1, 1, CAB_REC_TITULOS.length).setValues([nova]);
