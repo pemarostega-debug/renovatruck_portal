@@ -116,7 +116,17 @@ extrator do contas a pagar.
     "syncTokenReceber":"<CHAVE_SERVICO do contas a receber>"}
    ```
    Com `apiReceber` e `syncTokenReceber` no config, o comando dispensa
-   `--api`/`--token`.
+   `--api`/`--token`. No `.env` os nomes equivalentes são
+   `SYNC_API_URL_RECEBER` / `SYNC_TOKEN_RECEBER`.
+
+   **Não use `SYNC_API_URL`/`SYNC_TOKEN` para o contas a receber.** São os
+   mesmos nomes que o extrator do contas a pagar lê, e um `.env` guarda um
+   valor por nome: apontando para a implantação do contas a pagar — que também
+   aceita `sync_gravar` com chave de serviço —, as notas de saída iam para a
+   fila do contas a pagar com "ok" na tela e a fila do contas a receber ficava
+   congelada. Hoje o extrator confere a implantação pelo `ping` (compara com
+   `GS_CONTAS_RECEBER_ID`) e **aborta** quando a URL é de outra planilha, mas a
+   ordem certa das chaves continua sendo a específica.
 3. Testar: `node integracao/extrair-contas-receber.js --enviar`
 4. `crontab -e`:
    ```
@@ -238,6 +248,37 @@ A conta vive em `aplicarRegraVencimento()` no Apps Script e tem um espelho em
 `crAplicarRegra()` no portal, para a tela mostrar a data antes de gravar. **Se
 mexer numa, mexa na outra** — o teste que compara as duas está descrito em
 "Cuidados ao mexer no código".
+
+### "A NF X não aparece em Antecipar" — como responder em 1 minuto
+
+Uma nota só chega à lista de **duplicatas disponíveis** depois de passar por
+quatro portas, e durante muito tempo nenhuma delas dava recibo. Hoje dá:
+
+1. **Está no Genesis e casa com o filtro?** Entram as notas não canceladas cuja
+   `natureza_operacao` começa com *Venda* ou *Presta*. Nota de bonificação,
+   remessa ou devolução não é recebível e nunca entra.
+2. **Foi extraída?** O extrator roda por cron às 06:40 na VPS. A aba Antecipar
+   agora mostra, no pé da lista, a **data da última extração**: se ela é de
+   semanas atrás, o cron parou e nenhuma nota nova chegou.
+3. **Foi aprovada?** Nota na fila de aprovação **não é título** e não entra em
+   borderô. O rodapé avisa quantas estão esperando, com link para a fila.
+4. **O título está antecipável?** Em aberto, não antecipado e a vencer. Quando
+   você busca por NF ou OS no campo de filtro, os títulos barrados aparecem
+   **em cinza com o motivo** (recebido, vencido, já antecipado, recomprado,
+   sem vencimento) em vez de simplesmente não aparecer.
+
+Para o caso que a tela não resolve, o diagnóstico completo numa máquina com
+acesso ao banco:
+
+```bash
+node integracao/diagnosticar-nf.js 414 413/S 426 --os 4771 \
+     --api <url/exec do contas a RECEBER> --token <RV.token do portal>
+```
+
+Ele só lê, e diz por nota onde ela parou: não existe no Genesis, natureza fora
+do filtro, baixa herdada da `vw_contas_a_receber`, fora da fila, parada na fila
+sem aprovação, ou título barrado — com o motivo. Sem `--token` ele diagnostica
+tudo menos a fila; sem `--api`, só o lado do Genesis.
 
 ### Corrigir vencimentos na montagem do borderô
 
