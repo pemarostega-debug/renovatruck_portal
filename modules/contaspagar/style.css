@@ -160,6 +160,30 @@
 #screen-contaspagar .cp-no-acoes{display:flex;gap:2px;opacity:0;transition:opacity .15s;flex-shrink:0;}
 #screen-contaspagar .cp-no:hover .cp-no-acoes{opacity:1;}
 
+/* Explosão dos títulos dentro da natureza */
+#screen-contaspagar .cp-no.clicavel{cursor:pointer;}
+#screen-contaspagar .cp-no-caret{width:12px;flex-shrink:0;font-size:.62rem;color:var(--muted);
+  transition:transform .15s;text-align:center;}
+#screen-contaspagar .cp-no-caret.aberto{transform:rotate(90deg);}
+#screen-contaspagar .cp-no-qtd{font-size:.64rem;font-weight:700;color:var(--muted);
+  font-variant-numeric:tabular-nums;flex-shrink:0;min-width:46px;text-align:right;}
+#screen-contaspagar .cp-no-det{margin:2px 0 8px 34px;border-left:2px solid #e2e8f0;
+  border-radius:0 10px 10px 0;background:#fbfcfe;overflow-x:auto;}
+#screen-contaspagar .cp-no-det table.cp-tbl{font-size:.75rem;font-weight:400;}
+#screen-contaspagar .cp-no-det .cp-tbl tbody tr:last-child{border-bottom:none;}
+#screen-contaspagar .cp-no-det-rodape{padding:7px 11px;font-size:.7rem;font-weight:700;
+  color:var(--muted);border-top:1px solid var(--border);}
+#screen-contaspagar .cp-no-det-vazio{padding:12px;font-size:.76rem;color:var(--muted);}
+
+/* Total geral: fecha a árvore somando o mês inteiro, inclusive o fora do plano. */
+#screen-contaspagar .cp-plano-total{display:flex;align-items:center;gap:10px;margin-top:10px;
+  padding:11px 12px;border-top:2px solid var(--border);}
+#screen-contaspagar .cp-plano-total-nome{flex:1;min-width:0;font-weight:900;font-size:.9rem;}
+#screen-contaspagar .cp-plano-total-nome small{display:block;font-size:.68rem;font-weight:700;
+  color:var(--muted);margin-top:2px;}
+#screen-contaspagar .cp-plano-total-val{font-weight:900;font-size:1.02rem;color:var(--dark);
+  font-variant-numeric:tabular-nums;flex-shrink:0;}
+
 /* ── Modais ── */
 #screen-contaspagar .cp-overlay{display:none;position:fixed;inset:0;z-index:120;background:rgba(15,23,42,.55);justify-content:center;align-items:center;padding:1rem;}
 #screen-contaspagar .cp-overlay.open{display:flex;}
@@ -261,6 +285,11 @@
   #screen-contaspagar .cp-no.filho{padding-left:20px;}
   #screen-contaspagar .cp-no-cod{min-width:38px;font-size:.68rem;}
   #screen-contaspagar .cp-no-acoes{opacity:1;}
+  /* A contagem sai: no celular ela brigava com o valor pelo mesmo espaço. */
+  #screen-contaspagar .cp-no-qtd{display:none;}
+  #screen-contaspagar .cp-no-det{margin-left:14px;}
+  #screen-contaspagar .cp-no-det table.cp-tbl{font-size:.72rem;}
+  #screen-contaspagar .cp-no-det .cp-forn{max-width:150px;}
   #screen-contaspagar .cp-sel-nat{max-width:120px;}
   #screen-contaspagar .cp-sync-chip{flex:1 1 45%;}
 }

@@ -18,6 +18,7 @@ const CP = {
   editando: null,             // id do título aberto no modal
   baixando: null,
   planoRascunho: null,        // cópia do plano enquanto há edição pendente
+  planoAberto: {},            // código→true: naturezas com os títulos explodidos
   contaEditando: null,
   fixaEditando: null,         // id da conta fixa aberta no modal
   gfPrevia: null,             // prévia da geração: { competencia, itens: [...] }
@@ -48,7 +49,7 @@ const CP_EIXOS = {
     burnTitulo: 'Queima de caixa semanal',
     burnAcum: 'Previsto (acumulado)', burnSemana: 'Previsto na semana',
     burnAjuda: 'Semana pelo vencimento — o ritmo em que o caixa é consumido.',
-    planoAjuda: 'Os valores ao lado somam os títulos que vencem no mês selecionado.'
+    planoAjuda: 'Os valores ao lado somam os títulos que vencem no mês selecionado. Clique na natureza para ver os títulos dentro.'
   },
   emissao: {
     nome: 'Emissão', curto: 'Emissão', icone: 'fa-file-pen',
@@ -58,7 +59,7 @@ const CP_EIXOS = {
     burnTitulo: 'Volume lançado por semana',
     burnAcum: 'Lançado (acumulado)', burnSemana: 'Lançado na semana',
     burnAjuda: 'Semana pela emissão — o ritmo em que a despesa foi gerada.',
-    planoAjuda: 'Os valores ao lado somam os títulos emitidos no mês selecionado.'
+    planoAjuda: 'Os valores ao lado somam os títulos emitidos no mês selecionado. Clique na natureza para ver os títulos dentro.'
   }
 };
 
@@ -1193,40 +1194,150 @@ function cpMarcarPlanoSujo(sujo) {
   if (b) b.disabled = !sujo;
 }
 
+/**
+ * Abre/fecha os títulos de uma natureza. O estado vive em CP.planoAberto, fora
+ * do render: trocar de mês ou salvar o plano não deve fechar o que o dono
+ * acabou de abrir.
+ */
+function cpTogglePlanoNo(codigo) {
+  CP.planoAberto[codigo] = !CP.planoAberto[codigo];
+  cpRenderPlano();
+}
+
+/** Títulos do mês agrupados por código de natureza. */
+function cpAgruparPorConta(doMes) {
+  const g = {};
+  doMes.forEach(t => {
+    const c = String(t.natureza_codigo || '');
+    if (!g[c]) g[c] = [];
+    g[c].push(t);
+  });
+  return g;
+}
+
+const cpSomaTotal = lista => lista.reduce((s, t) => s + (Number(t.valor_total) || 0), 0);
+const cpSomaPago  = lista => lista.reduce((s, t) => s + (Number(t.valor_pago) || 0), 0);
+
+/**
+ * Uma linha do detalhe explodido. `mostrarConta` só sai no detalhe de uma
+ * conta-mãe, onde a pergunta é "em qual subconta isso caiu?"; dentro da própria
+ * subconta seria a mesma palavra repetida em toda linha.
+ */
+function cpPlanoLinhaTitulo(t, mostrarConta) {
+  const data = cpPorEmissao() ? t.data_emissao : t.data_vencimento;
+  const vencido = cpVencido(t);
+  const doc = t.numero_nf || t.numero_boleto || t.descricao || '—';
+  return `<tr>
+    <td style="white-space:nowrap;font-weight:700;">${cpData(data)}${vencido
+      ? ` <span class="cp-pill cp-pill-atraso">${cpDias(t.data_vencimento, CP.hoje)}d</span>` : ''}</td>
+    <td class="cp-forn" title="${cpEsc(t.fornecedor)}">${cpEsc(t.fornecedor)}</td>
+    ${mostrarConta ? `<td class="cp-col-apoio" style="font-size:.7rem;color:var(--muted);">${cpEsc(cpNomeConta(t.natureza_codigo))}</td>` : ''}
+    <td class="cp-col-apoio" style="font-size:.7rem;color:var(--muted);">${cpEsc(doc)}</td>
+    <td class="cp-num" style="font-weight:800;">${cpBRL(t.valor_total)}</td>
+    <td><span class="cp-pill cp-pill-${t.status}">${t.status}</span></td>
+    <td style="text-align:right;white-space:nowrap;">${cpPodeEditar() ? `
+      ${t.status !== 'PAGO' ? `<button class="cp-acao baixar" onclick="cpAbrirBaixa('${t.id}')" title="Dar baixa"><i class="fa-solid fa-money-check-dollar"></i></button>` : ''}
+      <button class="cp-acao" onclick="cpAbrirTitulo('${t.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>` : ''}</td>
+  </tr>`;
+}
+
+/** Bloco de títulos que aparece embaixo da natureza aberta, do maior pro menor. */
+function cpPlanoDetalhe(titulos, mostrarConta) {
+  if (!titulos.length) {
+    return '<div class="cp-no-det"><div class="cp-no-det-vazio">Nenhum título nesta natureza no mês selecionado.</div></div>';
+  }
+  const lista = titulos.slice().sort((a, b) => (Number(b.valor_total) || 0) - (Number(a.valor_total) || 0));
+  const soma = cpSomaTotal(lista), pago = cpSomaPago(lista);
+  return `<div class="cp-no-det">
+    <table class="cp-tbl"><tbody>${lista.map(t => cpPlanoLinhaTitulo(t, mostrarConta)).join('')}</tbody></table>
+    <div class="cp-no-det-rodape">${lista.length} título(s) · Total ${cpBRL(soma)} · Pago ${cpBRL(pago)} · Saldo ${cpBRL(soma - pago)}</div>
+  </div>`;
+}
+
+/** Cabeçalho clicável de uma natureza. Sem título dentro, não há o que abrir. */
+function cpPlanoNo(opts) {
+  const aberto = !!CP.planoAberto[opts.codigo];
+  const clicavel = opts.qtd > 0;
+  const caret = clicavel
+    ? `<i class="fa-solid fa-chevron-right cp-no-caret${aberto ? ' aberto' : ''}"></i>`
+    : '<i class="cp-no-caret vazia"></i>';
+  return `<div class="cp-no ${opts.classe}${clicavel ? ' clicavel' : ''}" style="${opts.estilo || ''}"
+      ${clicavel ? `onclick="cpTogglePlanoNo('${cpEsc(opts.codigo)}')" title="${aberto ? 'Fechar' : 'Ver os títulos dentro desta natureza'}"` : ''}>
+      ${caret}
+      <span class="cp-no-cod">${cpEsc(opts.rotuloCod)}</span>
+      <span class="cp-no-nome">${opts.nome}</span>
+      <span class="cp-no-qtd">${opts.qtd ? opts.qtd + ' tít.' : ''}</span>
+      <span class="cp-no-val">${opts.qtd ? cpBRL(opts.valor) : '<span style="color:#cbd5e1;">—</span>'}</span>
+      <span class="cp-no-acoes" onclick="event.stopPropagation()">${opts.acoes || ''}</span>
+    </div>`;
+}
+
 function cpRenderPlano() {
   const plano = cpPlanoAtual();
   const doMes = CP.titulos.filter(t => t.status !== 'CANCELADO' && cpDoMes(t));
-
-  const porConta = {};
-  doMes.forEach(t => {
-    const c = String(t.natureza_codigo);
-    porConta[c] = (porConta[c] || 0) + (Number(t.valor_total) || 0);
-  });
+  const porConta = cpAgruparPorConta(doMes);
+  const titulosDe = c => porConta[String(c)] || [];
 
   const raizes = plano.filter(c => !c.codigo_pai).sort((a, b) => a.ordem - b.ordem);
-  const html = raizes.map(r => {
+  let html = raizes.map(r => {
     const filhos = plano.filter(c => c.codigo_pai === r.codigo).sort((a, b) => a.ordem - b.ordem);
-    const totalRamo = filhos.reduce((s, f) => s + (porConta[f.codigo] || 0), 0) + (porConta[r.codigo] || 0);
+    // O ramo é a conta-mãe mais as subcontas: é o que o valor da linha soma, e
+    // portanto é exatamente o que ela tem de explodir quando o dono clica.
+    const titulosRamo = filhos.reduce((acc, f) => acc.concat(titulosDe(f.codigo)), titulosDe(r.codigo).slice());
     const cor = (CP_MACROS[r.macro] || {}).cor || '#64748b';
 
-    return `<div class="cp-no raiz" style="border-left:4px solid ${cor};">
-        <span class="cp-no-cod">${cpEsc(r.codigo)}</span>
-        <span class="cp-no-nome">${cpEsc(r.nome)}</span>
-        <span class="cp-no-val">${cpBRL(totalRamo)}</span>
-        <span class="cp-no-acoes">${cpPodeEditar()
-          ? `<button class="cp-acao" onclick="cpAbrirConta('${cpEsc(r.codigo)}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
-             <button class="cp-acao" onclick="cpAbrirConta('','${cpEsc(r.codigo)}')" title="Nova subconta"><i class="fa-solid fa-plus"></i></button>` : ''}</span>
-      </div>` +
-      (filhos.length ? filhos.map(f => `
-        <div class="cp-no filho">
-          <span class="cp-no-cod">${cpEsc(f.codigo)}</span>
-          <span class="cp-no-nome">${cpEsc(f.nome)}${f.ativo ? '' : ' <span class="cp-tag-macro">inativa</span>'}</span>
-          <span class="cp-no-val">${porConta[f.codigo] ? cpBRL(porConta[f.codigo]) : '<span style="color:#cbd5e1;">—</span>'}</span>
-          <span class="cp-no-acoes">${cpPodeEditar()
-            ? `<button class="cp-acao" onclick="cpAbrirConta('${cpEsc(f.codigo)}')" title="Editar"><i class="fa-solid fa-pen"></i></button>` : ''}</span>
-        </div>`).join('')
-        : '<div class="cp-no filho" style="color:var(--muted);font-size:.76rem;">Sem subcontas.</div>');
+    let bloco = cpPlanoNo({
+      codigo: r.codigo, classe: 'raiz', estilo: `border-left:4px solid ${cor};`,
+      rotuloCod: r.codigo, nome: cpEsc(r.nome),
+      qtd: titulosRamo.length, valor: cpSomaTotal(titulosRamo),
+      acoes: cpPodeEditar()
+        ? `<button class="cp-acao" onclick="cpAbrirConta('${cpEsc(r.codigo)}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+           <button class="cp-acao" onclick="cpAbrirConta('','${cpEsc(r.codigo)}')" title="Nova subconta"><i class="fa-solid fa-plus"></i></button>` : ''
+    });
+    if (CP.planoAberto[r.codigo]) bloco += cpPlanoDetalhe(titulosRamo, true);
+
+    if (!filhos.length) {
+      bloco += '<div class="cp-no filho" style="color:var(--muted);font-size:.76rem;">Sem subcontas.</div>';
+      return bloco;
+    }
+    return bloco + filhos.map(f => {
+      const lista = titulosDe(f.codigo);
+      let sub = cpPlanoNo({
+        codigo: f.codigo, classe: 'filho', rotuloCod: f.codigo,
+        nome: cpEsc(f.nome) + (f.ativo ? '' : ' <span class="cp-tag-macro">inativa</span>'),
+        qtd: lista.length, valor: cpSomaTotal(lista),
+        acoes: cpPodeEditar()
+          ? `<button class="cp-acao" onclick="cpAbrirConta('${cpEsc(f.codigo)}')" title="Editar"><i class="fa-solid fa-pen"></i></button>` : ''
+      });
+      if (CP.planoAberto[f.codigo]) sub += cpPlanoDetalhe(lista, false);
+      return sub;
+    }).join('');
   }).join('');
+
+  // Título com código que não existe (mais) no plano: entra no total geral do
+  // mês, então tem de aparecer na árvore — senão as linhas somam uma coisa e o
+  // total geral outra, sem explicação na tela.
+  const noPlano = new Set(plano.map(c => String(c.codigo)));
+  const orfaos = doMes.filter(t => !noPlano.has(String(t.natureza_codigo || '')));
+  if (orfaos.length) {
+    html += cpPlanoNo({
+      codigo: '__fora', classe: 'raiz orfas', estilo: 'border-left:4px solid #94a3b8;',
+      rotuloCod: '—', nome: 'Fora do plano de contas',
+      qtd: orfaos.length, valor: cpSomaTotal(orfaos)
+    });
+    if (CP.planoAberto.__fora) html += cpPlanoDetalhe(orfaos, true);
+  }
+
+  if (html) {
+    const total = cpSomaTotal(doMes), pago = cpSomaPago(doMes);
+    const aberto = doMes.filter(t => t.status !== 'PAGO').reduce((s, t) => s + cpSaldo(t), 0);
+    html += `<div class="cp-plano-total">
+        <span class="cp-plano-total-nome">Total geral
+          <small>${doMes.length} título(s) no mês · Pago ${cpBRL(pago)} · Em aberto ${cpBRL(aberto)}</small>
+        </span>
+        <span class="cp-plano-total-val">${cpBRL(total)}</span>
+      </div>`;
+  }
 
   document.getElementById('cp-arvore').innerHTML = html ||
     '<div class="cp-vazio">Plano de contas vazio. Rode a função <code>instalar()</code> no Apps Script.</div>';
