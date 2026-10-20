@@ -75,6 +75,22 @@ SYNC_TOKEN=seu_token_servico_aqui
 
 O token de serviço é obtido da conta de serviço do Apps Script (diferente da sessão do navegador).
 
+### 5️⃣.1 Extração de Ordens de Serviço (substitui o antigo dados.json)
+
+O `dados.json` que era commitado no repositório público saiu de circulação —
+cliente, NF e valor de cada OS ficavam legíveis por qualquer um na internet.
+Agora `extrator-ordens.js` envia o mesmo dump da `vw_ordens_servico` para
+`apps-script/ordens-servico.gs`, que grava numa planilha privada:
+
+```env
+ORDENS_API_URL=https://script.google.com/macros/s/AKfycbw.../exec
+ORDENS_CHAVE_SERVICO=seu_token_servico_aqui
+```
+
+A `ORDENS_CHAVE_SERVICO` é configurada em Propriedades do script do próprio
+`ordens-servico.gs` (propriedade `CHAVE_SERVICO`) — não é a mesma chave do
+Contas a Pagar/Receber.
+
 ## 🚀 Usando os Scripts
 
 ### Banco de Dados
@@ -83,7 +99,7 @@ O token de serviço é obtido da conta de serviço do Apps Script (diferente da 
 # Testar conexão
 npm run test-db
 
-# Exportar dados de OS
+# Extrair ordens de serviço (envia para o Apps Script, não gera mais arquivo)
 npm run export
 ```
 
@@ -112,7 +128,7 @@ renovatruck_portal/
 ├── .gitignore              ← Já ignora .env
 ├── package.json            ← Inclui dotenv
 ├── teste-conexao.js        ← Lê de .env
-├── exportar-dados.js       ← Lê de .env
+├── extrator-ordens.js      ← Lê de .env
 └── integracao/
     ├── extrair-contas-pagar.js      ← Lê de ../.env
     ├── extrair-contas-receber.js    ← Lê de ../.env

@@ -69,8 +69,7 @@ renovatruck_portal/
 ├── PLANO-EXECUCAO.md
 ├── PADRAO-ARQUITETURA.md       # (este arquivo)
 ├── CLAUDE.md
-├── .env
-└── dados.json
+└── .env
 ```
 
 ---

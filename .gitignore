@@ -23,6 +23,10 @@ integracao/resultado-semanal-sync.json
 contas-pagar-sync.json
 contas-receber-sync.json
 
+# Ordens de serviço (cliente, NF, valor): saiu daqui, vai para a planilha
+# privada via apps-script/ordens-servico.gs. Ver fetchDados() em js/core.js.
+dados.json
+
 # Backups e rascunhos de arquivo (podem conter credenciais)
 *.bak
 *.save

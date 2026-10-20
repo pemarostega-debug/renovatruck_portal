@@ -36,17 +36,17 @@ Esperado:
 - [ ] Conexão com banco bem-sucedida
 - [ ] Dados retornados corretamente
 
-### Passo 4: Testar exportação
+### Passo 4: Testar extração de ordens de serviço
 ```bash
 npm run export
 ```
 Esperado:
 ```
 Conectado ao banco.
-X registro(s) exportado(s) — Y KB.
+X registro(s) enviado(s) para o Apps Script.
 ```
-- [ ] Exportação de dados bem-sucedida
-- [ ] Arquivo `dados.json` criado
+- [ ] Extração bem-sucedida (envia para `apps-script/ordens-servico.gs`, não gera mais arquivo local)
+- [ ] `ORDENS_API_URL` e `ORDENS_CHAVE_SERVICO` preenchidos no `.env` (ver SETUP-ENV.md)
 
 ---
 

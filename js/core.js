@@ -16,6 +16,9 @@ const CONFIG = {
   // da vw_os_produto_serviço (peças e serviços de cada OS). Guia de publicação
   // em integracao/LEIA-ME-resultado-semanal.md.
   RESULTADO_SEMANAL_API: 'https://script.google.com/macros/s/AKfycbzOshhgNVKEh_8dDrx0bfA-kcrkpvV3LpCPmWCwm11-v9IAQzeLkyy5-GdyRy3FfpPo_w/exec',
+  // /exec do apps-script/ordens-servico.gs. Substitui o antigo dados.json
+  // publicado no repositório (público) — ver fetchDados().
+  ORDENS_API: 'https://script.google.com/macros/s/AKfycbwwY5er7pR4bjNvk6wmQblvlQ7ZZbC4CBa7Mr71zCY2A_s0l2E2c-OCbGT_2HRQZUg/exec',
 };
 const csvURL = s => `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(s)}`;
 const csvURLExt = (id, s) => `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(s)}`;
@@ -77,12 +80,16 @@ const rvPostar = (url, corpo, tentativas) => rvTentar(url, {
   body: JSON.stringify(corpo)
 }, tentativas);
 
-// Busca o JSON gerado pela exportação periódica (exportar-dados.js).
-// O parâmetro t evita cache do CDN/navegador.
+// Busca as ordens de serviço no Apps Script (apps-script/ordens-servico.gs),
+// que o cron na VPS alimenta (extrator-ordens.js). Antes isso vinha de um
+// dados.json publicado no repositório — público, com cliente/NF/valor de
+// cada OS legíveis por qualquer um, logado ou não. Agora só sai com sessão
+// válida do portal (RV.token), igual ao resto do sistema financeiro.
 async function fetchDados(){
-  const res = await fetch('https://raw.githubusercontent.com/pemarostega-debug/renovatruck_portal/main/dados.json?t='+Date.now());
-  if(!res.ok) throw new Error("HTTP "+res.status);
-  return res.json();
+  if(!RV.token) throw new Error("Sessão expirada. Entre no sistema novamente.");
+  const d = await rvBuscar(CONFIG.ORDENS_API+'?action=ordens_listar&token='+encodeURIComponent(RV.token)+'&t='+Date.now());
+  if(!d.success) throw new Error(d.error || "Falha ao buscar ordens de serviço.");
+  return d.data;
 }
 
 // ── PARSE DATE (robusto) ──

@@ -82,10 +82,20 @@
 - **Problema:** Gráfico pode não caber em mobile (maintainAspectRatio não setado)
 - **Solução:** Configurar Chart.js com `responsive: true, maintainAspectRatio: false`
 
-### 12. **Dados sensíveis em dados.json (público)**
+### 12. **Dados sensíveis em dados.json (público)** — ✅ RESOLVIDO 20/10/2026
 - **Arquivo:** `dados.json` (commitado no repo público)
 - **Problema:** Repo é GitHub Pages (público). Dados de clientes/faturamento visíveis.
-- **Solução:** Apenas OSs/serviços públicos em dados.json. Dados sensíveis via API Apps Script (autenticada).
+- **Solução aplicada:** `dados.json` removido do repositório e do fluxo de publicação.
+  As ordens de serviço agora ficam na planilha privada do Contas a Pagar/Receber,
+  servidas por `apps-script/ordens-servico.gs` (ação `ordens_listar`, exige token
+  de sessão válido). O extrator (`extrator-ordens.js`, roda por cron na VPS,
+  substitui o antigo `exportar-dados.js`) alimenta a planilha via ação
+  `ordens_sync`, autenticada por chave de serviço — nunca mais via `git push`.
+  `js/core.js` (`fetchDados()`) e os módulos Kanban/Contas a Receber que liam o
+  raw.githubusercontent.com direto foram migrados para esse endpoint.
+  **Pendente:** remover `dados.json` do histórico do git (ele já ficou público
+  por tempo suficiente para ter sido indexado/clonado) e publicar a nova
+  implantação do Apps Script.
 
 ---
 

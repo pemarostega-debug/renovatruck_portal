@@ -5,7 +5,7 @@
   },
   "scripts": {
     "test-db": "node teste-conexao.js",
-    "export": "node exportar-dados.js",
+    "export": "node extrator-ordens.js",
     "sync-cp": "node integracao/extrair-contas-pagar.js",
     "sync-cr": "node integracao/extrair-contas-receber.js",
     "migrate": "node integracao/migrar-planilha.js"

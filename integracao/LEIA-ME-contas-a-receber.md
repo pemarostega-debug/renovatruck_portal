@@ -226,7 +226,7 @@ duplicata emitida, mas não OS sem pedido** — antecipar recebível que ainda n
 existe depende de conhecer o comportamento do cliente.
 
 O botão *Sugerir pelo histórico* preenche "dias até faturar" com a **mediana** do
-histórico real do cliente no `dados.json` (não a média: uma OS que ficou seis
+histórico real do cliente nas ordens de serviço (não a média: uma OS que ficou seis
 meses parada distorce a média e não representa o comportamento normal). O prazo
 de vencimento continua manual — vem da negociação comercial, não do sistema.
 
@@ -412,10 +412,11 @@ para conferir o borderô que volta, não para enfeitar a tela. A fórmula está
 duplicada de propósito no `contas-receber.gs` e no `index.html`; **se divergir, o
 número da tela mente sobre o que vai ser gravado.**
 
-**As OSs vêm do `dados.json`, não da planilha.** É o mesmo export público que o
-Kanban já usa, com `numero_os`, `razao_cliente` e `valor_total`. Duplicar isso na
-planilha criaria uma segunda verdade sobre a OS. A tela mostra a data do último
-export, para ninguém antecipar em cima de lista velha achando que é de hoje.
+**As OSs vêm de `fetchDados()` (Apps Script `ordens-servico.gs`), não da
+planilha deste módulo.** É a mesma fonte autenticada que o Kanban já usa, com
+`numero_os`, `razao_cliente` e `valor_total`. Duplicar isso na planilha
+criaria uma segunda verdade sobre a OS. A tela mostra a data do último sync,
+para ninguém antecipar em cima de lista velha achando que é de hoje.
 
 **Nada de dado financeiro no git.** O repositório do portal é público — é o que
 faz o GitHub Pages servir o site. Por isso as notas trafegam pela API autenticada

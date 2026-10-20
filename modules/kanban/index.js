@@ -28,11 +28,10 @@ const KB_DEMO_PATIO = [
 function kbBRL(v){ return (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function kbNotice(msg,tipo){ const el=document.getElementById('kb-notice'); if(!msg){el.className='kb-notice';el.textContent='';return;} el.className='kb-notice '+(tipo||'info'); el.innerHTML=msg; }
 
-// ── Carrega o mapa de OSs a partir do dados.json já usado no portal ──
+// ── Carrega o mapa de OSs a partir do mesmo fetchDados() do portal ──
 async function kbCarregarOS(){
   try{
-    const r = await fetch('https://raw.githubusercontent.com/pemarostega-debug/renovatruck_portal/main/dados.json?t='+Date.now());
-    const p = await r.json();
+    const p = await fetchDados();
     (p.ordens||[]).forEach(o=>{
       KB.osMap[String(o.numero_os)] = {
         valor: parseFloat(o.valor_total)||0,
@@ -41,7 +40,7 @@ async function kbCarregarOS(){
       };
     });
     KB.osReady = true;
-  }catch(e){ console.warn('Kanban: falha ao ler dados.json', e); }
+  }catch(e){ console.warn('Kanban: falha ao ler ordens de serviço', e); }
 }
 
 // ── Ponto de entrada (chamado por openModule) ──

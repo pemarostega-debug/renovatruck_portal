@@ -4,7 +4,7 @@ Clientes classificados em A/B/C por faturamento (OSs faturadas/pagas), com ranki
 
 - **Acesso:** todos os usuários logados · Home → Módulo Financeiro
 - **Entrada:** `loadABC()`
-- **Dados:** `dados.json` via `fetchDados()` (`js/core.js`)
+- **Dados:** ordens de serviço via `fetchDados()` (`js/core.js`, Apps Script `ordens-servico.gs`)
 - **Bibliotecas:** Chart.js
 
 ## Arquivos

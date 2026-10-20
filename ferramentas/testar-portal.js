@@ -12,8 +12,10 @@
  *   - se sobra rolagem horizontal em 375px, 768px e 1024px.
  *
  * Segurança: toda chamada ao Apps Script e às planilhas Google é BLOQUEADA — o
- * teste nunca lê nem grava dado real. O dados.json vem da cópia local da pasta.
- * A sessão é falsa (admin), só para as telas restritas abrirem.
+ * teste nunca lê nem grava dado real, exceto a chamada a ordens-servico.gs
+ * (ordens_listar), que recebe uma resposta falsa local para os módulos que
+ * dependem de fetchDados() abrirem. A sessão é falsa (admin), só para as
+ * telas restritas abrirem.
  *
  * Sai com código 1 se algo falhar — dá para usar antes de cada push.
  */
@@ -62,10 +64,10 @@ async function abrirPagina(browser, largura) {
   page.on('dialog', d => { erros.push('alerta: ' + d.message()); d.accept(); });
   page.on('response', r => { if (r.status() >= 400 && r.url().includes('localhost')) erros.push(`HTTP ${r.status()} ${r.url()}`); });
   await page.setRequestInterception(true);
-  const dados = fs.existsSync(path.join(RAIZ, 'dados.json')) ? fs.readFileSync(path.join(RAIZ, 'dados.json')) : '{"ordens":[]}';
+  const dados = JSON.stringify({ success: true, data: { gerado_em: '', total: 0, ordens: [] } });
   page.on('request', req => {
     const u = req.url();
-    if (u.includes('raw.githubusercontent.com') && u.includes('dados.json'))
+    if (u.includes('script.google.com') && u.includes('action=ordens_listar'))
       return req.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: dados });
     if (/script\.google\.com|docs\.google\.com/.test(u)) return req.abort('blockedbyclient');
     req.continue();

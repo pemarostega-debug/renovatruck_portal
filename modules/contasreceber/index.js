@@ -9,7 +9,7 @@ const CR = {
   API: 'https://script.google.com/macros/s/AKfycbxX2WqtUFZdsZx3CwrFRN7QDr4ygsYWLi9rSJynobXJai0zUAo8MB_5cl5VF745ZQo8/exec',
 
   titulos: [], parceiros: [], politicas: [], operacoes: [], antecipacoesOS: [],
-  osPendentes: [],          // vem do dados.json (mesmo export do Kanban)
+  osPendentes: [],          // vem de fetchDados() (mesma origem do Kanban)
   osGeradoEm: '',
   filaSync: { total: 0, novas: 0, gerado_em: '' },
 
@@ -53,8 +53,6 @@ const CR_SIT = {
 };
 
 const CR_CORES = ['#7c3aed', '#059669', '#0284c7', '#d97706', '#db2777', '#0891b2', '#65a30d', '#dc2626'];
-
-const CR_URL_DADOS = 'https://raw.githubusercontent.com/pemarostega-debug/renovatruck_portal/main/dados.json';
 
 // ── Utilitários ──────────────────────────────────────────────────────────────
 const crEsc = s => String(s === null || s === undefined ? '' : s)
@@ -239,8 +237,7 @@ async function crCarregar(forcar) {
 
 /** OSs em AGUARDANDO PEDIDO, do export periódico do Genesis. */
 async function crCarregarOS() {
-  const r = await fetch(CR_URL_DADOS + '?t=' + Date.now());
-  const p = await r.json();
+  const p = await fetchDados();
   CR.osGeradoEm = p.gerado_em || '';
   CR.osPendentes = (p.ordens || [])
     .filter(o => String(o.descricao_fase || '').trim().toUpperCase() === 'AGUARDANDO PEDIDO'

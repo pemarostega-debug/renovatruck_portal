@@ -4,7 +4,7 @@ Veículos no pátio (vindos da portaria) organizados em colunas: aguardando orç
 
 - **Acesso:** todos os usuários logados · Home → Módulo Operacional
 - **Entrada:** `initKanban()`
-- **Dados:** Apps Script da portaria (`KB.APPS_SCRIPT_URL`), estado do quadro com cópia em `localStorage` (`rv_kanban_estado`) e valores das OSs a partir do `dados.json`. Sem conexão, mostra dados de demonstração.
+- **Dados:** Apps Script da portaria (`KB.APPS_SCRIPT_URL`), estado do quadro com cópia em `localStorage` (`rv_kanban_estado`) e valores das OSs via `fetchDados()` (Apps Script `ordens-servico.gs`). Sem conexão, mostra dados de demonstração.
 - **Compartilha:** `kbEsc()` agora mora em `js/core.js`, porque Histórico e Manual também usam
 
 ## Arquivos

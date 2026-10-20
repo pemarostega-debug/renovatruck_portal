@@ -4,7 +4,7 @@ OSs em aberto (a faturar, aguardando pedido…) e faturamento por cliente, com g
 
 - **Acesso:** todos os usuários logados · Home → Módulo Operacional
 - **Entrada:** `fetchData()` (roda toda vez que a tela abre)
-- **Dados:** `dados.json` (via `fetchDados()` do `js/core.js`, gerado pelo `exportar-dados.js`) + planilha de OSs finalizadas (`CONFIG.SHEET_FINALIZADAS_ID`, CSV público do Google Sheets)
+- **Dados:** ordens de serviço via `fetchDados()` (`js/core.js`, Apps Script `ordens-servico.gs`, alimentado por `extrator-ordens.js` na VPS) + planilha de OSs finalizadas (`CONFIG.SHEET_FINALIZADAS_ID`, CSV público do Google Sheets)
 - **Bibliotecas:** Chart.js, xlsx, PapaParse (baixadas pelo router)
 
 ## Arquivos
