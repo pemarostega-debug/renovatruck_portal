@@ -56,10 +56,19 @@ const ABA_ORDENS = 'Ordens';
 const CAB_ORDENS = [
   'id_ordem_servico', 'numero_os', 'num_os', 'codigo_cliente', 'razao_cliente',
   'placa', 'descricao_fase', 'num_nf', 'valor_total', 'data', 'data_geracao',
-  'data_encerramento', 'encerrada', 'cancelada'
+  'data_encerramento', 'encerrada', 'cancelada', 'unidade', 'tipo_os'
 ];
 const CO = {};
 CAB_ORDENS.forEach(function (nome, i) { CO[nome] = i; });
+
+// Notas fiscais de saída (vw_notas_fiscais): base do faturamento do Dashboard.
+// Mesma regra: ordem é contrato com o extrator, só acrescente no FIM.
+const ABA_NOTAS = 'Notas';
+const CAB_NOTAS = [
+  'cod_id', 'num_nf', 'data', 'natureza_operacao', 'codigo_cliente',
+  'razao_cli', 'valor_total_nf', 'num_pedido'
+];
+const NOTAS_COLUNAS_TEXTO = ['num_nf', 'codigo_cliente', 'num_pedido'];
 
 // Colunas que o Sheets tenta interpretar como data/número e que precisam
 // ficar em texto puro (mesmo problema do Contas a Pagar: "1.01" virando data).
@@ -73,7 +82,8 @@ const OS_COLUNAS_TEXTO = ['num_os', 'codigo_cliente', 'num_nf'];
 function instalar() {
   const ss = abrirOS();
   garantirAbaOS(ss, ABA_ORDENS, CAB_ORDENS);
-  Logger.log('Instalação concluída. Aba Ordens pronta.');
+  garantirAbaOS(ss, ABA_NOTAS, CAB_NOTAS);
+  Logger.log('Instalação concluída. Abas Ordens e Notas prontas.');
   return 'ok';
 }
 
@@ -129,6 +139,11 @@ function doPost(e) {
       return jsonOS({ success: true, data: gravarOrdens(body.ordens || [], body.gerado_em) });
     }
 
+    if (action === 'notas_sync') {
+      if (!sessao.servico) return jsonOS({ success: false, error: 'Só o serviço de sincronização pode gravar notas.' });
+      return jsonOS({ success: true, data: gravarNotas(body.notas || []) });
+    }
+
     return jsonOS({ success: false, error: 'Ação desconhecida: ' + action });
   } catch (err) {
     return jsonOS({ success: false, error: erroTextoOS(err) });
@@ -174,10 +189,46 @@ function gravarOrdens(ordens, geradoEm) {
   return { gravadas: linhas.length };
 }
 
+/** Substitui a aba Notas pelo dump mais recente de vw_notas_fiscais. */
+function gravarNotas(notas) {
+  const ss = abrirOS();
+  const sh = ss.getSheetByName(ABA_NOTAS) || garantirAbaOS(ss, ABA_NOTAS, CAB_NOTAS);
+
+  if (sh.getLastRow() > 1) {
+    sh.getRange(2, 1, sh.getLastRow() - 1, CAB_NOTAS.length).clearContent();
+  }
+
+  const linhas = notas.map(function (n) {
+    return CAB_NOTAS.map(function (campo) {
+      const v = n[campo];
+      if (v === null || v === undefined) return '';
+      return NOTAS_COLUNAS_TEXTO.indexOf(campo) >= 0 ? String(v) : v;
+    });
+  });
+
+  if (linhas.length) {
+    NOTAS_COLUNAS_TEXTO.forEach(function (campo) {
+      sh.getRange(2, CAB_NOTAS.indexOf(campo) + 1, linhas.length, 1).setNumberFormat('@');
+    });
+    sh.getRange(2, 1, linhas.length, CAB_NOTAS.length).setValues(linhas);
+  }
+  return { gravadas: linhas.length };
+}
+
+function lerNotas() {
+  const sh = abrirOS().getSheetByName(ABA_NOTAS);
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, CAB_NOTAS.length).getValues().map(function (l) {
+    const n = {};
+    CAB_NOTAS.forEach(function (campo, i) { n[campo] = l[i]; });
+    return n;
+  });
+}
+
 function lerOrdens() {
   const ss = abrirOS();
   const sh = ss.getSheetByName(ABA_ORDENS);
-  if (!sh || sh.getLastRow() < 2) return { gerado_em: '', total: 0, ordens: [] };
+  if (!sh || sh.getLastRow() < 2) return { gerado_em: '', total: 0, ordens: [], notas: lerNotas() };
 
   const linhas = sh.getRange(2, 1, sh.getLastRow() - 1, CAB_ORDENS.length).getValues();
   const ordens = linhas.map(function (l) {
@@ -187,7 +238,7 @@ function lerOrdens() {
   });
 
   const geradoEm = PropertiesService.getScriptProperties().getProperty('ordens_gerado_em') || '';
-  return { gerado_em: geradoEm, total: ordens.length, ordens: ordens };
+  return { gerado_em: geradoEm, total: ordens.length, ordens: ordens, notas: lerNotas() };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

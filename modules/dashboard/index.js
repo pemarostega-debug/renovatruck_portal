@@ -6,6 +6,7 @@
 
 // ── STATE ──
 let db = [];
+let notasDb = []; // notas fiscais de saída: base do faturamento (aba Faturamento)
 let charts = {};
 let activeFilter = { d1: null, d2: null }; // { cliente, status }
 let currentD1Data = [];
@@ -20,6 +21,7 @@ async function fetchData(){
   try {
     const payload = await fetchDados();
     db = processRows(payload.ordens||[]);
+    notasDb = processNotas(payload.notas||[]);
     // Mostra quando os dados foram extraídos do banco, não quando a página abriu
     const g = payload.gerado_em ? new Date(payload.gerado_em) : null;
     document.getElementById("last-update").textContent = g && !isNaN(g)
@@ -43,6 +45,8 @@ function processRows(rows){
     const cliente    = clean(row.razao_cliente||"CONSUMIDOR");
     const os         = row.numero_os||"–";
     const placa      = row.placa||"";
+    const unidade    = clean(row.unidade||"")||"Jacareí"; // o extrator já normaliza; fallback por segurança
+    const tipo       = String(row.tipo_os||"").trim(); // Contrato | Extra-contrato | Sinistro | Funilaria | "" (não classificada)
 
     const dataFase   = parseDate(row.data||"");
     const dataEnc    = parseDate(row.data_encerramento||"");
@@ -55,12 +59,32 @@ function processRows(rows){
     const isIgnore = IGNORE_KW.some(k=>statusNorm.includes(norm(k)));
     const isDash1  = !isDash2 && !isIgnore;
 
-    return {os,cliente,placa,status,statusNorm,valor,dataFase,dataFat,isDash1,isDash2};
+    return {os,cliente,placa,unidade,tipo,status,statusNorm,valor,dataFase,dataFat,isDash1,isDash2};
   });
 }
 
-// ── COMPANY FILTER ──
-const getDb = () => db;
+// Faturamento sai das notas fiscais (inclui as de contrato, que não têm OS).
+// dataFat é a data de emissão da nota.
+function processNotas(rows){
+  return rows.map(row => {
+    const nf = String(row.num_nf||"").trim();
+    return {
+      nf: nf||"–",
+      cliente: clean(row.razao_cli||"CONSUMIDOR"),
+      natureza: clean(row.natureza_operacao||""),
+      pedido: String(row.num_pedido||"").trim(),
+      valor: parseFloat(row.valor_total_nf)||0,
+      dataFat: parseDate(row.data||"")
+    };
+  });
+}
+
+// ── BASE DOS INDICADORES ──
+// OS de contrato não faturam individualmente (o contrato tem faturamento geral próprio),
+// então ficam fora dos indicadores, que mostram o fluxo de dinheiro do que não é contrato.
+// OS ainda sem tipo (tipo_os vazio) continuam aparecendo.
+const ehContrato = d => norm(d.tipo||"") === "contrato";
+const getDb = () => db.filter(d => !ehContrato(d));
 
 // ── RENDER ALL ──
 function renderAll(){
@@ -123,7 +147,7 @@ function renderDash2(){
   if(!val) return;
   const [y,m] = val.split("-").map(Number);
 
-  const billingAll = getDb().filter(d=>d.isDash2);
+  const billingAll = notasDb;
   const monthData  = billingAll.filter(d => {
     if(!d.dataFat) return false;
     return d.dataFat.getFullYear()===y && (d.dataFat.getMonth()+1)===m;
@@ -172,10 +196,14 @@ async function loadFinalizadosCharts(){
 
     // Mapa OS → valor ATUAL no sistema (db). Usamos o valor vigente da OS,
     // não uma anotação manual, para refletir ajustes feitos após a finalização.
-    const osValMap = {};
+    const osValMap = {}, osTipoMap = {}, osUnidMap = {};
     db.forEach(d => {
       const osKey = d.os ? d.os.toString().trim() : null;
-      if(osKey && osKey !== "–") osValMap[osKey] = (osValMap[osKey] || 0) + d.valor;
+      if(osKey && osKey !== "–"){
+        osValMap[osKey] = (osValMap[osKey] || 0) + d.valor;
+        osTipoMap[osKey] = d.tipo;
+        osUnidMap[osKey] = d.unidade;
+      }
     });
 
     let maxDate = null;
@@ -195,6 +223,9 @@ async function loadFinalizadosCharts(){
       if(!dt) return;
       if(!maxDate || dt > maxDate) maxDate = dt;
 
+      // OS de contrato não entra nos indicadores (mesma regra das OSs em aberto)
+      if(osTipoMap[osNum] && norm(osTipoMap[osNum]) === "contrato") return;
+
       // Se a OS não for encontrada no banco (número não bate, ou foi removida),
       // cai para o valor anotado na planilha em vez de zerar silenciosamente.
       let valor = osValMap[osNum];
@@ -208,6 +239,7 @@ async function loadFinalizadosCharts(){
         os: osNum,
         valor,
         placa: placaKey ? (row[placaKey]||"") : "",
+        unidade: osUnidMap[osNum] || "",
         cliente: cliKey ? clean(row[cliKey]||"") : "",
         status: statusKey ? clean(row[statusKey]||"FINALIZADO") : "FINALIZADO"
       });
@@ -323,7 +355,7 @@ function applyDailyFilter(dateStr, dayRows, byDate, byDateRows){
   // gráfico) — não depende do status atual da OS no sistema, então OSs que
   // já viraram "Faturado" continuam aparecendo no dia em que foram finalizadas.
   const filtered = dayRows.map(r => ({
-    os: r.os, cliente: r.cliente, placa: r.placa, status: r.status,
+    os: r.os, cliente: r.cliente, placa: r.placa, unidade: r.unidade, status: r.status,
     dataFase: r.dt, dataFat: r.dt, valor: r.valor
   }));
   renderTableD1(filtered);
@@ -411,7 +443,7 @@ function applyMonthlyFilter(monthKey, monthRows, byMonth, byMonthRows){
 
   // Detalhamento vem direto da planilha de finalizados — mesmo princípio do filtro diário
   const filtered = monthRows.map(r => ({
-    os: r.os, cliente: r.cliente, placa: r.placa, status: r.status,
+    os: r.os, cliente: r.cliente, placa: r.placa, unidade: r.unidade, status: r.status,
     dataFase: r.dt, dataFat: r.dt, valor: r.valor
   }));
   renderTableD1(filtered);
@@ -505,7 +537,7 @@ function buildHistory(fullData){
   charts["c-geral-12m"]=new Chart(document.getElementById("c-geral-12m"),{
     type:"bar",
     data:{labels,datasets:[{data:vals,backgroundColor:"#1d4ed8",borderRadius:5}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtMoney(c.raw)+" · "+counts[c.dataIndex]+" OS"+(counts[c.dataIndex]!==1?"s":"")}}},scales:{y:{ticks:{callback:v=>fmtMoney(v),font:{size:9}},grid:{color:"#f8fafc"}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtMoney(c.raw)+" · "+counts[c.dataIndex]+" NF"+(counts[c.dataIndex]!==1?"s":"")}}},scales:{y:{ticks:{callback:v=>fmtMoney(v),font:{size:9}},grid:{color:"#f8fafc"}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
   });
 }
 
@@ -530,7 +562,7 @@ function buildRosca(data){
 }
 
 function populateClientSelect(){
-  const billing=getDb().filter(d=>d.isDash2);
+  const billing=notasDb;
   const rank={};
   billing.forEach(d=>rank[d.cliente]=(rank[d.cliente]||0)+d.valor);
   const sorted=Object.keys(rank).sort((a,b)=>rank[b]-rank[a]);
@@ -546,7 +578,7 @@ function updateEvolution(){
     placeholder.style.display="block"; wrap.style.display="none"; return;
   }
   placeholder.style.display="none"; wrap.style.display="block";
-  const data=getDb().filter(d=>d.isDash2&&d.cliente===cliente);
+  const data=notasDb.filter(d=>d.cliente===cliente);
   const labels=[],vals=[];
   const hoje=new Date();
   for(let i=11;i>=0;i--){
@@ -566,10 +598,11 @@ function updateEvolution(){
 function renderTableD1(data){
   lastRenderedD1 = data;
   const tbody=document.getElementById("table-body-d1");
-  if(!data.length){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Nenhuma OS encontrada.</td></tr>';return;}
+  if(!data.length){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Nenhuma OS encontrada.</td></tr>';return;}
   tbody.innerHTML=data.slice(0,500).map(d=>`<tr>
     <td style="font-weight:700;">${d.os}</td>
     <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.cliente}">${d.cliente}</td>
+    <td style="color:var(--muted);font-size:.75rem;">${d.unidade||"–"}</td>
     <td class="hide-mobile" style="color:var(--muted);font-size:.75rem;">${d.placa}</td>
     <td><span class="status-badge">${d.status}</span></td>
     <td class="hide-mobile" style="color:var(--muted);font-size:.75rem;">${fmtDate(d.dataFase)}</td>
@@ -580,12 +613,12 @@ function renderTableD1(data){
 function renderTableD2(data){
   lastRenderedD2 = data;
   const tbody=document.getElementById("table-body-d2");
-  if(!data.length){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Nenhuma OS encontrada.</td></tr>';return;}
+  if(!data.length){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Nenhuma nota encontrada.</td></tr>';return;}
   tbody.innerHTML=data.slice(0,500).map(d=>`<tr>
-    <td style="font-weight:700;">${d.os}</td>
+    <td style="font-weight:700;">${d.nf}</td>
     <td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.cliente}">${d.cliente}</td>
-    <td class="hide-mobile" style="color:var(--muted);font-size:.75rem;">${d.placa}</td>
-    <td class="hide-mobile"><span class="status-badge">${d.status}</span></td>
+    <td class="hide-mobile" style="color:var(--muted);font-size:.75rem;">${d.pedido}</td>
+    <td class="hide-mobile"><span class="status-badge">${d.natureza}</span></td>
     <td style="color:var(--muted);font-size:.75rem;">${fmtDate(d.dataFat)}</td>
     <td style="text-align:right;font-weight:800;color:var(--primary);">${fmtMoney(d.valor)}</td>
   </tr>`).join("");
@@ -597,19 +630,31 @@ function exportXLSX(data, filename, dateField){
   const rows = data.map(d => ({
     "OS": d.os,
     "Cliente": d.cliente,
+    "Unidade": d.unidade||"",
     "Placa": d.placa||"",
     "Status": d.status,
     "Data": fmtDate(d[dateField]),
     "Valor": d.valor
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws["!cols"] = [{wch:10},{wch:38},{wch:14},{wch:22},{wch:12},{wch:14}];
+  ws["!cols"] = [{wch:10},{wch:38},{wch:12},{wch:14},{wch:22},{wch:12},{wch:14}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Dados");
   XLSX.writeFile(wb, filename+"_"+new Date().toISOString().slice(0,10)+".xlsx");
 }
 function exportD1XLSX(){ exportXLSX(lastRenderedD1, "ordens_em_aberto", "dataFase"); }
-function exportD2XLSX(){ exportXLSX(lastRenderedD2, "faturamento", "dataFat"); }
+function exportD2XLSX(){
+  if(!lastRenderedD2.length){ alert("Não há dados para exportar."); return; }
+  const rows = lastRenderedD2.map(d => ({
+    "NF": d.nf, "Cliente": d.cliente, "Pedido/OS": d.pedido,
+    "Natureza": d.natureza, "Data": fmtDate(d.dataFat), "Valor": d.valor
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = [{wch:10},{wch:38},{wch:14},{wch:26},{wch:12},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Dados");
+  XLSX.writeFile(wb, "faturamento_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
 
 // ── UTILS ──
 function groupBy(list,key){ const m={},c={}; list.forEach(i=>{m[i[key]]=(m[i[key]]||0)+i.valor;c[i[key]]=(c[i[key]]||0)+1;}); return Object.entries(m).map(([name,val])=>({name,val,count:c[name]})).sort((a,b)=>b.val-a.val); }

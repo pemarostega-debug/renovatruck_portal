@@ -20,7 +20,17 @@ const config = {
   database: process.env.DB_DATABASE
 };
 
-const ORDENS_API = process.env.ORDENS_API_URL;
+const UNIDADE_PADRAO = 'Jacareí';
+
+// Devolve sempre 'Guarulhos' ou 'Jacareí'. Ignora acento e maiúscula; qualquer
+// coisa que lembre Guarulhos (Grurulhos, guarulho, GRU...) vira Guarulhos; o
+// resto, inclusive vazio, vira Jacareí. Se surgir unidade nova, é aqui.
+function normalizarUnidade(valor) {
+  const t = String(valor || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  if (/^g|guar|gru|ulho/.test(t)) return 'Guarulhos';
+  return UNIDADE_PADRAO;
+}
+const ORDENS_API =process.env.ORDENS_API_URL;
 const ORDENS_CHAVE_SERVICO = process.env.ORDENS_CHAVE_SERVICO;
 
 async function postar(action, body) {
@@ -67,13 +77,48 @@ async function extrair() {
         data_geracao,
         data_encerramento,
         encerrada,
-        cancelada
+        cancelada,
+        unidade,
+        tipo_os
       FROM vw_ordens_servico
     `);
+
+    // Só existem duas unidades no portal: Jacareí (Matriz) e Guarulhos.
+    // O texto do Genesis (descricao8) é digitado à mão e pode vir errado.
+    const variacoes = new Set();
+    rows.forEach(r => {
+      const original = r.unidade;
+      r.unidade = normalizarUnidade(original);
+      if (original && String(original).trim() !== r.unidade) variacoes.add(String(original).trim());
+    });
+    if (variacoes.size) {
+      console.log('Unidades corrigidas (grafia diferente): ' + Array.from(variacoes).join(' | '));
+    }
 
     const geradoEm = new Date().toISOString();
     const resultado = await postar('ordens_sync', { ordens: rows, gerado_em: geradoEm });
     console.log(resultado.gravadas + ' registro(s) enviado(s) para o Apps Script.');
+
+    // Faturamento do dashboard = notas fiscais de saída (não as OSs): é onde
+    // entram as notas de contrato, que não passam por OS. Mesmo filtro do
+    // extrair-contas-receber.js. 14 meses cobre o gráfico de 12 meses + folga.
+    // Falha aqui não derruba as ordens, que já foram gravadas acima.
+    try {
+      const [notas] = await connection.query(`
+        SELECT cod_id, num_nf, data, natureza_operacao, codigo_cliente,
+               razao_cli, valor_total_nf, num_pedido
+        FROM vw_notas_fiscais
+        WHERE data >= DATE_SUB(CURDATE(), INTERVAL 14 MONTH)
+          AND (cancelada IS NULL OR cancelada <> 'Sim')
+          AND (natureza_operacao LIKE 'Venda%' OR natureza_operacao LIKE 'Presta%')
+        ORDER BY data, cod_id
+      `);
+      const r2 = await postar('notas_sync', { notas, gerado_em: geradoEm });
+      console.log(r2.gravadas + ' nota(s) fiscal(is) enviada(s) para o Apps Script.');
+    } catch (e) {
+      console.error('Falha ao enviar as notas fiscais: ' + e.message);
+      process.exitCode = 1;
+    }
 
   } catch (error) {
     console.error('Falha na extração: ' + error.message + (error.code ? ' (' + error.code + ')' : ''));
