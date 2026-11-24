@@ -19,7 +19,7 @@ const CONFIG = {
   // /exec do apps-script/dre.gs (DRE Gerencial). Vazio = a tela mostra dados de exemplo inventados.
   DRE_API: 'https://script.google.com/macros/s/AKfycbwiD8y1cVanwSMQu2NAkQ8Kfi61uE3bZoSzfmu13_yyUO_b73wjEkjbQ2vTQ2iod8Aj/exec',
   // /exec do ColaboradoresPJ.gs (repositório portaria-renova): Hora Extra PJ. Vazio = a tela avisa que ainda não foi ligada.
-  PJ_API: '',
+  PJ_API: 'https://script.google.com/macros/s/AKfycbxg2Su_qiw3GhQ-oabMrqz9AbuqN6ola-1k984kGmSNLdd_WrEyu1r53PJ8QvkREajY/exec',
   // /exec do apps-script/ordens-servico.gs. Substitui o antigo dados.json
   // publicado no repositório (público) — ver fetchDados().
   ORDENS_API: 'https://script.google.com/macros/s/AKfycbwwY5er7pR4bjNvk6wmQblvlQ7ZZbC4CBa7Mr71zCY2A_s0l2E2c-OCbGT_2HRQZUg/exec',
