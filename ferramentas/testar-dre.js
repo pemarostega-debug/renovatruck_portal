@@ -251,7 +251,10 @@ teste('montarDre: estrutura estável (conta do plano zerada aparece; inativa sem
 
 teste('montarDre: avisos por mês (sem contrato, NF estimada) e só as estimadas do período', () => {
   const dre = f('montarDre', BASE(), ['2026-09', '2026-10']);
-  igual(dre.avisos['2026-09'], ['Nenhuma NF de contrato marcada neste mês: tudo está como Spot.']);
+  igual(dre.avisos['2026-09'], undefined, 'antes do início do contrato (out/2026) não há aviso de "sem contrato"');
+  const b11 = BASE();
+  b11.receita.por_mes['2026-11'] = { 'R.1': 0, 'R.2': 100, 'R.3': 0, nfs: { 'R.1': 0, 'R.2': 1, 'R.3': 0 } };
+  igual(f('montarDre', b11, ['2026-11']).avisos['2026-11'], ['Nenhuma NF de contrato identificada neste mês: tudo está como Spot.']);
   igual(dre.avisos['2026-10'].length, 1);
   verdade(/estimado/.test(dre.avisos['2026-10'][0]));
   igual(f('montarDre', BASE(), ['2026-09']).estimadas, []);
@@ -393,83 +396,145 @@ teste('detalhe (backend): só admin, entrada validada, planilha financeira intac
   igual(foto(), antes, 'o detalhe alterou a planilha financeira');
 });
 
-// ─── Marcar NFs de contrato (Etapa 2b) ───────────────────────────────────────
-const marcar = (amb, extra, token) => amb.post(Object.assign({ action: 'contrato_marcar', token: token === undefined ? 'tok-admin' : token,
-  competencia: '2026-10', numero_nf: '480', tipo_nf: 'SERVICO', cliente_cod: '20', marcar: true }, extra || {}));
-const listar = (amb, extra, token) => amb.post(Object.assign({ action: 'contratos_mes', token: token === undefined ? 'tok-admin' : token, mes: '2026-10' }, extra || {}));
+// ─── Classe da NF: contrato automático pela descrição + correção manual ──────
+const classe = (amb, extra, token) => amb.post(Object.assign({ action: 'classe_definir', token: token === undefined ? 'tok-admin' : token,
+  competencia: '2026-10', numero_nf: '653', tipo_nf: 'SERVICO', cliente_cod: '53', classe: 'SPOT' }, extra || {}));
 
-teste('contratos_mes: lista as NFs do mês com a marca atual; só admin', () => {
+// NFs novas de outubro (inventadas) e as descrições dos serviços das OSs delas
+const REC_AUTO = [
+  R('R-16', '2026-10-07', '650', 'SERVICO', '50', 3000, 'ABERTO', 1, 1),   // "Contrato Elétrica Guarulhos" → R.1
+  R('R-17', '2026-10-07', '651', 'SERVICO', '51', 4000, 'ABERTO', 1, 1),   // serviço comum → R.2
+  R('R-18', '2026-10-07', '652', 'PECA', '52', 800, 'ABERTO', 1, 1),       // peça nunca é contrato → R.3
+  R('R-19', '2026-10-07', '653', 'SERVICO', '53', 2500, 'ABERTO', 1, 1)    // "contrato empurrada guarulhos" → R.1
+];
+const CAB_ITENS = ['Numero_OS', 'Codigo_Produto', 'Descricao_Servico', 'Preco_Custo'];
+const ITENS = [
+  { Numero_OS: 'OS-650', Codigo_Produto: 'A1', Descricao_Servico: 'Contrato Elétrica Guarulhos', Preco_Custo: '10' },
+  { Numero_OS: 'OS-650', Codigo_Produto: 'A2', Descricao_Servico: 'Contrato Elétrica Guarulhos', Preco_Custo: '20' },   // repetida: não duplica
+  { Numero_OS: 'OS-651', Codigo_Produto: 'B1', Descricao_Servico: 'Revisão geral', Preco_Custo: '10' },
+  { Numero_OS: 'OS-652', Codigo_Produto: 'C1', Descricao_Servico: 'CONTRATO de peça', Preco_Custo: '10' },
+  { Numero_OS: 'OS-653', Codigo_Produto: 'D1', Descricao_Servico: 'Troca de filtro', Preco_Custo: '10' },
+  { Numero_OS: 'OS-653', Codigo_Produto: 'D2', Descricao_Servico: 'contrato empurrada guarulhos', Preco_Custo: '10' }
+];
+/** Ambiente com as NFs novas e a planilha Resultado Semanal "ligada" (no simulador é a mesma planilha). */
+function ambienteAuto(ligado) {
   const amb = novoAmbiente();
-  recusa(listar(amb, {}, ''), 'Sessão expirada');
-  recusa(listar(amb, {}, 'tok-comum'), 'restrito a administradores');
-  recusa(listar(amb, { mes: '10/2026' }), 'Mês inválido');
-  const r = aceita(listar(amb));
-  igual(r.mes, '2026-10');
-  igual(r.marcadas, 2, '539 (qualquer cliente) e 540 (cliente 10); 541 é de outro cliente');
-  igual(r.itens.slice(0, 2).map(i => i.numero_nf).sort(), ['539', '540'], 'marcadas vêm primeiro');
-  verdade(r.itens.some(i => i.numero_nf === '541' && !i.contrato));
-  verdade(!r.itens.some(i => i.numero_nf === '483'), 'NF toda cancelada não é candidata');
-  verdade(!r.itens.some(i => i.numero_nf === '300'), 'NF de setembro fica fora do mês de outubro');
+  const rec = amb.folha('RecTitulos');
+  REC_AUTO.forEach(o => { rec.v.push(linhaDe(CAB_REC, o)); rec.f.push(CAB_REC.map(() => '@')); });
+  preencher(amb, 'Itens', CAB_ITENS, ITENS);
+  if (ligado !== false) amb.props.ITENS_PLANILHA_ID = 'planilha-resultado-semanal';
+  return amb;
+}
+const R1_BASE = 48767;   // 539 + 540 (correção manual que já está na aba DreContratos)
+const nContratos = amb => amb.folha('DreContratos').v.slice(1).filter(l => l.some(x => x !== '')).length;
+
+teste('servicosPorOs: acha "contrato" sem ligar para acento/maiúscula, acumula e não repete descrição', () => {
+  const r = f('servicosPorOs', CAB_ITENS, ITENS.map(o => linhaDe(CAB_ITENS, o)));
+  igual(r.status.ok, true);
+  igual(r.mapa['OS-650'], { contrato: true, descricoes: ['Contrato Elétrica Guarulhos'] });
+  igual(r.mapa['OS-651'].contrato, false);
+  igual(r.mapa['OS-652'].contrato, true);
+  igual(r.mapa['OS-653'].contrato, true, 'um dos serviços da OS basta');
+  igual(r.mapa['OS-653'].descricoes.length, 2);
+  const acento = f('servicosPorOs', ['Número OS', 'Descrição Serviço'], [[4638.0, 'CONTRATÓ x'], ['', 'sem os'], [7, '']]);
+  igual(Object.keys(acento.mapa), ['4638'], 'OS vazia ou descrição vazia ficam fora; "4638" numérico vira texto');
+  igual(acento.mapa['4638'].contrato, true, 'acento e caixa alta não atrapalham');
+  igual(f('servicosPorOs', ['a', 'b'], [[1, 2]]).status, { ok: false, motivo: 'sem_colunas' });
 });
 
-teste('marcar: grava a linha como texto, limpa o cache e o DRE muda na hora', () => {
-  const amb = novoAmbiente();
-  igual(valorDe(aceita(pedir(amb)), 'R.1', '2026-10'), 48767);
-  const antes = amb.folha('DreContratos').getLastRow();
-  const r = aceita(marcar(amb));
-  igual([r.marcado, r.alterado], [true, 1]);
-  igual(amb.folha('DreContratos').getLastRow(), antes + 1);
-  const dre = aceita(pedir(amb));            // sem "forcar": só reflete se o cache foi limpo
-  igual(valorDe(dre, 'R.1', '2026-10'), 48767 + 24400, 'NF 480 (estimada, 24.400) passou para contrato');
-  igual(valorDe(dre, 'R.2', '2026-10'), valorDe(aceita(pedir(novoAmbiente())), 'R.2', '2026-10') - 24400);
-  igual(amb.celulasRuins(), [], 'competência "2026-10" ou NF corrompida ao gravar');
+teste('classe automática: NF de serviço com "contrato" na descrição vira R.1; peça e serviço comum não', () => {
+  const amb = ambienteAuto();
+  const dre = aceita(pedir(amb));
+  const sem = aceita(pedir(novoAmbiente()));
+  igual(valorDe(dre, 'R.1', '2026-10'), R1_BASE + 3000 + 2500, '650 e 653 entraram sozinhas');
+  igual(valorDe(dre, 'R.2', '2026-10'), valorDe(sem, 'R.2', '2026-10') + 4000, 'só a 651 é Spot de serviço');
+  igual(valorDe(dre, 'R.3', '2026-10'), valorDe(sem, 'R.3', '2026-10') + 800, 'peça com "contrato" continua R.3');
+  igual(dre.servicos, { ok: true, os: 4 });
+});
+
+teste('classe automática: sem a planilha ligada (ou com colunas trocadas) o DRE funciona e a tela é avisada', () => {
+  const amb = ambienteAuto(false);
+  const dre = aceita(pedir(amb));
+  igual(valorDe(dre, 'R.1', '2026-10'), R1_BASE, 'só valem as correções manuais');
+  igual(dre.servicos, { ok: false, motivo: 'sem_planilha' });
+  amb.props.ITENS_PLANILHA_ID = 'x';
+  amb.folha('Itens').v = [['Coluna', 'Outra'], ['a', 'b']];
+  igual(aceita(pedir(amb, { forcar: true })).servicos, { ok: false, motivo: 'sem_colunas' });
+});
+
+teste('detalhe R.1: mostra a descrição do serviço e de onde veio a classe', () => {
+  const amb = ambienteAuto();
+  const d = aceita(amb.post({ action: 'detalhe', token: 'tok-admin', mes: '2026-10', linha: 'R.1' }));
+  igual(d.total, R1_BASE + 5500);
+  const por = nf => d.itens.find(i => i.numero_nf === nf);
+  igual([por('650').origem_classe, por('650').auto_contrato], ['descricao', true]);
+  verdade(/Contrato Elétrica Guarulhos/.test(por('650').descricao));
+  igual(por('653').descricao, 'Troca de filtro · contrato empurrada guarulhos');
+  igual([por('539').origem_classe, por('539').auto_contrato], ['manual', false], '539 só está na lista manual');
+  const r2 = aceita(amb.post({ action: 'detalhe', token: 'tok-admin', mes: '2026-10', linha: 'R.2' }));
+  igual(r2.itens.find(i => i.numero_nf === '651').origem_classe, 'padrao');
+});
+
+teste('classe_definir SPOT: tira uma NF automática de contrato; AUTO devolve; repetir não duplica', () => {
+  const amb = ambienteAuto();
+  igual(valorDe(aceita(pedir(amb)), 'R.1', '2026-10'), R1_BASE + 5500);   // enche o cache
+  const antes = nContratos(amb);
+  const r = aceita(classe(amb));
+  igual([r.classe, r.alterado], ['SPOT', 1]);
+  igual(nContratos(amb), antes + 1);
+  igual(valorDe(aceita(pedir(amb)), 'R.1', '2026-10'), R1_BASE + 3000, '653 foi para Spot (sem "forcar": o cache foi limpo)');
+  igual(aceita(classe(amb)).alterado, 0, 'segunda vez não duplica');
   const ult = amb.folha('DreContratos').v.filter(l => l.some(x => x !== '')).slice(-1)[0];
-  igual(ult, ['2026-10', '480', 'SERVICO', '20']);
+  igual(ult, ['2026-10', '653', 'SERVICO', '53', 'SPOT']);
+  igual(amb.celulasRuins(), []);
+  igual(aceita(classe(amb, { classe: 'AUTO' })).alterado, 1);
+  igual(valorDe(aceita(pedir(amb)), 'R.1', '2026-10'), R1_BASE + 5500, 'voltou a seguir a descrição');
+  igual(nContratos(amb), antes, 'a correção saiu da aba');
+  igual(aceita(classe(amb, { classe: 'AUTO' })).alterado, 0);
 });
 
-teste('marcar: repetir é idempotente e NF já coberta por marca existente não duplica', () => {
-  const amb = novoAmbiente();
-  const n = amb.folha('DreContratos').getLastRow();
-  igual(aceita(marcar(amb, { numero_nf: '539', cliente_cod: '10' })).alterado, 0, '539 já vale para qualquer cliente');
-  igual(aceita(marcar(amb, { numero_nf: '540', cliente_cod: '10' })).alterado, 0);
-  aceita(marcar(amb));
-  igual(aceita(marcar(amb)).alterado, 0, 'segunda vez não duplica');
-  igual(amb.folha('DreContratos').getLastRow(), n + 1);
+teste('classe_definir CONTRATO: força uma NF sem descrição; linha antiga (4 colunas) vale como contrato', () => {
+  const amb = ambienteAuto();
+  aceita(pedir(amb));
+  aceita(classe(amb, { numero_nf: '651', cliente_cod: '51', classe: 'CONTRATO' }));
+  igual(valorDe(aceita(pedir(amb)), 'R.1', '2026-10'), R1_BASE + 5500 + 4000);
+  const ult = amb.folha('DreContratos').v.filter(l => l.some(x => x !== '')).slice(-1)[0];
+  igual(ult, ['2026-10', '651', 'SERVICO', '51', 'CONTRATO']);
+  // 539 é uma linha antiga, sem a coluna "regra": segue contrato; dá para tirá-la de contrato
+  igual(aceita(classe(amb, { numero_nf: '539', cliente_cod: '10', classe: 'SPOT' })).alterado, 2, 'troca a linha antiga pela nova (apaga + grava)');
+  igual(valorDe(aceita(pedir(amb)), 'R.1', '2026-10'), R1_BASE + 5500 + 4000 - 46767);
 });
 
-teste('desmarcar: remove a marca, DRE volta, desmarcar de novo não faz nada', () => {
-  const amb = novoAmbiente();
-  aceita(pedir(amb));                          // enche o cache
-  const r = aceita(marcar(amb, { numero_nf: '540', cliente_cod: '10', marcar: false }));
-  igual([r.marcado, r.alterado], [false, 1]);
-  igual(valorDe(aceita(pedir(amb)), 'R.1', '2026-10'), 46767, 'sobrou só a 539');
-  igual(aceita(marcar(amb, { numero_nf: '540', cliente_cod: '10', marcar: false })).alterado, 0);
-  igual(aceita(marcar(amb, { numero_nf: '539', cliente_cod: '', marcar: false })).alterado, 1, '"0539" casa com "539"');
-  igual(valorDe(aceita(pedir(amb)), 'R.1', '2026-10'), 0);
-  const r2 = aceita(listar(amb));
-  igual(r2.marcadas, 0, 'mês sem contrato marcado: a tela mostra o aviso');
+teste('classe_definir: planilha antiga sem o cabeçalho "regra" ganha a coluna na primeira correção', () => {
+  const amb = ambienteAuto();
+  amb.folha('DreContratos').v[0][4] = '';
+  aceita(classe(amb));
+  igual(amb.folha('DreContratos').v[0].slice(0, 5), ['competencia', 'numero_nf', 'tipo_nf', 'cliente_cod', 'regra']);
 });
 
-teste('marcar: só admin; entrada hostil recusada; log gravado; planilha financeira intacta', () => {
-  const amb = novoAmbiente();
-  const n = amb.folha('DreContratos').getLastRow();
-  recusa(marcar(amb, {}, ''), 'Sessão expirada');
-  recusa(marcar(amb, {}, 'tok-falso'), 'inválida');
-  recusa(marcar(amb, {}, 'tok-comum'), 'restrito a administradores');
-  recusa(marcar(amb, { competencia: '10/2026' }), 'Competência');
-  recusa(marcar(amb, { numero_nf: '=1+1' }), 'Número de NF');
-  recusa(marcar(amb, { numero_nf: '-5' }), 'Número de NF');
-  recusa(marcar(amb, { numero_nf: '' }), 'Número de NF');
-  recusa(marcar(amb, { tipo_nf: 'OUTRO' }), 'Tipo');
-  recusa(marcar(amb, { cliente_cod: '=HYPERLINK("x")' }), 'cliente');
-  igual(amb.folha('DreContratos').getLastRow(), n, 'entrada recusada não pode gravar nada');
-  const foto = () => JSON.stringify(['PlanoContas', 'Titulos', 'RecTitulos'].map(x => amb.folha(x).v));
+teste('classe_definir: só admin; entrada hostil recusada; log gravado; planilha financeira intacta', () => {
+  const amb = ambienteAuto();
+  const n = nContratos(amb);
+  recusa(classe(amb, {}, ''), 'Sessão expirada');
+  recusa(classe(amb, {}, 'tok-falso'), 'inválida');
+  recusa(classe(amb, {}, 'tok-comum'), 'restrito a administradores');
+  recusa(classe(amb, { competencia: '10/2026' }), 'Competência');
+  recusa(classe(amb, { numero_nf: '=1+1' }), 'Número de NF');
+  recusa(classe(amb, { numero_nf: '-5' }), 'Número de NF');
+  recusa(classe(amb, { numero_nf: '' }), 'Número de NF');
+  recusa(classe(amb, { tipo_nf: 'OUTRO' }), 'Tipo');
+  recusa(classe(amb, { cliente_cod: '=HYPERLINK("x")' }), 'cliente');
+  recusa(classe(amb, { classe: '=SPOT' }), 'Classe');
+  recusa(classe(amb, { classe: '' }), 'Classe');
+  igual(nContratos(amb), n, 'entrada recusada não pode gravar nada');
+  recusa(amb.post({ action: 'contrato_marcar', token: 'tok-admin' }), 'desconhecida');   // ação antiga foi removida
+  const foto = () => JSON.stringify(['PlanoContas', 'Titulos', 'RecTitulos', 'Itens'].map(x => amb.folha(x).v));
   const antes = foto();
-  aceita(marcar(amb));
-  aceita(marcar(amb, { marcar: false }));
-  igual(foto(), antes, 'marcar alterou a planilha financeira');
+  aceita(classe(amb));
+  aceita(classe(amb, { classe: 'AUTO' }));
+  igual(foto(), antes, 'classe_definir alterou a planilha financeira ou a do Resultado Semanal');
   const log = amb.folha('Log').v.slice(1).filter(l => l.some(x => x !== ''));
-  igual(log.map(l => [l[1], l[2]]), [['pedro', 'contrato_marcar'], ['pedro', 'contrato_desmarcar']]);
+  igual(log.map(l => [l[1], l[2]]), [['pedro', 'classe_spot'], ['pedro', 'classe_auto']]);
   igual(amb.celulasRuins(), []);
   igual(amb.travas, 0, 'trava não foi liberada');
 });

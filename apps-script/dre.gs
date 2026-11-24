@@ -17,8 +17,13 @@
  *   Informativo, fora do resultado: 3.02, 3.06, CAPEX (4.xx) e 9.99.
  *
  * Abas da planilha do DRE:
- *   DreContratos — competencia (YYYY-MM), numero_nf, tipo_nf, cliente_cod (opcional)
- *                  NF que não está aqui é Spot. Provisório até existir uma regra.
+ *   DreContratos — EXCEÇÕES à regra automática: competencia (YYYY-MM), numero_nf, tipo_nf,
+ *                  cliente_cod (opcional), regra (CONTRATO | SPOT; vazio = CONTRATO).
+ *
+ * Contrato é detectado sozinho: NF de SERVIÇO cuja OS tem, na descrição de algum item de
+ * serviço, a palavra "contrato" (aba Itens da planilha Resultado Semanal, ligada pelo
+ * número da OS). A aba DreContratos só guarda o que o dono corrigiu à mão na tela.
+ * A planilha Resultado Semanal é achada pela propriedade do script ITENS_PLANILHA_ID.
  *   DreBudget    — competencia (YYYY-MM), linha (R.1-3 ou N.NN), valor (meta do mês, número com ponto)
  *   Log
  *
@@ -40,7 +45,10 @@ const ABA_PLANO = 'PlanoContas';
 const ABA_CONTRATOS = 'DreContratos';
 const ABA_LOG = 'Log';
 const ABA_BUDGET = 'DreBudget';
-const CAB_CONTRATOS = ['competencia', 'numero_nf', 'tipo_nf', 'cliente_cod'];
+const CAB_CONTRATOS = ['competencia', 'numero_nf', 'tipo_nf', 'cliente_cod', 'regra'];
+const ABA_ITENS = 'Itens';                 // da planilha Resultado Semanal (só leitura)
+const PROP_ITENS_ID = 'ITENS_PLANILHA_ID';
+const DRE_CONTRATO_INICIO = '2026-10';     // o contrato começou em out/2026: antes disso não se cobra aviso
 const CAB_BUDGET = ['competencia', 'linha', 'valor'];
 const CAB_LOG = ['quando', 'quem', 'acao', 'detalhe'];
 
@@ -69,10 +77,9 @@ function doPost(e) {
 
     if (action === 'resultado') return json({ success: true, data: resultado(body) });
     if (action === 'detalhe') return json({ success: true, data: detalhe(body) });
-    if (action === 'contratos_mes') return json({ success: true, data: contratosMes(body) });
     if (action === 'budget_ler') return json({ success: true, data: budgetLer(body) });
     if (action === 'budget_gravar') return json({ success: true, data: budgetGravar(body, sessao) });
-    if (action === 'contrato_marcar') return json({ success: true, data: contratoMarcar(body, sessao) });
+    if (action === 'classe_definir') return json({ success: true, data: classeDefinir(body, sessao) });
 
     return json({ success: false, error: 'Ação desconhecida: ' + action });
   } catch (err) {
@@ -141,7 +148,7 @@ function detalhe(body) {
   let d;
   if (linha.charAt(0) === 'R') {
     const rec = lerAba(ss, ABA_REC_TITULOS);
-    d = detalheReceita(rec.cab, rec.linhas, lerContratos(), mes, linha);
+    d = detalheReceita(rec.cab, rec.linhas, lerContratos(), mes, linha, lerServicos().mapa);
     d.tipo = 'receita';
   } else {
     const t = lerAba(ss, ABA_TITULOS);
@@ -153,53 +160,49 @@ function detalhe(body) {
 }
 
 /**
- * ACTION contratos_mes — body: { mes: 'YYYY-MM' }
- * NFs do mês (candidatas a contrato) com a marca atual. Lê a planilha na hora.
- */
-function contratosMes(body) {
-  const mes = String(body.mes || '');
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) throw new Error('Mês inválido: use AAAA-MM.');
-  const rec = lerAba(abrirFonte(), ABA_REC_TITULOS);
-  return listarNfsMes(rec.cab, rec.linhas, lerContratos(), mes);
-}
-
-/**
- * ACTION contrato_marcar — body: { competencia, numero_nf, tipo_nf, cliente_cod, marcar: true|false }
- * Grava (ou remove) a marca na aba DreContratos. Só admin (validarToken), com Log.
+ * ACTION classe_definir — body: { competencia, numero_nf, tipo_nf, cliente_cod, classe: 'CONTRATO' | 'SPOT' | 'AUTO' }
+ * Corrige à mão a classe de UMA NF (exceção à regra automática). 'AUTO' apaga a
+ * correção e a NF volta a seguir a descrição. Só admin (validarToken), com Log.
  * Limpa o cache da base para o DRE refletir na hora.
  */
-function contratoMarcar(body, sessao) {
+function classeDefinir(body, sessao) {
   const m = validarMarca(body);
-  const marcar = body.marcar === true || body.marcar === 'true';
   const trava = LockService.getScriptLock();
   trava.waitLock(20000);
   let alterado = 0;
   try {
     const sh = aba(ABA_CONTRATOS, CAB_CONTRATOS);
+    garantirColunaRegra(sh);
     const n = Math.max(sh.getLastRow() - 1, 0);
     const atuais = n ? sh.getRange(2, 1, n, CAB_CONTRATOS.length).getDisplayValues() : [];
     const casam = marcasQueCobrem(atuais, m);
-    if (marcar) {
-      if (!casam.length) {
+    const mesma = casam.length === 1 && regraDaLinha(atuais[casam[0]]) === m.classe;
+    if (!mesma) {
+      // de baixo para cima, para os números de linha não deslocarem
+      casam.slice().sort(function (a, b) { return b - a; }).forEach(function (i) { sh.deleteRow(i + 2); alterado++; });
+      if (m.classe !== 'AUTO') {
         const linha = sh.getLastRow() + 1;
         const alvo = sh.getRange(linha, 1, 1, CAB_CONTRATOS.length);
         alvo.setNumberFormat('@');   // texto puro: "2026-10" viraria data, "0539" perderia o zero
-        alvo.setValues([[m.competencia, m.numero_nf, m.tipo_nf, m.cliente_cod]]);
-        alterado = 1;
+        alvo.setValues([[m.competencia, m.numero_nf, m.tipo_nf, m.cliente_cod, m.classe]]);
+        alterado++;
       }
-    } else {
-      // de baixo para cima, para os números de linha não deslocarem
-      casam.slice().sort(function (a, b) { return b - a; }).forEach(function (i) { sh.deleteRow(i + 2); alterado++; });
     }
   } finally {
     trava.releaseLock();
   }
   if (alterado) {
     cacheLimpar(CacheService.getScriptCache(), DRE_CACHE_CHAVE);
-    registrar(sessao && sessao.usuario, marcar ? 'contrato_marcar' : 'contrato_desmarcar',
+    registrar(sessao && sessao.usuario, 'classe_' + m.classe.toLowerCase(),
       [m.competencia, m.numero_nf, m.tipo_nf, m.cliente_cod].join(' | '));
   }
-  return { competencia: m.competencia, numero_nf: m.numero_nf, tipo_nf: m.tipo_nf, cliente_cod: m.cliente_cod, marcado: marcar, alterado: alterado };
+  return { competencia: m.competencia, numero_nf: m.numero_nf, tipo_nf: m.tipo_nf, cliente_cod: m.cliente_cod, classe: m.classe, alterado: alterado };
+}
+
+/** Planilhas criadas antes da coluna "regra" ganham o cabeçalho na primeira correção. */
+function garantirColunaRegra(sh) {
+  const i = CAB_CONTRATOS.indexOf('regra') + 1;
+  if (!String(sh.getRange(1, i, 1, 1).getDisplayValues()[0][0]).trim()) sh.getRange(1, i).setValue('regra');
 }
 
 /**
@@ -257,12 +260,14 @@ function baseDre(forcar) {
   const titulos = lerAba(ss, ABA_TITULOS);
   const rec = lerAba(ss, ABA_REC_TITULOS);
   const contratos = lerContratos();
+  const serv = lerServicos();
 
   const base = {
     gerado_em: new Date().toISOString(),
     plano: normalizarPlano(plano.cab, plano.linhas),
     despesas: agregarDespesas(titulos.cab, titulos.linhas),
-    receita: agregarReceita(rec.cab, rec.linhas, contratos)
+    receita: agregarReceita(rec.cab, rec.linhas, contratos, serv.mapa),
+    servicos: serv.status
   };
   cacheGravar(cache, DRE_CACHE_CHAVE, base, DRE_CACHE_SEG);
   return base;
@@ -295,7 +300,26 @@ function lerContratos() {
   const sh = aba(ABA_CONTRATOS, CAB_CONTRATOS);
   if (sh.getLastRow() < 2) return [];
   return sh.getRange(2, 1, sh.getLastRow() - 1, CAB_CONTRATOS.length).getDisplayValues()
-    .map(function (l) { return { competencia: l[0], numero_nf: l[1], tipo_nf: l[2], cliente_cod: l[3] }; });
+    .map(function (l) { return { competencia: l[0], numero_nf: l[1], tipo_nf: l[2], cliente_cod: l[3], regra: l[4] }; });
+}
+
+/**
+ * Descrições dos serviços por OS, da aba Itens da planilha Resultado Semanal.
+ * Nunca derruba o DRE: se a planilha não está ligada ou mudou de formato, devolve
+ * mapa vazio e um `status` que a tela mostra uma vez (tudo cai na regra manual).
+ */
+function lerServicos() {
+  const id = PropertiesService.getScriptProperties().getProperty(PROP_ITENS_ID);
+  if (!id) return { mapa: {}, status: { ok: false, motivo: 'sem_planilha' } };
+  try {
+    const sh = SpreadsheetApp.openById(id).getSheetByName(ABA_ITENS);
+    if (!sh || sh.getLastRow() < 2) return { mapa: {}, status: { ok: false, motivo: 'sem_itens' } };
+    const valores = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+    return servicosPorOs(valores[0], valores.slice(1));
+  } catch (e) {
+    Logger.log('Itens do Resultado Semanal: ' + e);
+    return { mapa: {}, status: { ok: false, motivo: 'erro_leitura' } };
+  }
 }
 
 // ── Cache: CacheService aceita no máximo ~100 KB por chave → fatia em pedaços.
@@ -568,10 +592,13 @@ function tipoNf(valor) {
  * se faltam parcelas no CR, estima as faltantes pela média das lançadas e marca
  * a NF como estimada. Parcela cancelada não soma, mas também não é "faltante".
  *
- * Classe: NF na lista de contratos → R.1; senão PECA → R.3; senão → R.2.
+ * Classe, em ordem de força:
+ *   1. correção manual (aba DreContratos): regra CONTRATO → R.1, regra SPOT → Spot;
+ *   2. automática: NF de SERVIÇO cuja OS tem "contrato" na descrição de algum serviço → R.1;
+ *   3. senão PECA → R.3; senão → R.2.
  */
-function agregarReceita(cab, linhas, contratos) {
-  const c = consolidarNfs(cab, linhas, contratos);
+function agregarReceita(cab, linhas, contratos, servicos) {
+  const c = consolidarNfs(cab, linhas, contratos, servicos);
   const porMes = {};
   c.nfs.forEach(function (nf) {
     const m = porMes[nf.mes] || (porMes[nf.mes] = { 'R.1': 0, 'R.2': 0, 'R.3': 0, nfs: { 'R.1': 0, 'R.2': 0, 'R.3': 0 } });
@@ -591,15 +618,16 @@ function agregarReceita(cab, linhas, contratos) {
  * ({ mes, numero_nf, tipo_nf, cliente, num_os, valor, classe, estimada, ... })
  * já com a regra do total estimado e da classe aplicadas.
  */
-function consolidarNfs(cab, linhas, contratos) {
+function consolidarNfs(cab, linhas, contratos, servicos) {
   const ix = indices(cab);
   exigirColunas(ix, ['data_emissao', 'numero_nf', 'valor_total', 'status'], 'RecTitulos');
 
   const listaContrato = {};
   (contratos || []).forEach(function (c) {
     const k = chaveContrato(c.competencia, c.numero_nf, tipoNf(c.tipo_nf) || 'SERVICO');
-    (listaContrato[k] || (listaContrato[k] = [])).push(texto(c.cliente_cod));
+    (listaContrato[k] || (listaContrato[k] = [])).push({ cli: texto(c.cliente_cod), regra: regraDaLinha([0, 0, 0, 0, c.regra]) });
   });
+  const serv = servicos || {};
 
   const nfs = {};
   const avisos = { sem_nf: 0, sem_nf_valor: 0, sem_mes: 0, sem_mes_valor: 0, sem_tipo: 0 };
@@ -645,12 +673,18 @@ function consolidarNfs(cab, linhas, contratos) {
     const faltam = Math.max(nf.total_parcelas - vistas, 0);
     const valor = faltam ? arred(nf.lancado + (nf.lancado / nf.ativas) * faltam) : nf.lancado;
     const kc = chaveContrato(nf.mes, nf.numero_nf, nf.tipo_nf || 'SERVICO');
-    const clientes = listaContrato[kc];
-    const contrato = !!clientes && (clientes.indexOf('') >= 0 || clientes.indexOf(nf.cliente_cod) >= 0);
+    const marcas = (listaContrato[kc] || []).filter(function (x) { return x.cli === '' || x.cli === nf.cliente_cod; });
+    const manual = marcas.length ? (marcas.some(function (x) { return x.regra === 'SPOT'; }) ? 'SPOT' : 'CONTRATO') : '';
+    const sv = serv[nf.num_os] || null;
+    const auto = nf.tipo_nf !== 'PECA' && !!sv && sv.contrato;
+    const contrato = manual ? manual === 'CONTRATO' : auto;
     lista.push({
       mes: nf.mes, numero_nf: nf.numero_nf, tipo_nf: nf.tipo_nf, cliente_cod: nf.cliente_cod,
       cliente: nf.cliente, num_os: nf.num_os, lancado: nf.lancado, valor: valor,
       classe: contrato ? 'R.1' : (nf.tipo_nf === 'PECA' ? 'R.3' : 'R.2'),
+      origem_classe: manual ? 'manual' : (auto ? 'descricao' : 'padrao'),
+      auto_contrato: auto,
+      descricao: sv ? sv.descricoes.join(' · ') : '',
       estimada: faltam > 0, parcelas_lancadas: vistas, total_parcelas: nf.total_parcelas
     });
   });
@@ -670,16 +704,23 @@ function validarMarca(body) {
   const numeroNf = texto(body.numero_nf);
   const tipo = tipoNf(body.tipo_nf);
   const cliente = texto(body.cliente_cod);
+  const classe = texto(body.classe).toUpperCase();
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia)) throw new Error('Competência inválida: use AAAA-MM.');
   if (!/^[0-9A-Za-z][0-9A-Za-z.\-\/]{0,19}$/.test(numeroNf)) throw new Error('Número de NF inválido.');
   if (!tipo) throw new Error('Tipo da NF inválido: use PECA ou SERVICO.');
   if (cliente !== '' && !/^[0-9A-Za-z][0-9A-Za-z.\-]{0,19}$/.test(cliente)) throw new Error('Código de cliente inválido.');
-  return { competencia: competencia, numero_nf: numeroNf, tipo_nf: tipo, cliente_cod: cliente };
+  if (['CONTRATO', 'SPOT', 'AUTO'].indexOf(classe) < 0) throw new Error('Classe inválida: use CONTRATO, SPOT ou AUTO.');
+  return { competencia: competencia, numero_nf: numeroNf, tipo_nf: tipo, cliente_cod: cliente, classe: classe };
+}
+
+/** Regra de uma linha da DreContratos (coluna 5): SPOT ou, em branco/qualquer outra coisa, CONTRATO. */
+function regraDaLinha(l) {
+  return texto(l[4]).toUpperCase() === 'SPOT' ? 'SPOT' : 'CONTRATO';
 }
 
 /**
- * Posições (0-based, dentro de `atuais`) das linhas de DreContratos que fazem a
- * NF `m` ser contrato: mesma competência/número/tipo e cliente igual ou em
+ * Posições (0-based, dentro de `atuais`) das linhas de DreContratos que dizem
+ * algo sobre a NF `m`: mesma competência/número/tipo e cliente igual ou em
  * branco (em branco vale para qualquer cliente). Mesma regra do consolidarNfs.
  */
 function marcasQueCobrem(atuais, m) {
@@ -692,20 +733,36 @@ function marcasQueCobrem(atuais, m) {
   return out;
 }
 
+/** Texto sem acento e em minúsculas, para achar "contrato" em qualquer grafia. */
+function semAcento(v) {
+  return texto(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+/** Nome de coluna normalizado (como o extrator do Resultado Semanal): sem acento nem pontuação. */
+function normCol(v) { return semAcento(v).replace(/[^a-z0-9]/g, ''); }
+
 /**
- * NFs emitidas no mês, com a marca atual (contrato = cai em R.1). Marcadas
- * primeiro, depois as de maior valor; no máximo DRE_DETALHE_MAX itens.
+ * Aba Itens do Resultado Semanal (uma linha por item de OS) → { numero_os: { contrato, descricoes } }.
+ * `contrato` = algum serviço da OS tem a palavra "contrato". A coluna da OS e a da
+ * descrição do serviço são achadas pelo nome normalizado (o nome muda conforme a
+ * versão da view). OS repetida em várias linhas acumula, sem repetir descrição.
  */
-function listarNfsMes(cab, linhas, contratos, mes) {
-  const todas = consolidarNfs(cab, linhas, contratos).nfs.filter(function (nf) { return nf.mes === mes; });
-  const itens = todas.map(function (nf) {
-    return { numero_nf: nf.numero_nf, tipo_nf: nf.tipo_nf || 'SERVICO', cliente_cod: nf.cliente_cod, cliente: nf.cliente,
-      num_os: nf.num_os, valor: nf.valor, estimada: nf.estimada, contrato: nf.classe === 'R.1' };
+function servicosPorOs(cab, linhas) {
+  const ix = {};
+  (cab || []).forEach(function (c, i) { const k = normCol(c); if (!(k in ix)) ix[k] = i; });
+  const cOs = ix.numeroos !== undefined ? ix.numeroos : ix.numos;
+  const cDesc = ix.descricaosservico !== undefined ? ix.descricaosservico : ix.descricaoservico;
+  if (cOs === undefined || cDesc === undefined) return { mapa: {}, status: { ok: false, motivo: 'sem_colunas' } };
+  const mapa = {};
+  (linhas || []).forEach(function (l) {
+    const os = texto(l[cOs]).replace(/\.0+$/, '');
+    const d = texto(l[cDesc]);
+    if (!os || !d) return;
+    const e = mapa[os] || (mapa[os] = { contrato: false, descricoes: [] });
+    if (semAcento(d).indexOf('contrato') >= 0) e.contrato = true;
+    if (e.descricoes.indexOf(d) < 0 && e.descricoes.length < 3) e.descricoes.push(d.length > 120 ? d.slice(0, 117) + '...' : d);
   });
-  itens.sort(function (a, b) { return (b.contrato - a.contrato) || (b.valor - a.valor); });
-  const marcadas = itens.filter(function (i) { return i.contrato; }).length;
-  return { mes: mes, quantidade: itens.length, marcadas: marcadas, cortado: itens.length > DRE_DETALHE_MAX,
-    itens: itens.slice(0, DRE_DETALHE_MAX) };
+  return { mapa: mapa, status: { ok: true, os: Object.keys(mapa).length } };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -778,14 +835,15 @@ function budgetDoPeriodo(linhas, meses) {
 const DRE_DETALHE_MAX = 500;
 
 /** Receita: as NFs de uma classe (R.1/R.2/R.3) no mês, maiores primeiro. */
-function detalheReceita(cab, linhas, contratos, mes, classe) {
-  const nfs = consolidarNfs(cab, linhas, contratos).nfs.filter(function (nf) {
+function detalheReceita(cab, linhas, contratos, mes, classe, servicos) {
+  const nfs = consolidarNfs(cab, linhas, contratos, servicos).nfs.filter(function (nf) {
     return nf.mes === mes && nf.classe === classe;
   });
   nfs.sort(function (a, b) { return b.valor - a.valor; });
   return fecharDetalhe(nfs.map(function (nf) {
-    return { numero_nf: nf.numero_nf, tipo_nf: nf.tipo_nf, cliente: nf.cliente, num_os: nf.num_os,
-      valor: nf.valor, estimada: nf.estimada, parcelas: nf.parcelas_lancadas + '/' + nf.total_parcelas };
+    return { numero_nf: nf.numero_nf, tipo_nf: nf.tipo_nf || 'SERVICO', cliente: nf.cliente, cliente_cod: nf.cliente_cod, num_os: nf.num_os,
+      valor: nf.valor, estimada: nf.estimada, parcelas: nf.parcelas_lancadas + '/' + nf.total_parcelas,
+      descricao: nf.descricao, origem_classe: nf.origem_classe, auto_contrato: nf.auto_contrato };
   }));
 }
 
@@ -895,7 +953,7 @@ function montarDre(base, meses) {
   meses.forEach(function (mes) {
     const a = [];
     const r = rec[mes];
-    if (r && (r['R.2'] || r['R.3']) && !r['R.1']) a.push('Nenhuma NF de contrato marcada neste mês: tudo está como Spot.');
+    if (r && mes >= DRE_CONTRATO_INICIO && (r['R.2'] || r['R.3']) && !r['R.1']) a.push('Nenhuma NF de contrato identificada neste mês: tudo está como Spot.');
     const est = base.receita.estimadas.filter(function (e) { return e.mes === mes; });
     if (est.length) a.push(est.length + ' NF(s) parcelada(s) com valor estimado (faltam parcelas no Contas a Receber).');
     if (a.length) avisos[mes] = a;
@@ -907,6 +965,7 @@ function montarDre(base, meses) {
     estimadas: base.receita.estimadas.filter(function (e) { return meses.indexOf(e.mes) >= 0; }),
     avisos: avisos,
     avisos_gerais: { receita: base.receita.avisos, despesas: base.despesas.avisos },
+    servicos: base.servicos || { ok: false, motivo: 'sem_planilha' },
     gerado_em: base.gerado_em
   };
 }

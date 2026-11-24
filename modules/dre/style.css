@@ -33,11 +33,15 @@
 #screen-dre .dre-det-resumo{display:flex;gap:18px;flex-wrap:wrap;font-size:.82rem;margin:8px 0;}
 #screen-dre .dre-est{background:var(--dre-alerta-bg);color:var(--dre-alerta);border-radius:6px;padding:1px 6px;font-size:.68rem;font-weight:800;}
 #screen-dre td.esq{text-align:left;}
-#screen-dre .dre-ctr-resumo{display:flex;gap:18px;flex-wrap:wrap;font-size:.82rem;margin:8px 0;}
-#screen-dre td.ctr-chk{text-align:center;width:40px;}
-#screen-dre td.ctr-chk input{width:18px;height:18px;cursor:pointer;}
-#screen-dre tr.ctr-sim td{background:#eef7ee;}
-#screen-dre tr.ctr-sim td:first-child{background:#eef7ee;}
+#screen-dre .dre-det-busca{display:flex;align-items:center;gap:8px;margin:6px 0 10px;}
+#screen-dre .dre-det-busca input{flex:1;max-width:420px;font:inherit;padding:6px 10px;border:1px solid var(--border);border-radius:8px;}
+#screen-dre .dre-ok{background:#eef7ee;color:#166534;border-radius:8px;padding:8px 12px;font-size:.82rem;margin:6px 0;}
+#screen-dre td.dre-desc{max-width:260px;white-space:normal;}
+#screen-dre td.dre-classe{white-space:nowrap;}
+#screen-dre .dre-chip{border-radius:6px;padding:1px 6px;font-size:.68rem;font-weight:800;margin-right:6px;}
+#screen-dre .dre-chip.auto{background:#e0e7ff;color:#4338ca;}
+#screen-dre .dre-chip.man{background:var(--dre-alerta-bg);color:var(--dre-alerta);}
+#screen-dre .dre-btn.mini{padding:3px 8px;font-size:.72rem;}
 #screen-dre td input.bud-in{width:110px;text-align:right;font:inherit;padding:3px 6px;border:1px solid var(--border);border-radius:6px;}
 #screen-dre td input.bud-in.ruim{border-color:var(--dre-ruim);background:var(--dre-ruim-bg);}
 #screen-dre td.bud-bom{color:var(--dre-bom);}
@@ -64,7 +68,7 @@
   #screen-dre .dre-det-topo>span{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
   #screen-dre .dre-cen-campos{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;}
   #screen-dre .dre-cen-campos label{display:flex;justify-content:space-between;align-items:center;gap:8px;}
-  #screen-dre .dre-det-resumo,#screen-dre .dre-ctr-resumo{gap:6px 14px;}
+  #screen-dre .dre-det-resumo{gap:6px 14px;}
   #screen-dre .dre-demo,#screen-dre .dre-aviso,#screen-dre .dre-erro{font-size:.82rem;line-height:1.4;}
   #screen-dre .dre-leg{margin-left:0;margin-right:10px;display:inline-block;}
   /* tabelas: rolagem horizontal; primeira coluna (nomes) fixa e estreita */

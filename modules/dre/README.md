@@ -14,13 +14,12 @@ Demonstração do resultado mensal por **regime de competência (data de emissã
 
 ## O que a tela tem
 1. **DRE** — meses em colunas + Total. Período padrão 12 meses, máximo 24. Avisos por mês (ícone no cabeçalho + faixa no topo).
-2. **Drill-down** — clicar numa célula de receita (R.1–R.3) ou de conta (N.NN) lista as NFs/títulos que a compõem. Mostra o total real mesmo quando a lista é cortada em 500 itens.
+2. **Drill-down** — clicar numa célula de receita (R.1–R.3) ou de conta (N.NN) lista as NFs/títulos que a compõem. Mostra o total real mesmo quando a lista é cortada em 500 itens. Na receita a lista traz a **descrição do serviço** e um campo de busca, e é nela que se corrige a classe de uma NF (botões "É contrato" / "Tirar de contrato": a linha sai na hora e a gravação segue em segundo plano).
 3. **Últimos 12 meses** — barras de receita e linhas de resultado operacional e do período.
 4. **NFs com valor estimado** — ver "NF parcelada" abaixo.
-5. **Contratos do mês** — marcar quais NFs do mês são de contrato.
-6. **Orçado × Executado** — meta por conta e por mês; variação em R$ e %.
-7. **Cenário** — simulação local por percentual de grupo. Não grava nada, não vai à rede; o drill-down fica desligado enquanto houver cenário.
-8. **Exportar XLSX** — gerado no navegador (aba "DRE" ou "Cenario").
+5. **Orçado × Executado** — meta por conta e por mês; variação em R$ e %.
+6. **Cenário** — simulação local por percentual de grupo. Não grava nada, não vai à rede; o drill-down fica desligado enquanto houver cenário.
+7. **Exportar XLSX** — gerado no navegador (aba "DRE" ou "Cenario").
 
 ## Estrutura do resultado
 
@@ -40,7 +39,11 @@ Fora do resultado (informativo): 3.02 Empréstimos, 3.06 Sócios/Aportes, CAPEX 
 
 **Data digitada errada.** Título com ano impossível (`02/10/0202`, `20261-10-13`) vai para o mês da `competencia` e entra na contagem do aviso `emissao_corrigida`. Vale conferir esses títulos no Contas a Pagar.
 
-**Contrato é lista manual (provisório).** Ainda não existe regra automática. Hoje são 4 NFs por mês (Imediato). A aba `DreContratos` guarda as NFs marcadas; **NF que não está na lista é Spot** (R.2 se serviço, R.3 se peça). Todo mês é preciso marcar as 4 novas no card "Contratos do mês"; mês sem NF de contrato marcada mostra aviso. Marca com cliente vazio vale para qualquer cliente daquele número. Quando houver regra, isso vira atualização.
+**Contrato é identificado pela descrição do serviço.** NF de **serviço** cuja OS tem a palavra "contrato" na descrição de algum item de serviço (qualquer caixa e acentuação) vai para R.1; o resto é Spot. A descrição vem da aba `Itens` da planilha **Resultado Semanal** (a mesma do módulo Resultado Semanal), ligada pelo número da OS. NF de peça nunca é contrato. Se a OS tiver vários serviços e só um citar contrato, a NF inteira é contrato: a tela mostra a descrição para conferir.
+
+**Correção manual (exceção).** No drill-down, "É contrato" ou "Tirar de contrato" grava uma exceção na aba `DreContratos` (coluna `regra`: CONTRATO ou SPOT). A exceção manda sobre a descrição. Pedir o que a descrição já diz apaga a exceção (volta ao automático). Linhas antigas da aba, sem `regra`, valem como CONTRATO (é o caso das NFs 539 a 542 de outubro/2026). Marca com cliente vazio vale para qualquer cliente daquele número.
+
+**Sem a planilha ligada** (ou se a aba `Itens` mudar de formato) o DRE continua funcionando: só valem as correções manuais e a tela mostra uma faixa avisando. O aviso "nenhuma NF de contrato identificada" só aparece de out/2026 em diante, que é quando o contrato começou (`DRE_CONTRATO_INICIO` no `dre.gs`).
 
 **NF parcelada incompleta vale o total.** Se faltam parcelas no Contas a Receber, o `dre.gs` estima as que faltam pela média das parcelas ativas × `total_parcelas`, e a NF aparece em "NFs com valor estimado". Parcela cancelada não conta como faltante. A NF é identificada por `numero_nf + tipo_nf + data_emissao + cliente_cod`, porque a numeração repete entre séries e tipos (peça e serviço com o mesmo número são duas NFs).
 
@@ -49,7 +52,7 @@ Fora do resultado (informativo): 3.02 Empréstimos, 3.06 Sócios/Aportes, CAPEX 
 **Meta (budget) é por conta.** Grupos e totais (Margem, Res. Operacional, Resultado) são somados na tela e só contam as contas que têm meta. Verde = favorável (receita acima, custo abaixo); vermelho = desfavorável. Digitar recalcula na hora; só grava no botão "Salvar metas". Valor vazio remove a meta. Aceita `1234,5` ou `1234.5`; milhar com ponto (`1.234,50`) é recusado de propósito.
 
 ## Cache
-A base de todos os meses fica 10 minutos no cache do Apps Script (a tela abre em poucos segundos). **Atualizar** ignora o cache. Marcar contrato limpa o cache sozinho; lançamento novo no Contas a Pagar/Receber aparece em até 10 min ou no "Atualizar". Drill-down, contratos do mês e orçado leem a planilha na hora.
+A base de todos os meses fica 10 minutos no cache do Apps Script (a tela abre em poucos segundos). **Atualizar** ignora o cache. Marcar contrato limpa o cache sozinho; lançamento novo no Contas a Pagar/Receber aparece em até 10 min ou no "Atualizar". Drill-down e orçado leem a planilha na hora.
 
 ## Conferência feita (outubro/2026)
 Contra o gabarito `DRE-Renova-Outubro-2026.xlsx` (feito à mão em 05/11): R.1 e R.3 batem ao centavo; todas as diferenças restantes são de **dado** (NF 480 cancelada depois, títulos lançados ou editados depois de 05/11, 3 títulos com ano digitado errado), não de lógica. A estimativa de NF parcelada só foi provada pelo teste, não por dado real — a primeira NF parcelada incompleta que aparecer merece conferência manual.

@@ -11,7 +11,7 @@ Planilha financeira (Titulos + RecTitulos + PlanoContas)      Planilha própria 
                          Portal (GitHub Pages) → módulo "DRE Gerencial"
 ```
 
-**Por que assim:** o repositório é público, então nenhum número financeiro mora no código. O `dre.gs` lê a planilha financeira sem nunca gravar nela; o que é só do DRE (lista de NFs de contrato, metas, log) fica numa planilha separada. Não há cron nem chave de serviço: o DRE só lê o que o Contas a Pagar e o Contas a Receber já alimentam.
+**Por que assim:** o repositório é público, então nenhum número financeiro mora no código. O `dre.gs` lê a planilha financeira sem nunca gravar nela; o que é só do DRE (lista de NFs de contrato, metas, log) fica numa planilha separada. Não há cron nem chave de serviço: o DRE só lê o que o Contas a Pagar, o Contas a Receber e o Resultado Semanal já alimentam.
 
 ---
 
@@ -31,18 +31,18 @@ Planilha financeira (Titulos + RecTitulos + PlanoContas)      Planilha própria 
 
 Um projeto Apps Script só aceita um `doGet/doPost`: este `.gs` precisa de **projeto próprio**, não cole dentro de outro backend.
 
-## 2. Semear os contratos de outubro
+## 2. Ligar a planilha do Resultado Semanal (descrição dos serviços)
 
-Na aba `DreContratos` da planilha do DRE, escreva (as colunas já vêm como texto):
+É dela que o DRE tira a palavra "contrato" da descrição do serviço, para classificar as NFs de contrato sozinho.
 
-| competencia | numero_nf | tipo_nf | cliente_cod |
-|---|---|---|---|
-| 2026-10 | 539 | SERVICO | 10 |
-| 2026-10 | 540 | SERVICO | 10 |
-| 2026-10 | 541 | SERVICO | 10 |
-| 2026-10 | 542 | SERVICO | 10 |
+1. Abra a planilha **Resultado Semanal** e copie o ID dela (o trecho entre `/d/` e `/edit` na URL).
+2. No projeto Apps Script do **DRE**: **⚙ Configurações do projeto → Propriedades do script → Adicionar**:
+   `ITENS_PLANILHA_ID` = o ID copiado. (Fica na propriedade, não no código, porque o repositório é público.)
+3. Rode `instalar` de novo e autorize o acesso ao Drive, se pedir. A conta que roda o script precisa de pelo menos **leitura** na planilha do Resultado Semanal.
 
-> Confira o `tipo_nf` dessas quatro no `RecTitulos` antes de digitar (PECA ou SERVICO). Em dúvida, deixe para marcar pela tela, no card "Contratos do mês" — é o caminho normal dos meses seguintes e já grava no formato certo.
+O DRE só lê a aba `Itens`. As colunas são achadas pelo nome (número da OS e descrição do serviço), então não depende da ordem.
+
+> Sem essa propriedade o DRE funciona, mas sem contrato automático: a tela mostra a faixa "Contrato automático desligado".
 
 ## 3. Ligar o portal
 
@@ -57,18 +57,20 @@ Na aba `DreContratos` da planilha do DRE, escreva (as colunas já vêm como text
 ## 4. Primeiro uso e conferência
 
 1. Entre como **admin** → card "DRE Gerencial" na home. Perfil Consulta recebe "restrito a administradores".
-2. Escolha out/2026 e compare R.1, R.2 e R.3 com o relatório de faturamento do mês. Diferenças contra o gabarito manual de 05/11 são de dado (NF cancelada, títulos lançados depois), explicadas em `.prumo/dre-guia-retomada.md` (passo 9, fora do repositório).
-3. Clique em células para o drill-down: o total do detalhe tem que igualar o valor da célula.
-4. Veja os avisos do topo (`emissao_corrigida`, `sem_nf`, mês sem contrato marcado) e trate no Contas a Pagar/Receber.
-5. Cadastre metas no card "Orçado × Executado" e confira a variação.
+2. Escolha o mês e compare R.1, R.2 e R.3 com o relatório de faturamento. Diferenças contra o gabarito manual de 05/11 são de dado (NF cancelada, títulos lançados depois), explicadas em `.prumo/dre-guia-retomada.md` (passo 9, fora do repositório).
+3. Clique em R.1: devem aparecer as NFs de contrato do mês, cada uma com a descrição do serviço (ex.: "contrato empurrada guarulhos"). Conferir que são as 4 esperadas. Clique em R.2 e use a busca para achar alguma que devesse ser contrato.
+4. Clique nas demais células para o drill-down: o total do detalhe tem que igualar o valor da célula.
+5. Veja os avisos do topo (`emissao_corrigida`, `sem_nf`) e trate no Contas a Pagar/Receber.
+6. Cadastre metas no card "Orçado × Executado" e confira a variação.
 
 ## 5. Rotina mensal
-- Marcar as 4 NFs de contrato do mês novo (card "Contratos do mês"). Sem isso, o mês mostra aviso e a receita de contrato vai para Spot.
+- Nada para marcar: a NF de contrato é identificada pela descrição. Só olhe R.1 no começo do mês e corrija com os botões se alguma NF ficou na classe errada.
 - Classificar o que está em 9.99 "A Classificar" (fica fora do resultado até alguém classificar).
 - Apertar **Atualizar** depois de lançar algo, se não quiser esperar os 10 min do cache.
+- A descrição vem do Resultado Semanal: se o extrator dele não rodou, as OSs novas não têm descrição e a NF fica Spot até o próximo extrator (ou corrija à mão).
 
 ## Atualizar o código depois
-Colar o `dre.gs` novo na mesma planilha e **Implantar → Gerenciar implantações → editar → Nova versão** (a URL não muda). Criar "Nova implantação" gera outra URL e quebra o portal. Antes: `node ferramentas/testar-dre.js`.
+Colar o `dre.gs` novo na mesma planilha (a ação antiga de marcar contratos foi trocada por `classe_definir`, então portal e script têm que subir juntos) e **Implantar → Gerenciar implantações → editar → Nova versão** (a URL não muda). Criar "Nova implantação" gera outra URL e quebra o portal. Antes: `node ferramentas/testar-dre.js`.
 
 ## Problemas comuns
 
@@ -79,6 +81,7 @@ Colar o `dre.gs` novo na mesma planilha e **Implantar → Gerenciar implantaçõ
 | "Este script precisa ser criado a partir da planilha do DRE" | script criado solto em script.google.com; recriar via Extensões → Apps Script |
 | Erro de coluna ausente no `resultado` | alguém renomeou cabeçalho em `Titulos`/`RecTitulos`/`PlanoContas`; o `dre.gs` acha coluna pelo **nome** |
 | Número mudou e ninguém lançou nada | cache de 10 min vencendo; ou título editado à mão (data virou outra) — ver aviso `emissao_corrigida` |
-| Receita de contrato aparece como Spot | NF do mês ainda não marcada em "Contratos do mês" |
+| Receita de contrato aparece como Spot | a OS ainda não está no Resultado Semanal (extrator atrasado), a descrição não tem a palavra "contrato" ou a NF é de peça; corrija no drill-down com "É contrato" |
+| Faixa "Contrato automático desligado" | falta a propriedade `ITENS_PLANILHA_ID`, ou a conta do script não tem acesso à planilha do Resultado Semanal |
 | Portal sem resposta após colar código | colou dentro de outro projeto (dois `doPost`); usar projeto próprio |
 | Faixa amarela "dados de exemplo" | `CONFIG.DRE_API` vazio ou deploy do portal ainda não propagou |

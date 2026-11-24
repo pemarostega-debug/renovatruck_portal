@@ -1,4 +1,4 @@
-<!-- DRE GERENCIAL — Etapa 2/2b: DRE + marcação de NFs de contrato (somente admin).
+<!-- DRE GERENCIAL — Etapa 2/2b: DRE com drill-down e correção da classe da NF (somente admin).
      Números vindos pela API do apps-script/dre.gs; nada financeiro vive neste arquivo (repo público). -->
 <div id="screen-dre">
 
@@ -47,13 +47,6 @@
       <h3>NFs com valor estimado</h3>
       <p class="dre-nota">Faltam parcelas dessas NFs no Contas a Receber; o DRE usa o total estimado (valor da parcela × total de parcelas).</p>
       <div class="dre-rolagem" id="dre-estimadas"></div>
-    </div>
-    <div class="dre-card" id="dre-ctr-card">
-      <div class="dre-det-topo"><h3>Contratos do mês</h3>
-        <label class="dre-nota">Mês <input type="month" id="dre-ctr-mes" onchange="dreCtrCarregar()"></label></div>
-      <p class="dre-nota">Marque as NFs que são de contrato (viram R.1). NF sem marca é Spot. Vale para o mês da emissão e o DRE recarrega ao marcar.</p>
-      <div id="dre-ctr-msg"></div>
-      <div class="dre-rolagem" id="dre-ctr-lista"></div>
     </div>
     <div class="dre-card" id="dre-bud-card">
       <div class="dre-det-topo"><h3>Orçado × Executado</h3>

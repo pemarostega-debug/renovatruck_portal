@@ -1,7 +1,7 @@
 /**
  * Módulo: DRE Gerencial (Etapa 2 — só leitura, somente admin)
  * Carregado sob demanda por js/router.js. Fala com o apps-script/dre.gs
- * (actions `resultado`, `detalhe`, `contratos_mes`, `contrato_marcar`, `budget_ler` e `budget_gravar`). Sem CONFIG.DRE_API usa dados de exemplo
+ * (actions `resultado`, `detalhe`, `classe_definir`, `budget_ler` e `budget_gravar`). Sem CONFIG.DRE_API usa dados de exemplo
  * INVENTADOS, só para ver o layout. Nada financeiro real mora neste arquivo.
  */
 
@@ -13,13 +13,13 @@ const DRE = {
   sel: null,        // célula do drill-down aberta { mes, linha }
   seq: 0,           // descarta resposta velha se o usuário mudou o período no meio
   seqDet: 0,        // idem para o drill-down
-  seqCtr: 0,        // idem para o painel de contratos
+  det: null,        // resposta do drill-down aberto (receita: onde se corrige a classe da NF)
   seqBud: 0,
   cen: { RECEITA: 0, CUSTO_OP: 0, FIXA: 0, FIN: 0 },   // cenário local: % por grupo (nunca gravado)
   cenAtivo: false,
   bud: null,        // { mes, linhas (DRE do mês), metas { id: número }, sujo }
   exBudget: {},     // só no modo exemplo: metas feitas na tela { mes: { id: número } }
-  exMarcas: {},     // só no modo exemplo: marcas feitas na tela { mes: { nf: bool } }
+  exClasse: {},     // só no modo exemplo: correções feitas na tela { nf: 'CONTRATO' | 'SPOT' | 'AUTO' }
 };
 
 const dreApiLigada = () => /^https?:\/\//.test(DRE.API || '');
@@ -43,12 +43,9 @@ function initDre() {
     ate.value = dreDeNum(fim);
     de.value = dreDeNum(fim - (DRE.PADRAO_MESES - 1));
   }
-  const cm = document.getElementById('dre-ctr-mes');
-  if (!cm.value) cm.value = ate.value;
   const bm = document.getElementById('dre-bud-mes');
   if (!bm.value) bm.value = ate.value;
   dreCarregar(false);
-  dreCtrCarregar();
   dreBudCarregar();
 }
 
@@ -76,15 +73,15 @@ async function drePost(action, corpo) {
   return d.data;
 }
 
-async function dreCarregar(forcar) {
+async function dreCarregar(forcar, manterDetalhe) {
   const p = dreLerPeriodo();
   if (!p) return;
   const meu = ++DRE.seq;
-  dreFecharDetalhe();
+  if (!manterDetalhe) dreFecharDetalhe();
   const erro = document.getElementById('dre-erro');
   erro.style.display = 'none';
   document.getElementById('dre-demo').style.display = dreApiLigada() ? 'none' : 'block';
-  document.getElementById('dre-tabela').innerHTML = '<div class="dre-nota" style="padding:16px;">Carregando…</div>';
+  if (!manterDetalhe) document.getElementById('dre-tabela').innerHTML = '<div class="dre-nota" style="padding:16px;">Carregando…</div>';
   try {
     const d = dreApiLigada() ? await drePost('resultado', { de: p.de, ate: p.ate, forcar: !!forcar }) : dreExemploResultado(p.de, p.ate);
     if (meu !== DRE.seq) return;
@@ -110,6 +107,8 @@ function dreRender() {
   if (r.sem_nf) av.push(r.sem_nf + ' parcela(s) do Contas a Receber sem número de NF ficaram fora da receita (R$ ' + dreMoeda(r.sem_nf_valor) + ').');
   if (r.sem_mes) av.push(r.sem_mes + ' parcela(s) sem data utilizável ficaram fora (R$ ' + dreMoeda(r.sem_mes_valor) + ').');
   if (s.sem_mes) av.push(s.sem_mes + ' título(s) de despesa sem data utilizável ficaram fora (R$ ' + dreMoeda(s.sem_mes_valor) + ').');
+  const sv = DRE.dados && DRE.dados.servicos;
+  if (sv && !sv.ok) av.push('Contrato automático desligado: ' + ({ sem_planilha: 'a planilha do Resultado Semanal ainda não foi ligada ao dre.gs', sem_itens: 'a aba Itens do Resultado Semanal está vazia', sem_colunas: 'a aba Itens não tem as colunas de OS e de descrição do serviço', erro_leitura: 'não consegui ler a planilha do Resultado Semanal' }[sv.motivo] || 'sem descrições dos serviços') + '. Só valem as correções feitas à mão.');
   document.getElementById('dre-avisos').innerHTML = av.map(t => '<div class="dre-aviso"><i class="fa-solid fa-triangle-exclamation"></i> ' + t + '</div>').join('');
 
   // tabela: meses em colunas, linhas na ordem do servidor, com coluna de total do período
@@ -300,19 +299,34 @@ async function dreAbrirDetalhe(mes, linha, td) {
     const d = dreApiLigada() ? await drePost('detalhe', { mes, linha }) : dreExemploDetalhe(mes, linha);
     if (meu !== DRE.seqDet) return;
     corpo.innerHTML = dreRenderDetalhe(d);
+    if (d.tipo === 'receita') dreDetLigar(corpo);
   } catch (e) {
     if (meu !== DRE.seqDet) return;
     corpo.innerHTML = '<div class="dre-erro">Não consegui buscar os itens: ' + kbEsc(e.message) + '</div>';
   }
 }
 
+const dreDestinoNome = nf => nf.tipo_nf === 'PECA' ? 'Spot Peças' : 'Spot Serviços';
+
 function dreRenderDetalhe(d) {
-  let h = '<div class="dre-det-resumo"><span>Total real: <b>R$ ' + dreMoeda(d.total) + '</b></span><span>Itens: <b>' + d.quantidade + '</b></span></div>';
+  DRE.det = d;
+  let h = '<div class="dre-det-resumo"><span>Total real: <b id="dre-det-total">R$ ' + dreMoeda(d.total) + '</b></span><span>Itens: <b id="dre-det-qtd">' + d.quantidade + '</b></span></div>';
   if (d.cortado) h += '<div class="dre-aviso"><i class="fa-solid fa-scissors"></i> Lista cortada: mostrando só os ' + d.itens.length + ' maiores de ' + d.quantidade + '. O total acima é o real, de todos os itens.</div>';
   if (d.tipo === 'receita') {
-    h += '<div class="dre-rolagem"><table><thead><tr><th>NF</th><th>Tipo</th><th>Cliente</th><th>OS</th><th>Parcelas</th><th>Valor</th></tr></thead><tbody>' +
-      d.itens.map(i => '<tr><td class="esq">' + kbEsc(i.numero_nf) + '</td><td class="esq">' + kbEsc(i.tipo_nf) + '</td><td class="esq">' + kbEsc(i.cliente) + '</td><td class="esq">' + kbEsc(i.num_os) +
-        '</td><td>' + kbEsc(i.parcelas) + '</td><td>' + (i.estimada ? '<span class="dre-est">estimada</span> ' : '') + dreMoeda(i.valor) + '</td></tr>').join('') + '</tbody></table></div>';
+    const ehContrato = d.linha === 'R.1';
+    h += '<div class="dre-det-busca"><i class="fa-solid fa-magnifying-glass"></i><input id="dre-det-busca" type="search" placeholder="Buscar por NF, cliente, OS ou descrição do serviço" autocomplete="off"></div>' +
+      '<div id="dre-det-msg"></div>' +
+      '<p class="dre-nota">' + (ehContrato
+        ? 'Contrato é identificado pela palavra "contrato" na descrição do serviço da OS. Se alguma NF não é contrato, use "Tirar de contrato".'
+        : 'Se alguma destas NFs for de contrato e não foi identificada, use "É contrato". A correção vale na hora e fica registrada.') + '</p>' +
+      '<div class="dre-rolagem"><table><thead><tr><th>NF</th><th>Tipo</th><th>Cliente</th><th>OS</th><th>Descrição do serviço</th><th>Valor</th><th>Classe</th></tr></thead><tbody>' +
+      d.itens.map((i, n) => {
+        const q = [i.numero_nf, i.cliente, i.num_os, i.descricao].join(' ').toLowerCase();
+        const origem = i.origem_classe === 'manual' ? '<span class="dre-chip man" title="Corrigida à mão">à mão</span>' : (i.origem_classe === 'descricao' ? '<span class="dre-chip auto" title="Identificada pela descrição do serviço">automático</span>' : '');
+        return '<tr data-n="' + n + '" data-q="' + kbEsc(q) + '"><td class="esq">' + kbEsc(i.numero_nf) + '</td><td class="esq">' + kbEsc(i.tipo_nf) + '</td><td class="esq">' + kbEsc(i.cliente) + '</td><td class="esq">' + kbEsc(i.num_os) +
+          '</td><td class="esq dre-desc">' + kbEsc(i.descricao || '—') + '</td><td>' + (i.estimada ? '<span class="dre-est">estimada</span> ' : '') + dreMoeda(i.valor) +
+          '</td><td class="esq dre-classe">' + origem + '<button class="dre-btn mini" data-acao="classe" data-n="' + n + '">' + (ehContrato ? 'Tirar de contrato' : 'É contrato') + '</button></td></tr>';
+      }).join('') + '</tbody></table></div>';
   } else {
     h += '<div class="dre-rolagem"><table><thead><tr><th>Emissão</th><th>Título</th><th>Fornecedor</th><th>Descrição</th><th>NF</th><th>Natureza</th><th>Status</th><th>Valor</th></tr></thead><tbody>' +
       d.itens.map(i => '<tr><td class="esq">' + kbEsc((i.emissao || '').split('-').reverse().join('/')) + '</td><td class="esq">' + kbEsc(i.id) + '</td><td class="esq">' + kbEsc(i.fornecedor) +
@@ -322,56 +336,45 @@ function dreRenderDetalhe(d) {
   return h;
 }
 
-/* ── CONTRATOS DO MÊS (Etapa 2b): marcar quais NFs do mês são de contrato ── */
-async function dreCtrCarregar() {
-  const mes = document.getElementById('dre-ctr-mes').value;
-  const lista = document.getElementById('dre-ctr-lista'), msg = document.getElementById('dre-ctr-msg');
-  if (!/^\d{4}-\d{2}$/.test(mes)) { lista.innerHTML = ''; msg.innerHTML = ''; return; }
-  const meu = ++DRE.seqCtr;
-  lista.innerHTML = '<div class="dre-nota" style="padding:8px;">Carregando…</div>';
-  try {
-    const d = dreApiLigada() ? await drePost('contratos_mes', { mes }) : dreExemploContratos(mes);
-    if (meu !== DRE.seqCtr) return;
-    dreCtrRender(d);
-  } catch (e) {
-    if (meu !== DRE.seqCtr) return;
-    lista.innerHTML = '';
-    msg.innerHTML = '<div class="dre-erro">Não consegui listar as NFs do mês: ' + kbEsc(e.message) + '</div>';
-  }
-}
-
-function dreCtrRender(d) {
-  const msg = document.getElementById('dre-ctr-msg'), lista = document.getElementById('dre-ctr-lista');
-  let m = '';
-  if (!d.marcadas) m += '<div class="dre-aviso"><i class="fa-solid fa-triangle-exclamation"></i> Nenhuma NF de contrato marcada em ' + dreMesRotulo(d.mes) + ': toda a receita está como Spot.</div>';
-  if (d.cortado) m += '<div class="dre-aviso"><i class="fa-solid fa-scissors"></i> Mostrando só as ' + d.itens.length + ' primeiras de ' + d.quantidade + ' NFs (marcadas primeiro, depois as de maior valor).</div>';
-  msg.innerHTML = m;
-  if (!d.itens.length) { lista.innerHTML = '<div class="dre-nota" style="padding:8px;">Nenhuma NF emitida neste mês.</div>'; return; }
-  lista.innerHTML = '<div class="dre-ctr-resumo"><span>NFs no mês: <b>' + d.quantidade + '</b></span><span>Marcadas como contrato: <b>' + d.marcadas + '</b></span></div>' +
-    '<table><thead><tr><th>Contrato</th><th>NF</th><th>Tipo</th><th>Cliente</th><th>OS</th><th>Valor</th></tr></thead><tbody>' +
-    d.itens.map((i, n) => '<tr class="' + (i.contrato ? 'ctr-sim' : '') + '"><td class="ctr-chk"><input type="checkbox" data-n="' + n + '"' + (i.contrato ? ' checked' : '') +
-      ' aria-label="NF ' + kbEsc(i.numero_nf) + ' é de contrato"></td><td class="esq">' + kbEsc(i.numero_nf) + '</td><td class="esq">' + kbEsc(i.tipo_nf) +
-      '</td><td class="esq">' + kbEsc(i.cliente || i.cliente_cod) + '</td><td class="esq">' + kbEsc(i.num_os) + '</td><td>' +
-      (i.estimada ? '<span class="dre-est">estimada</span> ' : '') + dreMoeda(i.valor) + '</td></tr>').join('') + '</tbody></table>';
-  lista.onchange = ev => {
-    const cx = ev.target.closest('input[type=checkbox]');
-    if (cx) dreCtrMarcar(d.mes, d.itens[+cx.dataset.n], cx);
+/** Busca + botões do drill-down de receita (uma ligação por abertura; o corpo é recriado a cada clique). */
+function dreDetLigar(corpo) {
+  const busca = document.getElementById('dre-det-busca');
+  busca.oninput = () => {
+    const q = busca.value.trim().toLowerCase();
+    corpo.querySelectorAll('tr[data-q]').forEach(tr => { tr.style.display = !q || tr.dataset.q.includes(q) ? '' : 'none'; });
+  };
+  corpo.onclick = ev => {
+    const bt = ev.target.closest('button[data-acao="classe"]');
+    if (bt) dreClasseMudar(bt);
   };
 }
 
-async function dreCtrMarcar(mes, nf, cx) {
-  const msg = document.getElementById('dre-ctr-msg');
-  const querMarcar = cx.checked;
-  document.querySelectorAll('#dre-ctr-lista input').forEach(x => { x.disabled = true; });   // uma gravação por vez
+/**
+ * Corrige a classe de UMA NF (contrato ↔ Spot). Responde na hora: a linha sai da lista,
+ * o total do drill-down é ajustado aqui e a gravação segue em segundo plano. Só volta
+ * atrás (e avisa) se o servidor recusar.
+ */
+async function dreClasseMudar(bt) {
+  const d = DRE.det, nf = d && d.itens[+bt.dataset.n], msg = document.getElementById('dre-det-msg');
+  if (!nf || nf.salvando) return;
+  const querContrato = d.linha !== 'R.1';
+  // se o que se pede é o que a descrição já diz, apaga a correção (AUTO) em vez de gravar outra
+  const classe = (!!nf.auto_contrato === querContrato) ? 'AUTO' : (querContrato ? 'CONTRATO' : 'SPOT');
+  const tr = bt.closest('tr'), rotulo = bt.textContent;
+  nf.salvando = true; bt.disabled = true; bt.textContent = 'Gravando…';
   try {
-    if (dreApiLigada()) await drePost('contrato_marcar', { competencia: mes, numero_nf: nf.numero_nf, tipo_nf: nf.tipo_nf, cliente_cod: nf.cliente_cod, marcar: querMarcar });
-    else dreExemploMarcar(mes, nf.numero_nf, querMarcar);
-    await dreCtrCarregar();
-    dreCarregar(false);   // a marca limpou o cache no servidor: o DRE já sai com o valor novo
+    if (dreApiLigada()) await drePost('classe_definir', { competencia: d.mes, numero_nf: nf.numero_nf, tipo_nf: nf.tipo_nf, cliente_cod: nf.cliente_cod || '', classe });
+    else DRE.exClasse[nf.numero_nf] = classe;
+    if (DRE.det !== d) return;   // trocou de célula no meio: o servidor já gravou, a tela nova se vira sozinha
+    tr.remove();
+    d.total = Math.round((d.total - nf.valor) * 100) / 100; d.quantidade--;
+    document.getElementById('dre-det-total').textContent = 'R$ ' + dreMoeda(d.total);
+    document.getElementById('dre-det-qtd').textContent = d.quantidade;
+    msg.innerHTML = '<div class="dre-ok"><i class="fa-solid fa-circle-check"></i> NF ' + kbEsc(nf.numero_nf) + ' passou para ' + (querContrato ? 'Contratos' : dreDestinoNome(nf)) + '. A tabela já foi atualizada.</div>';
+    dreCarregar(false, true);   // o servidor limpou o cache: a tabela sai com o valor novo, sem fechar o detalhe
   } catch (e) {
-    cx.checked = !querMarcar;
-    document.querySelectorAll('#dre-ctr-lista input').forEach(x => { x.disabled = false; });
-    msg.innerHTML = '<div class="dre-erro">Não consegui gravar a marca da NF ' + kbEsc(nf.numero_nf) + ': ' + kbEsc(e.message) + '</div>';
+    nf.salvando = false; bt.disabled = false; bt.textContent = rotulo;
+    if (msg) msg.innerHTML = '<div class="dre-erro">Não consegui gravar a NF ' + kbEsc(nf.numero_nf) + ': ' + kbEsc(e.message) + '</div>';
   }
 }
 
@@ -523,8 +526,7 @@ function dreExemploResultado(de, ate) {
   const t = (id, nome, valores) => ({ id, nome, tipo: 'total', grupo: id, valores });
   const estMes = meses[meses.length - 1];
   const avisos = { [estMes]: ['1 NF(s) parcelada(s) com valor estimado (faltam parcelas no Contas a Receber).'] };
-  avisos[meses[0]] = (avisos[meses[0]] || []).concat(['Nenhuma NF de contrato marcada neste mês: tudo está como Spot.']);
-  return {
+    return {
     meses, gerado_em: new Date().toISOString(),
     linhas: [].concat([g('RECEITA', 'Receita Bruta', 'RECEITA', R)], rec, [g('CUSTO_OP', 'Custos Operacionais', 'CUSTO_OP', C)], cus,
       [t('MARGEM', 'Margem de Contribuição', margem), g('FIXA', 'Despesas Fixas', 'FIXA', F)], fix, [t('RES_OP', 'Resultado Operacional', resOp),
@@ -545,21 +547,8 @@ function dreExemploDetalhe(mes, linha) {
   const vals = pesos.map((p, i) => { const v = i === n - 1 ? Math.round((alvo - acum) * 100) / 100 : Math.round(alvo * p / ps * 100) / 100; acum += v; return v; });
   vals.sort((a, b) => b - a);
   const itens = vals.map((v, i) => rec
-    ? { numero_nf: String(9100 + i), tipo_nf: linha === 'R.3' ? 'PECA' : 'SERVICO', cliente: 'CLIENTE EXEMPLO ' + (i + 1), num_os: String(2000 + i), valor: v, estimada: i === 1 && linha === 'R.2', parcelas: '1/1' }
+    ? { numero_nf: String(9100 + i), tipo_nf: linha === 'R.3' ? 'PECA' : 'SERVICO', cliente: 'CLIENTE EXEMPLO ' + (i + 1), cliente_cod: String(40 + i), num_os: String(2000 + i), valor: v, estimada: i === 1 && linha === 'R.2', parcelas: '1/1',
+      descricao: linha === 'R.1' ? 'Contrato Elétrica Guarulhos (exemplo)' : (linha === 'R.2' ? 'Revisão geral (exemplo)' : ''), origem_classe: linha === 'R.1' ? 'descricao' : 'padrao', auto_contrato: linha === 'R.1' }
     : { id: 'T-' + (500 + i), emissao: mes + '-' + dreP2(5 + i * 3), fornecedor: 'FORNECEDOR EXEMPLO ' + (i + 1), descricao: 'Lançamento de exemplo', numero_nf: String(700 + i), natureza_codigo: linha, status: i % 2 ? 'PAGO' : 'ABERTO', valor: v });
   return { tipo: rec ? 'receita' : 'despesa', mes, linha, total: Math.round(alvo * 100) / 100, quantidade: n, cortado: false, itens };
 }
-
-function dreExemploContratos(mes) {
-  const marcas = DRE.exMarcas[mes] || (DRE.exMarcas[mes] = {});
-  const itens = [];
-  for (let i = 0; i < 9; i++) {
-    const nf = String(9200 + i);
-    if (marcas[nf] === undefined) marcas[nf] = i < 2;   // as duas primeiras já vêm marcadas
-    itens.push({ numero_nf: nf, tipo_nf: i % 3 === 2 ? 'PECA' : 'SERVICO', cliente_cod: String(40 + i), cliente: 'CLIENTE EXEMPLO ' + (i + 1),
-      num_os: String(3000 + i), valor: dreValorEx(mes, nf, 30000), estimada: i === 4, contrato: !!marcas[nf] });
-  }
-  itens.sort((a, b) => (b.contrato - a.contrato) || (b.valor - a.valor));
-  return { mes, quantidade: itens.length, marcadas: itens.filter(i => i.contrato).length, cortado: false, itens };
-}
-function dreExemploMarcar(mes, nf, marcar) { (DRE.exMarcas[mes] || (DRE.exMarcas[mes] = {}))[nf] = marcar; }
