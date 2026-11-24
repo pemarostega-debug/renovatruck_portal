@@ -60,7 +60,7 @@
       <div class="module-card" onclick="openModule('contaspagar')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#e0f2fe;color:#0284c7;"><i class="fa-solid fa-file-invoice-dollar"></i></div><div><div class="module-name">Contas a Pagar</div><div class="module-desc">Títulos, baixas, plano de contas e sincronização com o Genesis.</div></div></div>
       <div class="module-card" onclick="openModule('contasreceber')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#dcfce7;color:#059669;"><i class="fa-solid fa-hand-holding-dollar"></i></div><div><div class="module-name">Contas a Receber</div><div class="module-desc">Títulos, recebimentos, inadimplência e BI da carteira. Inclui o <b>Controle de Operações Financeiras</b>: antecipação de recebíveis, borderô e parceiros.</div></div></div><div class="module-card rs-card-admin" onclick="openModule('resultado')"><span class="module-badge" style="background:#e0e7ff;color:#4f46e5;">Diretoria</span><div class="module-icon" style="background:#e0e7ff;color:#1e3a5f;"><i class="fa-solid fa-scale-balanced"></i></div><div><div class="module-name">Resultado Semanal</div><div class="module-desc">Faturamento por cliente e rentabilidade de peças e serviços, com simulação "E se".</div></div></div>
       <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-money-bill-wave"></i></div><div><div class="module-name">Fluxo de Caixa</div><div class="module-desc">Projeção de entradas e saídas por período.</div></div></div>
-      <div class="module-card soon"><span class="module-badge badge-fase2">Em breve</span><div class="module-icon" style="background:#f1f5f9;color:#64748b;"><i class="fa-solid fa-file-invoice"></i></div><div><div class="module-name">DRE Gerencial</div><div class="module-desc">Resultado com budget vs realizado.</div></div></div>
+      <div class="module-card rs-card-admin" onclick="openModule('dre')"><span class="module-badge" style="background:#e0e7ff;color:#4f46e5;">Diretoria</span><div class="module-icon" style="background:#e0e7ff;color:#1e3a5f;"><i class="fa-solid fa-file-invoice"></i></div><div><div class="module-name">DRE Gerencial</div><div class="module-desc">Resultado por mês, com drill-down até a NF ou o título.</div></div></div>
       
       <div class="module-card" onclick="openModule('abc')"><span class="module-badge badge-ativo">Ativo</span><div class="module-icon" style="background:#fef3c7;color:#d97706;"><i class="fa-solid fa-ranking-star"></i></div><div><div class="module-name">Curva ABC</div><div class="module-desc">Ranking de clientes. Consolidado Renova + Vale 2026.</div></div></div>
     </div>
@@ -92,6 +92,7 @@
 <div id="screen-contaspagar"></div>
 <div id="screen-contasreceber"></div>
 <div id="screen-resultado"></div>
+<div id="screen-dre"></div>
 
 <script src="js/core.js"></script>
 <script src="js/auth.js"></script>

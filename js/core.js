@@ -16,6 +16,8 @@ const CONFIG = {
   // da vw_os_produto_serviço (peças e serviços de cada OS). Guia de publicação
   // em integracao/LEIA-ME-resultado-semanal.md.
   RESULTADO_SEMANAL_API: 'https://script.google.com/macros/s/AKfycbzOshhgNVKEh_8dDrx0bfA-kcrkpvV3LpCPmWCwm11-v9IAQzeLkyy5-GdyRy3FfpPo_w/exec',
+  // /exec do apps-script/dre.gs (DRE Gerencial). Vazio = a tela mostra dados de exemplo inventados.
+  DRE_API: 'https://script.google.com/macros/s/AKfycbwiD8y1cVanwSMQu2NAkQ8Kfi61uE3bZoSzfmu13_yyUO_b73wjEkjbQ2vTQ2iod8Aj/exec',
   // /exec do apps-script/ordens-servico.gs. Substitui o antigo dados.json
   // publicado no repositório (público) — ver fetchDados().
   ORDENS_API: 'https://script.google.com/macros/s/AKfycbwwY5er7pR4bjNvk6wmQblvlQ7ZZbC4CBa7Mr71zCY2A_s0l2E2c-OCbGT_2HRQZUg/exec',

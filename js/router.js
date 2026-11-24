@@ -15,7 +15,7 @@
 // Troque a cada publicação que mexer em arquivos de modules/: o GitHub Pages
 // deixa o navegador guardar cópia por 10 min, e sem isso alguém poderia pegar
 // o template novo com o JavaScript antigo.
-const VERSAO_PORTAL = '2026-11-05';
+const VERSAO_PORTAL = '2026-11-24';
 
 const LIBS = {
   chart: 'https://cdn.jsdelivr.net/npm/chart.js',
@@ -35,6 +35,7 @@ const MODULOS = {
   contaspagar:   { pasta:'contaspagar',   libs:['chart'],               css:true,  entrada:'initContasPagar' },
   contasreceber: { pasta:'contasreceber', libs:['chart','xlsx'],        css:true,  entrada:'initContasReceber' },
   resultado:     { pasta:'resultado',     libs:['chart','xlsx','papa'], css:true,  entrada:'initResultado', soAdmin:true },
+  dre:           { pasta:'dre',           libs:['xlsx'],                    css:true,  entrada:'initDre',       soAdmin:true },
 };
 
 const rtPromessas = {};   // módulo -> Promise do carregamento (clique duplo não baixa duas vezes)
@@ -113,7 +114,7 @@ function carregarModulo(m){
 async function openModule(m){
   const cfg = MODULOS[m];
   if(!cfg) return;
-  if(cfg.soAdmin && !rvPodeEditar()){ alert('O Resultado Semanal é restrito a administradores.'); return; }
+  if(cfg.soAdmin && !rvPodeEditar()){ alert('Este módulo é restrito a administradores.'); return; }
   if(!rtProntos[m]){
     showLoading('Abrindo módulo...');
     try{

@@ -28,7 +28,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);pad
 @media(max-width:640px){.tool-nav{flex-wrap:wrap;}}
 .back-btn{background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;transition:background .2s;}
 .back-btn:hover{background:rgba(255,255,255,.22);}
-#screen-dashboard,#screen-prec,#screen-abc,#screen-kanban,#screen-historico,#screen-manual,#screen-contaspagar,#screen-contasreceber,#screen-resultado{display:none;}
+#screen-dashboard,#screen-prec,#screen-abc,#screen-kanban,#screen-historico,#screen-manual,#screen-contaspagar,#screen-contasreceber,#screen-resultado,#screen-dre{display:none;}
 /* Card do Resultado Semanal: só existe na home para perfil admin. */
 .rs-card-admin{display:none!important;}
 body.rv-admin .rs-card-admin{display:flex!important;}

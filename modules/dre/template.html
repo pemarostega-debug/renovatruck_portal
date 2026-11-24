@@ -1,0 +1,71 @@
+<!-- DRE GERENCIAL — Etapa 2/2b: DRE + marcação de NFs de contrato (somente admin).
+     Números vindos pela API do apps-script/dre.gs; nada financeiro vive neste arquivo (repo público). -->
+<div id="screen-dre">
+
+  <div class="tool-nav">
+    <button class="back-btn" onclick="goHome()"><i class="fa-solid fa-arrow-left"></i> Início</button>
+    <span style="font-weight:900;font-size:.9rem;">DRE Gerencial</span>
+    <span style="font-size:.7rem;color:#94a3b8;">Regime de competência · acesso administrador</span>
+  </div>
+
+  <div class="dre-sub">
+    <label>De <input type="month" id="dre-de" onchange="dreMudarPeriodo()"></label>
+    <label>Até <input type="month" id="dre-ate" onchange="dreMudarPeriodo()"></label>
+    <button class="dre-btn" onclick="dreCarregar(true)" title="Ignora o cache e lê a planilha de novo"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+    <span class="dre-nota" id="dre-nota-periodo">Máximo de 24 meses.</span>
+    <button class="dre-btn" onclick="dreExportar()" title="Gera a planilha no seu navegador; nada é enviado para fora"><i class="fa-solid fa-file-excel"></i> Exportar XLSX</button>
+    <span class="dre-spacer"></span>
+    <span class="dre-nota" id="dre-gerado"></span>
+  </div>
+
+  <div class="dre-corpo">
+    <div class="dre-demo" id="dre-demo" style="display:none;"><i class="fa-solid fa-flask"></i> <b>Dados de exemplo inventados.</b> A tela ainda não está ligada ao <code>dre.gs</code> — preencha <code>CONFIG.DRE_API</code> em js/core.js.</div>
+    <div class="dre-erro" id="dre-erro" style="display:none;"></div>
+    <div id="dre-avisos"></div>
+    <div class="dre-card">
+      <h3>Últimos 12 meses</h3>
+      <p class="dre-nota">Barras: receita · linhas: resultado operacional e resultado do período.
+        <span class="dre-leg"><i style="background:#bcd2ea"></i>Receita</span><span class="dre-leg"><i style="background:#1e3a5f"></i>Res. operacional</span><span class="dre-leg"><i style="background:#c2410c"></i>Resultado</span></p>
+      <div id="dre-grafico"></div>
+      <div class="dre-nota" id="dre-grafico-nota"></div>
+    </div>
+    <div class="dre-card" id="dre-cen-card">
+      <div class="dre-det-topo"><h3>Cenário (simulação local)</h3>
+        <button class="dre-btn" onclick="dreCenReset()"><i class="fa-solid fa-rotate-left"></i> Voltar ao real</button></div>
+      <p class="dre-nota">Digite um percentual por grupo (ex.: receita 10, custos -5). Tabela, gráfico e XLSX recalculam aqui no navegador; nada é gravado. O bloco "fora do resultado" não muda.</p>
+      <div class="dre-cen-campos">
+        <label>Receita % <input id="dre-cen-RECEITA" inputmode="decimal" oninput="dreCenMudou()"></label>
+        <label>Custos operacionais % <input id="dre-cen-CUSTO_OP" inputmode="decimal" oninput="dreCenMudou()"></label>
+        <label>Despesas fixas % <input id="dre-cen-FIXA" inputmode="decimal" oninput="dreCenMudou()"></label>
+        <label>Despesas financeiras % <input id="dre-cen-FIN" inputmode="decimal" oninput="dreCenMudou()"></label>
+      </div>
+      <div class="dre-nota" id="dre-cen-msg" style="color:#c02d2d;"></div>
+    </div>
+    <div class="dre-aviso" id="dre-cen-faixa" style="display:none;"><i class="fa-solid fa-flask"></i> <b>Cenário em simulação.</b> Os números da tabela não são o real. O detalhamento por clique fica desligado até voltar ao real.</div>
+    <div class="dre-card"><div class="dre-rolagem" id="dre-tabela"><div class="dre-nota" style="padding:16px;">Carregando…</div></div></div>
+    <div class="dre-card" id="dre-est-card" style="display:none;">
+      <h3>NFs com valor estimado</h3>
+      <p class="dre-nota">Faltam parcelas dessas NFs no Contas a Receber; o DRE usa o total estimado (valor da parcela × total de parcelas).</p>
+      <div class="dre-rolagem" id="dre-estimadas"></div>
+    </div>
+    <div class="dre-card" id="dre-ctr-card">
+      <div class="dre-det-topo"><h3>Contratos do mês</h3>
+        <label class="dre-nota">Mês <input type="month" id="dre-ctr-mes" onchange="dreCtrCarregar()"></label></div>
+      <p class="dre-nota">Marque as NFs que são de contrato (viram R.1). NF sem marca é Spot. Vale para o mês da emissão e o DRE recarrega ao marcar.</p>
+      <div id="dre-ctr-msg"></div>
+      <div class="dre-rolagem" id="dre-ctr-lista"></div>
+    </div>
+    <div class="dre-card" id="dre-bud-card">
+      <div class="dre-det-topo"><h3>Orçado × Executado</h3>
+        <span><label class="dre-nota">Mês <input type="month" id="dre-bud-mes" onchange="dreBudCarregar()"></label>
+        <button class="dre-btn" id="dre-bud-salvar" onclick="dreBudSalvar()" disabled><i class="fa-solid fa-floppy-disk"></i> Salvar metas</button></span></div>
+      <p class="dre-nota">Digite a meta de cada conta (sem meta = em branco). A variação recalcula na hora; só grava ao clicar em Salvar. Totais somam apenas as contas que têm meta.</p>
+      <div id="dre-bud-msg"></div>
+      <div class="dre-rolagem" id="dre-bud-tabela"></div>
+    </div>
+    <div class="dre-card" id="dre-det-card" style="display:none;">
+      <div class="dre-det-topo"><h3 id="dre-det-titulo"></h3><button class="dre-btn" onclick="dreFecharDetalhe()"><i class="fa-solid fa-xmark"></i> Fechar</button></div>
+      <div id="dre-det-corpo"></div>
+    </div>
+  </div>
+</div>
