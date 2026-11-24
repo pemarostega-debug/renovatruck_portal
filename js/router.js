@@ -15,7 +15,7 @@
 // Troque a cada publicação que mexer em arquivos de modules/: o GitHub Pages
 // deixa o navegador guardar cópia por 10 min, e sem isso alguém poderia pegar
 // o template novo com o JavaScript antigo.
-const VERSAO_PORTAL = '2026-11-24b';
+const VERSAO_PORTAL = '2026-11-24c';
 
 const LIBS = {
   chart: 'https://cdn.jsdelivr.net/npm/chart.js',
@@ -36,6 +36,7 @@ const MODULOS = {
   contasreceber: { pasta:'contasreceber', libs:['chart','xlsx'],        css:true,  entrada:'initContasReceber' },
   resultado:     { pasta:'resultado',     libs:['chart','xlsx','papa'], css:true,  entrada:'initResultado', soAdmin:true },
   dre:           { pasta:'dre',           libs:['xlsx'],                    css:true,  entrada:'initDre',       soAdmin:true },
+  horaextra:     { pasta:'horaextra',     libs:['xlsx'],                    css:true,  entrada:'initHoraExtra', soAdmin:true },
 };
 
 const rtPromessas = {};   // módulo -> Promise do carregamento (clique duplo não baixa duas vezes)

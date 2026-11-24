@@ -1,0 +1,45 @@
+<!-- HORA EXTRA PJ — horas extras e socorros dos prestadores PJ (somente admin).
+     Números vindos pela API do ColaboradoresPJ.gs (repositório portaria-renova); nada de pessoa ou valor vive neste arquivo (repo público). -->
+<div id="screen-horaextra">
+
+  <div class="tool-nav">
+    <button class="back-btn" onclick="goHome()"><i class="fa-solid fa-arrow-left"></i> Início</button>
+    <span style="font-weight:900;font-size:.9rem;">Hora Extra PJ</span>
+    <span style="font-size:.7rem;color:#94a3b8;">Horas extras e socorros · acesso administrador</span>
+  </div>
+
+  <div class="he-sub">
+    <label>Mês <input type="month" id="he-mes" onchange="heMudarMes()"></label>
+    <button class="he-btn" onclick="heCarregar(true)" title="Lê os registros da portaria de novo"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+    <label class="he-check"><input type="checkbox" id="he-so-movimento" checked onchange="heRenderTabela()"> Só quem teve movimento no mês</label>
+    <span class="he-spacer"></span>
+    <span class="he-nota" id="he-gerado"></span>
+    <button class="he-btn" onclick="heExportar()" title="Gera a planilha no seu navegador; nada é enviado para fora"><i class="fa-solid fa-file-excel"></i> Fechamento (XLSX)</button>
+  </div>
+
+  <div class="he-corpo">
+    <div class="he-aviso" id="he-desligado" style="display:none;"><i class="fa-solid fa-plug-circle-xmark"></i> <b>Módulo ainda não ligado.</b> Falta publicar o backend (<code>ColaboradoresPJ.gs</code>) e colar a URL <code>/exec</code> em <code>CONFIG.PJ_API</code> (js/core.js).</div>
+    <div class="he-erro" id="he-erro" style="display:none;"></div>
+    <div id="he-avisos"></div>
+
+    <div class="he-cartoes" id="he-cartoes"></div>
+
+    <div class="he-card">
+      <h3>Por colaborador <span class="he-nota" id="he-pagamento"></span></h3>
+      <div class="he-rolagem"><table id="he-tabela"><tbody><tr><td class="he-vazio">Carregando…</td></tr></tbody></table></div>
+    </div>
+
+    <div class="he-card" id="he-detalhe-card" style="display:none;"></div>
+
+    <div class="he-card">
+      <h3>Regras em vigor</h3>
+      <div id="he-regras"></div>
+      <p class="he-nota">Para mudar valores, tolerância ou horário da unidade, edite a aba <b>Config</b> da planilha de controle da portaria.</p>
+    </div>
+
+    <div class="he-card">
+      <h3>Quem fica fora da portaria</h3>
+      <div id="he-fora"></div>
+    </div>
+  </div>
+</div>
